@@ -1,7 +1,6 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- PROCEDURAL SOUND EFFECTS ---
 let audioCtx = null;
 
 function initAudio() {
@@ -53,11 +52,9 @@ const sfx = {
 
 const BREED_CONFIG = {
   aussie:    { baseBps: 1.0,    cost: 15,     costMult: 1.45 },
-  corgi:     { baseBps: 1.5,    cost: 75,     costMult: 1.48 },
   collie:    { baseBps: 4.0,    cost: 250,    costMult: 1.50 },
   golden:    { baseBps: 10.0,   cost: 600,    costMult: 1.52 },
   husky:     { baseBps: 25.0,   cost: 1500,   costMult: 1.55 },
-  frenchie:  { baseBps: 65.0,   cost: 4000,   costMult: 1.58 },
   shiba:     { baseBps: 160.0,  cost: 10000,  costMult: 1.60 },
   shepherd:  { baseBps: 400.0,  cost: 25000,  costMult: 1.62 },
   beagle:    { baseBps: 1000.0, cost: 60000,  costMult: 1.65 },
@@ -81,8 +78,8 @@ let state = {
   bones: 0,
   magicBones: 0,
   dogs: {
-    aussie: 1, corgi: 0, collie: 0, golden: 0, husky: 0,
-    frenchie: 0, shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
+    aussie: 1, collie: 0, golden: 0, husky: 0,
+    shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
   },
   shinyDogs: [],
   perks: [],
@@ -369,7 +366,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Locked-in Australian Shepherd & Border Collie + Safe Park Boundaries
+// Dog Entity with Locked-In Aussie/Collie & Reworked Golden Retriever & Dalmatian
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -396,8 +393,8 @@ class Dog {
 
   update(dt) {
     const speedMults = {
-      aussie: 1.2, corgi: 1.0, collie: 1.3, golden: 1.1, husky: 1.3,
-      frenchie: 0.9, shiba: 1.15, shepherd: 1.2, beagle: 1.0, dalmatian: 1.4
+      aussie: 1.2, collie: 1.3, golden: 1.1, husky: 1.3,
+      shiba: 1.15, shepherd: 1.2, beagle: 1.0, dalmatian: 1.4
     };
     const breedSpeed = speedMults[this.breed] || 1.1;
     const speed = breedSpeed * Math.min(state.speedMultiplier, 1.4);
@@ -427,7 +424,7 @@ class Dog {
         this.timer = ((this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier) / workBonus;
         
         const { magicBonus } = getPerkMultipliers();
-        const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus + ((this.breed === 'corgi') ? 0.15 : 0));
+        const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus);
         this.isMagicDig = Math.random() < magicChanceTotal;
         
         const treasureChance = (this.breed === 'shiba') ? 0.003 : 0.0003;
@@ -522,9 +519,8 @@ class Dog {
 
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
-    // --- LOCKED IN DESIGN FOR AUSTRALIAN SHEPHERD & BORDER COLLIE + FIXED OTHER BREEDS ---
+    // --- LOCKED IN AUSSIE & COLLIE + REWORKED GOLDEN & DALMATIAN ---
     if (this.breed === 'aussie') {
-      // EXACT FAVORITE DESIGN LOCKED IN
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
       ctx.fillStyle = primaryColor;
       ctx.fillRect(-11 - legSwing, -3, 4, 9);
@@ -555,7 +551,6 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // EXACT FAVORITE DESIGN LOCKED IN
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
@@ -580,26 +575,20 @@ class Dog {
       ctx.beginPath(); ctx.arc(20.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(14, -18.5, 1.4, 0, Math.PI * 2); ctx.fill();
 
-    } else if (this.breed === 'corgi') {
-      const col = this.isShiny ? this.shinyColor : '#e17055';
-      ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -1, 4, 8); ctx.fillRect(5 + legSwing, -1, 4, 8);
-      ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 5, 4, 3); ctx.fillRect(5 + legSwing, 5, 4, 3);
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -7, 15, 8.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8, -7, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.moveTo(7, -20); ctx.lineTo(13, -27); ctx.lineTo(15, -18); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18, -16, 1.6, 0, Math.PI * 2); ctx.fill();
-
     } else if (this.breed === 'golden') {
+      // Reworked Golden Retriever: Proper floppy ears, clear snout, nose, eyes & long tail
       const col = this.isShiny ? this.shinyColor : '#f39c12';
       ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4.5, 10); ctx.fillRect(6 + legSwing, -3, 4.5, 10);
       const wag = Math.sin(this.animPhase * 2) * 4;
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -16 + wag, -26, -11); ctx.lineWidth = 4; ctx.strokeStyle = col; ctx.stroke();
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -9, 15, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -15); ctx.lineTo(19, -13); ctx.lineTo(13, -10); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
+      // Floppy golden ear
+      ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.ellipse(8, -13, 3, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+      // Defined snout & black nose
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(11, -15); ctx.lineTo(19, -13); ctx.lineTo(13, -10); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(19.5, -13.5, 1.8, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(14, -18, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'husky') {
       const col = this.isShiny ? this.shinyColor : '#636e72';
@@ -611,17 +600,6 @@ class Dog {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -16); ctx.lineTo(18, -14); ctx.lineTo(12, -11); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0984e3'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
-
-    } else if (this.breed === 'frenchie') {
-      const col = this.isShiny ? this.shinyColor : '#b2bec3';
-      ctx.fillStyle = col; ctx.fillRect(-9 - legSwing, -1, 4, 7); ctx.fillRect(5 + legSwing, -1, 4, 7);
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -7, 13, 8.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#dfe6e9'; ctx.beginPath(); ctx.arc(10, -15, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2d3436';
-      ctx.beginPath(); ctx.moveTo(6, -18); ctx.lineTo(4, -27); ctx.lineTo(11, -21); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(12, -18); ctx.lineTo(18, -27); ctx.lineTo(13, -21); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(14, -14, 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(16.5, -14, 1.5, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'shiba') {
       const col = this.isShiny ? this.shinyColor : '#d35400';
@@ -659,16 +637,20 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -12.5, 1.5, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'dalmatian') {
+      // Reworked Dalmatian: Clean white body with spots, distinct ears, clear face, snout, nose & tail
       ctx.fillStyle = '#fff'; ctx.fillRect(-11 - legSwing, -3, 4, 9); ctx.fillRect(6 + legSwing, -3, 4, 9);
       const wag = Math.sin(this.animPhase * 2) * 3;
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
+      // Black spots on body
       ctx.fillStyle = '#1e1e1e';
-      ctx.fillRect(-6, -11, 3.5, 3.5); ctx.fillRect(2, -7, 3, 3); ctx.fillRect(7, -18, 2.5, 2.5); ctx.fillRect(14, -19, 2, 2);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -19, 1.5, 2, 2); ctx.fill();
+      ctx.fillRect(-6, -11, 3.5, 3.5); ctx.fillRect(2, -7, 3, 3); ctx.fillRect(7, -18, 2.5, 2.5);
+      // Head & Ears
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.2, 0, Math.PI * 2); ctx.fill(); // Spotted ear
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill(); // Snout
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill(); // Nose
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill(); // Eye
     }
 
     ctx.restore();
@@ -888,11 +870,9 @@ function recruitDog(breed) {
 }
 
 document.getElementById('btnSummonAussie').addEventListener('click', () => recruitDog('aussie'));
-document.getElementById('btnSummonCorgi').addEventListener('click', () => recruitDog('corgi'));
 document.getElementById('btnSummonCollie').addEventListener('click', () => recruitDog('collie'));
 document.getElementById('btnSummonGolden').addEventListener('click', () => recruitDog('golden'));
 document.getElementById('btnSummonHusky').addEventListener('click', () => recruitDog('husky'));
-document.getElementById('btnSummonFrenchie').addEventListener('click', () => recruitDog('frenchie'));
 document.getElementById('btnSummonShiba').addEventListener('click', () => recruitDog('shiba'));
 document.getElementById('btnSummonShepherd').addEventListener('click', () => recruitDog('shepherd'));
 document.getElementById('btnSummonBeagle').addEventListener('click', () => recruitDog('beagle'));
