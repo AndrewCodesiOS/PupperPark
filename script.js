@@ -96,7 +96,7 @@ const PERK_POOL = [
 
 let state = {
   bones: 0,
-  magicBones: 10000,
+  magicBones: 0,
   dogs: {
     aussie: 1, collie: 0, golden: 0, husky: 0,
     shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
@@ -317,12 +317,13 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Decor Buy Handlers
+// Decor Buy Handlers (capped at max placement limit: Tree 3, Flowers 5, Fountain 2)
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
   initAudio();
-  if (state.magicBones >= 500) {
+  const currentTreeOwned = state.decorInventory.tree || 0;
+  if (state.magicBones >= 500 && currentTreeOwned < 3) {
     state.magicBones -= 500;
-    state.decorInventory.tree = (state.decorInventory.tree || 0) + 1;
+    state.decorInventory.tree = currentTreeOwned + 1;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -331,9 +332,10 @@ document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
 
 document.getElementById('btnBuyDecorFlowers').addEventListener('click', () => {
   initAudio();
-  if (state.magicBones >= 250) {
+  const currentFlowersOwned = state.decorInventory.flowers || 0;
+  if (state.magicBones >= 250 && currentFlowersOwned < 5) {
     state.magicBones -= 250;
-    state.decorInventory.flowers = (state.decorInventory.flowers || 0) + 1;
+    state.decorInventory.flowers = currentFlowersOwned + 1;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -342,9 +344,10 @@ document.getElementById('btnBuyDecorFlowers').addEventListener('click', () => {
 
 document.getElementById('btnBuyDecorFountain').addEventListener('click', () => {
   initAudio();
-  if (state.magicBones >= 1000) {
+  const currentFountainOwned = state.decorInventory.fountain || 0;
+  if (state.magicBones >= 1000 && currentFountainOwned < 2) {
     state.magicBones -= 1000;
-    state.decorInventory.fountain = (state.decorInventory.fountain || 0) + 1;
+    state.decorInventory.fountain = currentFountainOwned + 1;
     sfx.upgrade();
     saveGame();
   }
@@ -432,7 +435,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
 
   state = {
     bones: 0,
-    magicBones: 10000,
+    magicBones: 0,
     dogs: {
       aussie: 1, collie: 0, golden: 0, husky: 0,
       shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
@@ -1642,8 +1645,15 @@ function updateUI() {
 
   const btnBuyDecorTree = document.getElementById('btnBuyDecorTree');
   if (btnBuyDecorTree) {
-    btnBuyDecorTree.disabled = state.magicBones < 500;
+    const atMaxTree = ownedTree >= 3;
+    btnBuyDecorTree.disabled = state.magicBones < 500 || atMaxTree;
+    if (atMaxTree) {
+      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Max Owned';
+    } else {
+      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Buy Tree';
+    }
   }
+
   const btnPlaceDecorTree = document.getElementById('btnPlaceDecorTree');
   if (btnPlaceDecorTree) {
     const unplacedTree = ownedTree - treeCount;
@@ -1661,8 +1671,15 @@ function updateUI() {
 
   const btnBuyDecorFlowers = document.getElementById('btnBuyDecorFlowers');
   if (btnBuyDecorFlowers) {
-    btnBuyDecorFlowers.disabled = state.magicBones < 250;
+    const atMaxFlowers = ownedFlowers >= 5;
+    btnBuyDecorFlowers.disabled = state.magicBones < 250 || atMaxFlowers;
+    if (atMaxFlowers) {
+      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Max Owned';
+    } else {
+      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Buy Flowers';
+    }
   }
+
   const btnPlaceDecorFlowers = document.getElementById('btnPlaceDecorFlowers');
   if (btnPlaceDecorFlowers) {
     const unplacedFlowers = ownedFlowers - flowerCount;
@@ -1680,8 +1697,15 @@ function updateUI() {
 
   const btnBuyDecorFountain = document.getElementById('btnBuyDecorFountain');
   if (btnBuyDecorFountain) {
-    btnBuyDecorFountain.disabled = state.magicBones < 1000;
+    const atMaxFountain = ownedFountain >= 2;
+    btnBuyDecorFountain.disabled = state.magicBones < 1000 || atMaxFountain;
+    if (atMaxFountain) {
+      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Max Owned';
+    } else {
+      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Buy Fountain';
+    }
   }
+
   const btnPlaceDecorFountain = document.getElementById('btnPlaceDecorFountain');
   if (btnPlaceDecorFountain) {
     const unplacedFountain = ownedFountain - fountainCount;
