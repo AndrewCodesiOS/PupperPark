@@ -129,8 +129,8 @@ let tennisBall = {
   targetGx: 3.5,
   targetGy: 3.5,
   isRolling: false,
-  rollProgress: 1, // 0 to 1 for rolling animation
-  timer: 3.0,
+  hasRolledOnce: false, // Tracks the single chase cycle phase
+  timer: 5.0,
   bouncePhase: 0,
   chaserDog: null
 };
@@ -535,20 +535,27 @@ class Dog {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
 
-        // If this dog reached the tennis ball, bounce the ball away to a new spot and keep chasing!
+        // If this dog reached the tennis ball during a chase cycle:
         if (state.hasTennisBall && tennisBall.chaserDog === this) {
           sfx.squeak();
-          tennisBall.isRolling = true;
-          tennisBall.rollProgress = 0;
-          tennisBall.gx = this.gx;
-          tennisBall.gy = this.gy;
-          tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gx + (Math.random() - 0.5) * 3.5));
-          tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gy + (Math.random() - 0.5) * 3.5));
-          
-          // Keep chasing the newly bounced ball position!
-          this.targetGx = tennisBall.targetGx;
-          this.targetGy = tennisBall.targetGy;
-          return;
+          if (!tennisBall.hasRolledOnce) {
+            // First arrival: Ball rolls/bounces away to a second spot, dog chases it there!
+            tennisBall.hasRolledOnce = true;
+            tennisBall.isRolling = true;
+            tennisBall.gx = this.gx;
+            tennisBall.gy = this.gy;
+            tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gx + (Math.random() - 0.5) * 3.5));
+            tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gy + (Math.random() - 0.5) * 3.5));
+            
+            this.targetGx = tennisBall.targetGx;
+            this.targetGy = tennisBall.targetGy;
+            return;
+          } else {
+            // Second arrival: Chase complete! Dog stops chasing, ball settles, dog goes back to normal work.
+            tennisBall.chaserDog = null;
+            tennisBall.hasRolledOnce = false;
+            tennisBall.timer = 10.0 + Math.random() * 8.0; // Cooldown before next chase event
+          }
         }
 
         this.state = 'DIG';
@@ -568,8 +575,8 @@ class Dog {
         this.gx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gx));
         this.gy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gy));
 
-        // If chasing the ball, update ball position to smoothly follow dog until reached
-        if (state.hasTennisBall && tennisBall.chaserDog === this && !tennisBall.isRolling) {
+        // If dog is walking to the ball initially, ball moves with him until first reach
+        if (state.hasTennisBall && tennisBall.chaserDog === this && !tennisBall.hasRolledOnce && !tennisBall.isRolling) {
           tennisBall.gx = this.gx;
           tennisBall.gy = this.gy;
         }
@@ -1230,24 +1237,21 @@ function loop(now) {
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
 
-      // Handle smooth rolling animation when the ball bounces away
       if (tennisBall.isRolling) {
-        tennisBall.rollProgress += dt * 2.5; // Roll speed
-        if (tennisBall.rollProgress >= 1) {
-          tennisBall.rollProgress = 1;
+        tennisBall.gx += (tennisBall.targetGx - tennisBall.gx) * (dt * 6);
+        tennisBall.gy += (tennisBall.targetGy - tennisBall.gy) * (dt * 6);
+        if (Math.hypot(tennisBall.targetGx - tennisBall.gx, tennisBall.targetGy - tennisBall.gy) < 0.05) {
           tennisBall.isRolling = false;
         }
-        tennisBall.gx = tennisBall.gx + (tennisBall.targetGx - tennisBall.gx) * (dt * 5);
-        tennisBall.gy = tennisBall.gy + (tennisBall.targetGy - tennisBall.gy) * (dt * 5);
       } else if (!tennisBall.chaserDog) {
         tennisBall.timer -= dt;
         if (tennisBall.timer <= 0 && dogs.length > 0) {
-          // Select a random dog to chase the ball
+          // Periodically pick a random dog to initiate one chase cycle
           tennisBall.chaserDog = dogs[Math.floor(Math.random() * dogs.length)];
+          tennisBall.hasRolledOnce = false;
           tennisBall.chaserDog.targetGx = tennisBall.gx;
           tennisBall.chaserDog.targetGy = tennisBall.gy;
           tennisBall.chaserDog.state = 'WALK';
-          tennisBall.timer = 6.0 + Math.random() * 4.0;
         }
       }
     }
@@ -1292,6 +1296,7 @@ function loop(now) {
       });
     });
 
+    // Properly sort renderables by screen Y coordinate to maintain perfect depth sorting
     renderables.sort((a, b) => a.sortY - b.sortY);
     renderables.forEach(item => item.draw());
 
