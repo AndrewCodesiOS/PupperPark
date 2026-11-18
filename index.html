@@ -3,54 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Magical Aussie Dog Park — 2.5D Idle</title>
+  <title>PupperPark — 2.5D Idle</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <div id="hud">
-    <div class="stat">🦴 <span id="boneCount">0</span> <span class="label">Bones</span></div>
-    <div class="stat">✨ <span id="magicBoneCount">0</span> <span class="label">Magic Bones</span></div>
-    <div class="stat">🐕 <span id="dogCount">1</span> <span class="label">Aussies</span></div>
-    <div class="stat">⚡ <span id="bpsCount">0.0</span> <span class="label">/ sec</span></div>
-    <button id="btnAudio" class="audio-btn" title="Toggle Audio">🎵</button>
+  <!-- Top Left Currency HUD -->
+  <div id="topHud">
+    <div class="currency-pill">
+      <span class="bone-icon">🦴</span>
+      <span id="boneCount">0</span>
+      <div class="rate-pill" id="bpsCount">+0.0/s</div>
+    </div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
-  <div id="controls">
-    <button class="upgrade-btn" id="btnSummon">
-      <div class="btn-title">🌀 Summon Aussie</div>
-      <div class="btn-desc">Adds another pup to the park</div>
-      <div class="btn-cost" id="costSummon">15 Bones</div>
-    </button>
+  <!-- Bottom Right Mini Bar -->
+  <div id="bottomBar">
+    <div class="mini-stat">⚡ <span id="miniBps">0.0</span>/s</div>
+    <div class="mini-stat">🐕 <span id="miniDogs">1</span></div>
+    <button id="btnOpenMenu" class="menu-toggle-btn">▲ Open Menu</button>
+  </div>
 
-    <button class="upgrade-btn" id="btnDigPower">
-      <div class="btn-title">⛏️ Dig Deeper</div>
-      <div class="btn-desc">+1 Bone per dig</div>
-      <div class="btn-cost" id="costDigPower">25 Bones</div>
-    </button>
+  <!-- Pull Down / Slide Up Menu Modal -->
+  <div id="gameModal" class="modal" style="display: none;">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-tab="tab-dogs">🐕 Dogs</button>
+          <button class="tab-btn" data-tab="tab-upgrades">⚡ Upgrades</button>
+          <button class="tab-btn" data-tab="tab-magic">🍄 Magic</button>
+          <button class="tab-btn" data-tab="tab-stats">📊 Stats</button>
+        </div>
+        <button id="btnCloseMenu" class="close-btn">✕</button>
+      </div>
 
-    <button class="upgrade-btn" id="btnZoomies">
-      <div class="btn-title">🌟 Starlight Zoomies</div>
-      <div class="btn-desc">Dogs move & dig 20% faster</div>
-      <div class="btn-cost" id="costZoomies">40 Bones</div>
-    </button>
+      <div class="modal-body">
+        <!-- Dogs Tab -->
+        <div class="tab-content active" id="tab-dogs">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Australian Shepherd</h3>
+              <p>Loyal herder. Digs up standard bones automatically.</p>
+              <div class="shop-owned">Owned: <span id="dogCountDisplay">1</span></div>
+            </div>
+            <button class="action-btn" id="btnSummon">
+              <span class="btn-name">Recruit +1</span>
+              <span class="btn-cost" id="costSummon">15 🦴</span>
+            </button>
+          </div>
+        </div>
 
-    <button class="upgrade-btn" id="btnMushrooms">
-      <div class="btn-title">🍄 Mystic Spores</div>
-      <div class="btn-desc">+10% Magic Bone chance</div>
-      <div class="btn-cost" id="costMushrooms">5 Magic Bones</div>
-    </button>
+        <!-- Upgrades Tab -->
+        <div class="tab-content" id="tab-upgrades">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>⛏️ Dig Deeper</h3>
+              <p>Increases bone yield per dig by +1.</p>
+            </div>
+            <button class="action-btn" id="btnDigPower">
+              <span class="btn-name">Upgrade</span>
+              <span class="btn-cost" id="costDigPower">25 🦴</span>
+            </button>
+          </div>
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>🌟 Starlight Zoomies</h3>
+              <p>Increases park movement & dig speed by 20%.</p>
+            </div>
+            <button class="action-btn" id="btnZoomies">
+              <span class="btn-name">Upgrade</span>
+              <span class="btn-cost" id="costZoomies">40 🦴</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Magic Tab -->
+        <div class="tab-content" id="tab-magic">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>🍄 Mystic Spores</h3>
+              <p>Increases Magic Bone spawn chance by +10%.</p>
+            </div>
+            <button class="action-btn" id="btnMushrooms">
+              <span class="btn-name">Infuse</span>
+              <span class="btn-cost" id="costMushrooms">5 ✨</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="tab-content" id="tab-stats">
+          <div class="stats-grid">
+            <div class="stat-box"><span>Magic Bones:</span> <strong id="magicBoneCount">0</strong></div>
+            <div class="stat-box"><span>Dig Power:</span> <strong id="statDigPower">1</strong></div>
+            <div class="stat-box"><span>Speed Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
+            <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">12%</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Offline Progress Modal -->
   <div id="offlineModal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-window offline-box">
       <h2>🐾 Welcome Back!</h2>
       <p>While you were away, your pack kept digging in the magical park.</p>
       <div id="offlineEarnings" class="offline-highlight">Earned 0 Bones!</div>
-      <button id="btnCloseModal">Awesome!</button>
+      <button id="btnCloseOffline" class="action-btn" style="width:100%;">Awesome!</button>
     </div>
   </div>
 
