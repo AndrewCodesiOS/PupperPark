@@ -96,6 +96,7 @@ const PERK_POOL = [
 
 let state = {
   bones: 0,
+  lifetimeBones: 0,
   magicBones: 0,
   dogs: {
     aussie: 1, collie: 0, golden: 0, husky: 0,
@@ -182,6 +183,9 @@ function loadGame() {
     try {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
+      if (typeof state.lifetimeBones !== 'number') {
+        state.lifetimeBones = state.bones || 0;
+      }
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
       if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
@@ -215,6 +219,7 @@ function loadGame() {
     const earned = Math.floor(getBPS() * elapsedSeconds * state.idleMultiplier);
     if (earned > 0) {
       state.bones += earned;
+      state.lifetimeBones += earned;
       showOfflineModal(earned);
     }
   }
@@ -435,6 +440,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
 
   state = {
     bones: 0,
+    lifetimeBones: 0,
     magicBones: 0,
     dogs: {
       aussie: 1, collie: 0, golden: 0, husky: 0,
@@ -1564,6 +1570,7 @@ document.getElementById('btnTreatFeast').addEventListener('click', () => {
     state.bones -= state.costs.treatFeast;
     const feastPayout = Math.floor(getBPS() * 30);
     state.bones += feastPayout;
+    state.lifetimeBones += feastPayout;
     state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
     state.feastAnimTimer = 1.5;
     sfx.treat();
@@ -1736,6 +1743,10 @@ function updateUI() {
   document.getElementById('statDigPower').textContent = state.digPower;
   document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
+  const lifetimeEl = document.getElementById('statLifetimeBones');
+  if (lifetimeEl) {
+    lifetimeEl.textContent = Math.floor(state.lifetimeBones).toLocaleString();
+  }
 
   document.getElementById('btnToyBones').disabled = state.bones < state.costs.toyBones;
   document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
@@ -1864,7 +1875,9 @@ function loop(now) {
 
     const bps = getBPS();
     if (bps > 0) {
-      state.bones += bps * dt;
+      const earnedTick = bps * dt;
+      state.bones += earnedTick;
+      state.lifetimeBones += earnedTick;
       updateUI();
     }
 
@@ -1981,6 +1994,7 @@ function loop(now) {
             sfx.magicCollect();
           } else {
             state.bones += b.value;
+            state.lifetimeBones += b.value;
             sfx.collect();
           }
           droppedBones.splice(i, 1);
