@@ -323,6 +323,22 @@ html, body {
   margin-top: 2px;
 }
 
+/* Decor Tab Button Sizing and Group Layout */
+.decor-btn-group {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.decor-action-btn {
+  width: 105px;
+  min-width: 105px;
+  flex: 0 0 105px;
+  box-sizing: border-box;
+  text-align: center;
+  justify-content: center;
+}
+
 /* Stats Grid */
 .stats-grid {
   display: grid;
