@@ -83,15 +83,15 @@ const BREED_CONFIG = {
 
 const PERK_POOL = [
   { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts Bone Generation', mult: 1.10 },
-  { id: 'bp_2', name: 'Squeaky Compass', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
+  { id: 'bp_2', name: 'Lost Compass', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
   { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.20 },
   { id: 'sp_1', name: 'Sturdy Trowel', rarity: 'Common', desc: 'Boosts Digging Speed', workMult: 1.10 },
   { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
-  { id: 'bp_5', name: 'Field Scout Journal', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
-  { id: 'mp_1', name: 'Hollow Bone Relic', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
-  { id: 'bp_6', name: 'Hoard of the Golden Retriever', rarity: 'Legendary', desc: 'Massively boosts Bone Generation', mult: 1.80 },
-  { id: 'mp_2', name: 'Astral Snout Relic', rarity: 'Legendary', desc: 'Significantly boosts Magic Bone Chance', magicAdd: 0.10 },
-  { id: 'myth_1', name: 'Crown of the Park Alpha', rarity: 'Mythic', desc: 'Divine relic! Triples bone generation & speed', mult: 3.0, workMult: 1.5 }
+  { id: 'bp_5', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
+  { id: 'mp_1', name: 'Mystic Chew Toy', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
+  { id: 'bp_6', name: 'Diamond Bowl', rarity: 'Legendary', desc: 'Massively boosts Bone Generation', mult: 1.80 },
+  { id: 'mp_2', name: 'The Golden Good-Boy Stash', rarity: 'Legendary', desc: 'Significantly boosts Magic Bone Chance', magicAdd: 0.10 },
+  { id: 'myth_1', name: 'The Infinite Toy Chest', rarity: 'Mythic', desc: 'Divine relic! Triples bone generation & speed', mult: 3.0, workMult: 1.5 }
 ];
 
 let state = {
