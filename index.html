@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>PupperPark — Idle</title>
+  <title>PupperPark — 2.5D Idle</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -38,7 +38,7 @@
       <div class="modal-header">
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="tab-dogs">Dogs (8)</button>
-          <button class="tab-btn" data-tab="tab-upgrades">Upgrades</button>
+          <button class="tab-btn" data-tab="tab-toys">Toys</button>
           <button class="tab-btn" data-tab="tab-magic">Magic</button>
           <button class="tab-btn" data-tab="tab-perks">Perks</button>
           <button class="tab-btn" data-tab="tab-prestige">Prestige</button>
@@ -147,26 +147,49 @@
           </div>
         </div>
 
-        <!-- Upgrades Tab -->
-        <div class="tab-content" id="tab-upgrades">
+        <!-- Toys Tab -->
+        <div class="tab-content" id="tab-toys">
           <div class="shop-card">
             <div class="shop-info">
-              <h3>⛏️ Dig Deeper</h3>
-              <p>Boosts bone yield per dig.</p>
+              <h3>🎾 Squeaky Tennis Ball</h3>
+              <p>Boosts bone generation rates across the pack.</p>
             </div>
-            <button class="action-btn" id="btnDigPower">
-              <span class="btn-name">Upgrade</span>
-              <span class="btn-cost" id="costDigPower">25 🦴</span>
+            <button class="action-btn" id="btnToyBones">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyBones">25 🦴</span>
             </button>
           </div>
+
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🌟 Starlight Zoomies</h3>
-              <p>Boosts park movement & dig speed.</p>
+              <h3>🥏 Turbo Frisbee</h3>
+              <p>Boosts park movement speed and zoomies.</p>
             </div>
-            <button class="action-btn" id="btnZoomies">
-              <span class="btn-name">Upgrade</span>
-              <span class="btn-cost" id="costZoomies">40 🦴</span>
+            <button class="action-btn" id="btnToySpeed">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToySpeed">40 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>🦴 Heavy Chew Bone</h3>
+              <p>Boosts digging strength and power per scoop.</p>
+            </div>
+            <button class="action-btn" id="btnToyDig">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyDig">100 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>🧸 Cozy Nap Plush</h3>
+              <p>Boosts bonus earnings while resting away from the park.</p>
+            </div>
+            <button class="action-btn" id="btnToyIdle">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyIdle">200 🦴</span>
             </button>
           </div>
         </div>
