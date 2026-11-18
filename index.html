@@ -39,9 +39,8 @@
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="tab-dogs">Dogs (8)</button>
           <button class="tab-btn" data-tab="tab-toys">Toys</button>
-          <button class="tab-btn" data-tab="tab-magic">Magic</button>
+          <button class="tab-btn" data-tab="tab-treats">Treats</button>
           <button class="tab-btn" data-tab="tab-perks">Perks</button>
-          <button class="tab-btn" data-tab="tab-prestige">Prestige</button>
           <button class="tab-btn" data-tab="tab-stats">Stats</button>
         </div>
         <button id="btnCloseMenu" class="close-btn">✕</button>
@@ -151,7 +150,7 @@
         <div class="tab-content" id="tab-toys">
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🎾 Squeaky Tennis Ball</h3>
+              <h3>Squeaky Tennis Ball</h3>
               <p>Boosts bone generation rates across the pack.</p>
             </div>
             <button class="action-btn" id="btnToyBones">
@@ -162,7 +161,7 @@
 
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🥏 Turbo Frisbee</h3>
+              <h3>Turbo Frisbee</h3>
               <p>Boosts park movement speed and zoomies.</p>
             </div>
             <button class="action-btn" id="btnToySpeed">
@@ -173,7 +172,7 @@
 
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🦴 Heavy Chew Bone</h3>
+              <h3>Heavy Chew Bone</h3>
               <p>Boosts digging strength and power per scoop.</p>
             </div>
             <button class="action-btn" id="btnToyDig">
@@ -184,7 +183,7 @@
 
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🧸 Cozy Nap Plush</h3>
+              <h3>Cozy Nap Plush</h3>
               <p>Boosts bonus earnings while resting away from the park.</p>
             </div>
             <button class="action-btn" id="btnToyIdle">
@@ -194,16 +193,49 @@
           </div>
         </div>
 
-        <!-- Magic Tab -->
-        <div class="tab-content" id="tab-magic">
+        <!-- Treats Tab -->
+        <div class="tab-content" id="tab-treats">
           <div class="shop-card">
             <div class="shop-info">
-              <h3>🍄 Mystic Spores</h3>
-              <p>Boosts Magic Bone spawn chance.</p>
+              <h3>Peanut Butter Kong</h3>
+              <p>Toss a Kong to send the pack into a golden digging frenzy!</p>
             </div>
-            <button class="action-btn" id="btnMushrooms">
-              <span class="btn-name">Infuse</span>
-              <span class="btn-cost" id="costMushrooms">5 ✨</span>
+            <button class="action-btn" id="btnTreatKong">
+              <span class="btn-name">Toss Treat</span>
+              <span class="btn-cost" id="costTreatKong">150 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Bacon Chew Stick</h3>
+              <p>Unleashes an unstoppable wave of zoomies and speed.</p>
+            </div>
+            <button class="action-btn" id="btnTreatBacon">
+              <span class="btn-name">Give Treat</span>
+              <span class="btn-cost" id="costTreatBacon">300 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Jumbo Meaty Bone</h3>
+              <p>Calls the pack together for a grand feast of instant bones.</p>
+            </div>
+            <button class="action-btn" id="btnTreatFeast">
+              <span class="btn-name">Serve Feast</span>
+              <span class="btn-cost" id="costTreatFeast">500 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Pup Cup</h3>
+              <p>Whipped cream treat making taps and pickups extra rewarding.</p>
+            </div>
+            <button class="action-btn" id="btnTreatCup">
+              <span class="btn-name">Feed Pup Cup</span>
+              <span class="btn-cost" id="costTreatCup">750 🦴</span>
             </button>
           </div>
         </div>
@@ -212,27 +244,12 @@
         <div class="tab-content" id="tab-perks">
           <div class="shop-card" style="border-color: #f1c40f;">
             <div class="shop-info">
-              <h3 style="color: #f1c40f;">🌟 Active Perks Collection</h3>
-              <p>Legendary & Mythic perks lock in and stay with you on Prestige!</p>
+              <h3 style="color: #f1c40f;">Active Perks Collection</h3>
+              <p>Rare perks discovered by your pack stay active here!</p>
               <div class="shop-owned">Total Unlocked Perks: <span id="perkCountDisplay">0</span></div>
             </div>
           </div>
           <div id="perkListContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
-        </div>
-
-        <!-- Prestige Tab -->
-        <div class="tab-content" id="tab-prestige">
-          <div class="shop-card" style="border-color: #ffeaa7; background: rgba(255, 234, 167, 0.08);">
-            <div class="shop-info">
-              <h3 style="color: #ffeaa7;">✨ Park Rebirth (Prestige)</h3>
-              <p>Reset standard bones and dogs, but <strong>lock in and keep all Shiny dogs and Legendary/Mythic Perks!</strong></p>
-              <div class="shop-owned">Shiny Dogs Kept: <span id="shinyCountDisplay">0</span></div>
-            </div>
-            <button class="action-btn" id="btnPrestige" style="background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);">
-              <span class="btn-name">Prestige</span>
-              <span class="btn-cost">1,000 🦴</span>
-            </button>
-          </div>
         </div>
 
         <!-- Stats Tab -->
@@ -250,7 +267,7 @@
   <!-- Perk Draft Modal -->
   <div id="perkModal" class="modal" style="display: none;">
     <div class="modal-window offline-box" style="max-width: 440px;">
-      <h2 style="color: #f1c40f;">🌟 Rare Treasure Found!</h2>
+      <h2 style="color: #f1c40f;">Rare Treasure Found!</h2>
       <p>Your pack uncovered a hidden treasure chest! Choose 1 of 3 perks to claim:</p>
       <div id="perkChoices" style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0;"></div>
     </div>
@@ -259,7 +276,7 @@
   <!-- Offline Progress Modal -->
   <div id="offlineModal" class="modal" style="display: none;">
     <div class="modal-window offline-box">
-      <h2>🐾 Welcome Back!</h2>
+      <h2>Welcome Back!</h2>
       <p>While you were away, your pack kept digging in the magical park.</p>
       <div id="offlineEarnings" class="offline-highlight">Earned 0 Bones!</div>
       <button id="btnCloseOffline" class="action-btn" style="width:100%;">Awesome!</button>
