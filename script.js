@@ -55,6 +55,10 @@ const sfx = {
   treat: () => {
     playSound(783.99, 'sine', 0.15, 0.06);
     setTimeout(() => playSound(1046.50, 'sine', 0.25, 0.06), 100);
+  },
+  squeak: () => {
+    playSound(1200, 'triangle', 0.08, 0.04);
+    setTimeout(() => playSound(950, 'triangle', 0.08, 0.04), 60);
   }
 };
 
@@ -99,6 +103,8 @@ let state = {
   kongTimer: 0,
   baconTimer: 0,
   pupCupTimer: 0,
+  feastAnimTimer: 0, // Triggers pack celebration jump
+  hasTennisBall: false, // Unlocked upon first Squeaky Tennis Ball purchase
 
   costs: {},
   lastSaveTime: Date.now()
@@ -116,6 +122,18 @@ state.costs.treatKong = 150;
 state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
+
+// Tennis Ball Entity state for chasing
+let tennisBall = {
+  gx: 3.5,
+  gy: 3.5,
+  targetGx: 3.5,
+  targetGy: 3.5,
+  timer: 3.0,
+  bouncePhase: 0,
+  isBeingChased: false,
+  chaserDog: null
+};
 
 function getTotalDogs() {
   let count = 0;
@@ -609,7 +627,13 @@ class Dog {
       ctx.scale(-1, 1);
     }
 
-    const bounce = this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0;
+    // Celebration jump offset if feast celebration is active
+    let feastJump = 0;
+    if (state.feastAnimTimer > 0) {
+      feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
+    }
+
+    const bounce = (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump;
     const digTilt = this.state === 'DIG' ? 0.25 : 0;
     ctx.translate(0, -bounce);
     ctx.rotate(digTilt);
@@ -934,6 +958,40 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
+function drawTennisBall() {
+  if (!state.hasTennisBall) return;
+  const pos = gridToScreen(tennisBall.gx, tennisBall.gy);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 7, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const bounceOffset = Math.abs(Math.sin(tennisBall.bouncePhase * 6)) * 8;
+  ctx.translate(0, -bounceOffset);
+
+  // Ball body (Bright tennis yellow-green)
+  ctx.fillStyle = '#ccff00';
+  ctx.strokeStyle = '#739900';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, -4, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // White curved seam line
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(-2, -6, 4, 0.2, Math.PI * 0.8);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function recruitDog(breed) {
   initAudio();
   const cost = state.costs[breed];
@@ -941,8 +999,8 @@ function recruitDog(breed) {
     state.bones -= cost;
     state.costs[breed] = Math.floor(cost * BREED_CONFIG[breed].costMult);
     
-const isShiny = Math.random() < (1 / 8000);
-
+    const isShiny = Math.random() < (1 / 8000);
+    
     if (isShiny) {
       const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
       const chosenColor = shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
@@ -975,6 +1033,7 @@ document.getElementById('btnToyBones').addEventListener('click', () => {
     state.bones -= state.costs.toyBones;
     state.digPower += 1;
     state.costs.toyBones = Math.floor(state.costs.toyBones * 1.55);
+    state.hasTennisBall = true; // Unlock bouncing tennis ball on first purchase!
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1048,6 +1107,10 @@ document.getElementById('btnTreatFeast').addEventListener('click', () => {
     const feastPayout = Math.floor(getBPS() * 30);
     state.bones += feastPayout;
     state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
+    
+    // Trigger celebration jump animation across all dogs!
+    state.feastAnimTimer = 1.5;
+    
     sfx.treat();
     updateUI();
     saveGame();
@@ -1146,6 +1209,39 @@ function loop(now) {
     if (state.kongTimer > 0) state.kongTimer = Math.max(0, state.kongTimer - dt);
     if (state.baconTimer > 0) state.baconTimer = Math.max(0, state.baconTimer - dt);
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
+    if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
+
+    // Update tennis ball bouncing and chasing
+    if (state.hasTennisBall) {
+      tennisBall.bouncePhase += dt;
+      tennisBall.timer -= dt;
+
+      if (tennisBall.isBeingChased) {
+        // Move towards target
+        const tdx = tennisBall.targetGx - tennisBall.gx;
+        const tdy = tennisBall.targetGy - tennisBall.gy;
+        const tdist = Math.hypot(tdx, tdy);
+        if (tdist < 0.05) {
+          tennisBall.isBeingChased = false;
+          tennisBall.timer = 4.0 + Math.random() * 5.0; // Rest before moving again
+        } else {
+          tennisBall.gx += (tdx / tdist) * 1.5 * dt;
+          tennisBall.gy += (tdy / tdist) * 1.5 * dt;
+        }
+      } else if (tennisBall.timer <= 0) {
+        // Pick a new random spot in the yard and pick a random dog to chase it
+        tennisBall.targetGx = 1.0 + Math.random() * (GRID_SIZE - 2.0);
+        tennisBall.targetGy = 1.0 + Math.random() * (GRID_SIZE - 2.0);
+        tennisBall.isBeingChased = true;
+        
+        if (dogs.length > 0) {
+          const chaser = dogs[Math.floor(Math.random() * dogs.length)];
+          chaser.targetGx = tennisBall.targetGx;
+          chaser.targetGy = tennisBall.targetGy;
+          chaser.state = 'WALK';
+        }
+      }
+    }
 
     const bps = getBPS();
     if (bps > 0) {
@@ -1164,6 +1260,13 @@ function loop(now) {
     const renderables = [];
     renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
     renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
+
+    if (state.hasTennisBall) {
+      renderables.push({
+        sortY: gridToScreen(tennisBall.gx, tennisBall.gy).y,
+        draw: drawTennisBall
+      });
+    }
 
     mushrooms.forEach(m => {
       renderables.push({
