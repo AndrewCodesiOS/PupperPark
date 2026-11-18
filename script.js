@@ -60,9 +60,9 @@ const sfx = {
     playSound(1200, 'triangle', 0.08, 0.04);
     setTimeout(() => playSound(950, 'triangle', 0.08, 0.04), 60);
   },
-  thud: () => {
-    playSound(220, 'square', 0.1, 0.04);
-    setTimeout(() => playSound(150, 'square', 0.15, 0.04), 50);
+  quack: () => {
+    playSound(450, 'sawtooth', 0.1, 0.04);
+    setTimeout(() => playSound(380, 'sawtooth', 0.12, 0.04), 70);
   }
 };
 
@@ -111,8 +111,8 @@ let state = {
   
   hasTennisBall: false,
   hasFrisbee: false,
-  hasHeavyBone: false,
-  hasPlush: false,
+  hasRope: false,
+  hasDuck: false,
 
   costs: {},
   lastSaveTime: Date.now()
@@ -134,8 +134,8 @@ state.costs.treatCup = 750;
 // Toy state objects
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
-let heavyBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 5.0, isDragging: false, timer: 9.0, wobblePhase: 0 };
-let plush = { gx: 5.0, gy: 5.0, isSqueaking: false, timer: 5.5, squeezePhase: 0 };
+let rope = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isTugged: false, timer: 9.0 };
+let duck = { gx: 5.0, gy: 5.0, isQuacking: false, timer: 5.5, quackPhase: 0 };
 
 function getTotalDogs() {
   let count = 0;
@@ -1025,64 +1025,82 @@ function drawFrisbee() {
   ctx.restore();
 }
 
-function drawHeavyBone() {
-  if (!state.hasHeavyBone) return;
-  const pos = gridToScreen(heavyBone.gx, heavyBone.gy);
+function drawRope() {
+  if (!state.hasRope) return;
+  const pos = gridToScreen(rope.gx, rope.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(0, 4, 10, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, 12, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const wobble = Math.sin(heavyBone.wobblePhase * 8) * 0.1;
-  ctx.rotate(wobble);
+  // Braided Rope Toy (Cream and Mint Green twisted design with frayed ends)
+  ctx.fillStyle = '#dfe6e9';
+  ctx.strokeStyle = '#b2bec3';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 12, 5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 
-  ctx.fillStyle = '#636e72';
-  ctx.strokeStyle = '#2d3436';
-  ctx.lineWidth = 2;
+  // Mint green stripes
+  ctx.fillStyle = '#55efc4';
+  ctx.fillRect(-5, -5, 3, 6);
+  ctx.fillRect(2, -3, 3, 6);
 
-  ctx.fillRect(-10, -4, 20, 8);
-  [[ -10, -5 ], [ -10, 5 ], [ 10, -5 ], [ 10, 5 ]].forEach(([kx, ky]) => {
-    ctx.beginPath();
-    ctx.arc(kx, ky, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
+  // Frayed tufts at ends
+  ctx.fillStyle = '#f5f6fa';
+  ctx.beginPath();
+  ctx.arc(-12, -3, 3.5, 0, Math.PI * 2);
+  ctx.arc(12, 0, 3.5, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
 
-function drawPlush() {
-  if (!state.hasPlush) return;
-  const pos = gridToScreen(plush.gx, plush.gy);
+function drawDuck() {
+  if (!state.hasDuck) return;
+  const pos = gridToScreen(duck.gx, duck.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(0, 4, 8, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const sq = Math.abs(Math.sin(plush.squeezePhase * 10)) * 2;
-  ctx.scale(1 + sq * 0.2, 1 - sq * 0.2);
+  const quackBounce = duck.isQuacking ? Math.abs(Math.sin(duck.quackPhase * 12)) * 5 : 0;
+  ctx.translate(0, -quackBounce);
 
-  // Warm brown plush toy styling
-  ctx.fillStyle = '#b26a36';
-  ctx.strokeStyle = '#8d4e22';
+  // Bright Yellow Rubber Duck body
+  ctx.fillStyle = '#ffeaa7';
+  ctx.strokeStyle = '#fdcb6e';
   ctx.lineWidth = 1.5;
 
   ctx.beginPath();
-  ctx.arc(0, -7, 6.5, 0, Math.PI * 2);
+  ctx.ellipse(0, -3, 8, 6, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
+  // Duck Head
   ctx.beginPath();
-  ctx.arc(-5, -12, 4, 0, Math.PI * 2);
-  ctx.arc(5, -12, 4, 0, Math.PI * 2);
+  ctx.arc(5, -10, 5, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+
+  // Orange Beak
+  ctx.fillStyle = '#e17055';
+  ctx.beginPath();
+  ctx.ellipse(9, -9, 3.5, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Black Eye
+  ctx.fillStyle = '#2d3436';
+  ctx.beginPath();
+  ctx.arc(6, -11, 1, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
@@ -1155,7 +1173,7 @@ document.getElementById('btnToyDig').addEventListener('click', () => {
     state.bones -= state.costs.toyDig;
     state.digPower += 2;
     state.costs.toyDig = Math.floor(state.costs.toyDig * 1.60);
-    state.hasHeavyBone = true;
+    state.hasRope = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1168,7 +1186,7 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
     state.bones -= state.costs.toyIdle;
     state.idleMultiplier = Math.min(0.95, state.idleMultiplier + 0.1);
     state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.70);
-    state.hasPlush = true;
+    state.hasDuck = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1307,7 +1325,7 @@ function loop(now) {
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // 1. Tennis Ball Behavior (Bounces/rolls away)
+    // 1. Tennis Ball Behavior
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
       if (tennisBall.isRolling) {
@@ -1334,7 +1352,7 @@ function loop(now) {
       }
     }
 
-    // 2. Frisbee Behavior (Static stationary toy, dog walks up and nudges it to a new spot)
+    // 2. Frisbee Behavior
     if (state.hasFrisbee) {
       if (frisbee.isMoving) {
         frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 5);
@@ -1360,52 +1378,51 @@ function loop(now) {
       }
     }
 
-    // 3. Heavy Bone Behavior (Drags with a thud)
-    if (state.hasHeavyBone) {
-      if (heavyBone.isDragging) {
-        heavyBone.wobblePhase += dt;
-        heavyBone.gx += (heavyBone.targetGx - heavyBone.gx) * (dt * 3);
-        heavyBone.gy += (heavyBone.targetGy - heavyBone.gy) * (dt * 3);
-        if (Math.hypot(heavyBone.targetGx - heavyBone.gx, heavyBone.targetGy - heavyBone.gy) < 0.05) {
-          heavyBone.isDragging = false;
+    // 3. Rope Toy Behavior (Nudged by dog)
+    if (state.hasRope) {
+      if (rope.isTugged) {
+        rope.gx += (rope.targetGx - rope.gx) * (dt * 4);
+        rope.gy += (rope.targetGy - rope.gy) * (dt * 4);
+        if (Math.hypot(rope.targetGx - rope.gx, rope.targetGy - rope.gy) < 0.05) {
+          rope.isTugged = false;
         }
       } else {
-        heavyBone.timer -= dt;
-        if (heavyBone.timer <= 0 && dogs.length > 0) {
-          heavyBone.timer = 12.0 + Math.random() * 8.0;
+        rope.timer -= dt;
+        if (rope.timer <= 0 && dogs.length > 0) {
+          rope.timer = 11.0 + Math.random() * 7.0;
           const walker = dogs[Math.floor(Math.random() * dogs.length)];
-          walker.targetGx = heavyBone.gx;
-          walker.targetGy = heavyBone.gy;
+          walker.targetGx = rope.gx;
+          walker.targetGy = rope.gy;
           walker.state = 'WALK';
           walker.onReachToy = () => {
             sfx.thud();
-            heavyBone.isDragging = true;
-            heavyBone.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, heavyBone.gx + (Math.random() - 0.5) * 2.5));
-            heavyBone.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, heavyBone.gy + (Math.random() - 0.5) * 2.5));
+            rope.isTugged = true;
+            rope.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, rope.gx + (Math.random() - 0.5) * 2.5));
+            rope.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, rope.gy + (Math.random() - 0.5) * 2.5));
           };
         }
       }
     }
 
-    // 4. Plush Toy Behavior (Squeaks in place)
-    if (state.hasPlush) {
-      if (plush.isSqueaking) {
-        plush.squeezePhase += dt;
-        if (plush.squeezePhase > 1.2) {
-          plush.isSqueaking = false;
+    // 4. Rubber Duck Behavior (Squeaks/Quacks in place)
+    if (state.hasDuck) {
+      if (duck.isQuacking) {
+        duck.quackPhase += dt;
+        if (duck.quackPhase > 1.0) {
+          duck.isQuacking = false;
         }
       } else {
-        plush.timer -= dt;
-        if (plush.timer <= 0 && dogs.length > 0) {
-          plush.timer = 7.0 + Math.random() * 5.0;
+        duck.timer -= dt;
+        if (duck.timer <= 0 && dogs.length > 0) {
+          duck.timer = 8.0 + Math.random() * 6.0;
           const walker = dogs[Math.floor(Math.random() * dogs.length)];
-          walker.targetGx = plush.gx;
-          walker.targetGy = plush.gy;
+          walker.targetGx = duck.gx;
+          walker.targetGy = duck.gy;
           walker.state = 'WALK';
           walker.onReachToy = () => {
-            sfx.squeak();
-            plush.isSqueaking = true;
-            plush.squeezePhase = 0;
+            sfx.quack();
+            duck.isQuacking = true;
+            duck.quackPhase = 0;
           };
         }
       }
@@ -1435,11 +1452,11 @@ function loop(now) {
     if (state.hasFrisbee) {
       renderables.push({ sortY: gridToScreen(frisbee.gx, frisbee.gy).y, draw: drawFrisbee });
     }
-    if (state.hasHeavyBone) {
-      renderables.push({ sortY: gridToScreen(heavyBone.gx, heavyBone.gy).y, draw: drawHeavyBone });
+    if (state.hasRope) {
+      renderables.push({ sortY: gridToScreen(rope.gx, rope.gy).y, draw: drawRope });
     }
-    if (state.hasPlush) {
-      renderables.push({ sortY: gridToScreen(plush.gx, plush.gy).y, draw: drawPlush });
+    if (state.hasDuck) {
+      renderables.push({ sortY: gridToScreen(duck.gx, duck.gy).y, draw: drawDuck });
     }
 
     mushrooms.forEach(m => {
