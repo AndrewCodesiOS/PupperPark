@@ -51,7 +51,7 @@ const sfx = {
   }
 };
 
-// Breed Configuration & Base Yields
+// Breed Configuration & Base Yields for All 10 Breeds
 const BREED_CONFIG = {
   aussie:    { baseBps: 1.0,    cost: 15,     costMult: 1.45 },
   corgi:     { baseBps: 1.5,    cost: 75,     costMult: 1.48 },
@@ -74,6 +74,7 @@ let state = {
     frenchie: 0, shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
   },
   shinyDogs: [],
+  perks: [], // Stores unlocked perk objects { id, name, rarity }
   digPower: 1,
   speedMultiplier: 1,
   magicChance: 0.12,
@@ -81,7 +82,6 @@ let state = {
   lastSaveTime: Date.now()
 };
 
-// Initialize costs from config
 Object.keys(BREED_CONFIG).forEach(b => {
   state.costs[b] = BREED_CONFIG[b].cost;
 });
@@ -112,7 +112,7 @@ function loadGame() {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
       if (!state.shinyDogs) state.shinyDogs = [];
-      // Ensure all breed keys exist in older save formats
+      if (!state.perks) state.perks = [];
       Object.keys(BREED_CONFIG).forEach(b => {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
@@ -169,7 +169,7 @@ document.getElementById('btnCloseOffline').addEventListener('click', () => {
   document.getElementById('offlineModal').style.display = 'none';
 });
 
-// Menu Drawer Controls & Drag-to-Close Logic
+// Menu Drawer Controls
 const gameModal = document.getElementById('gameModal');
 const drawerWindow = document.getElementById('drawerWindow');
 const drawerHandle = document.getElementById('drawerHandle');
@@ -347,7 +347,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity supporting all 10 distinct custom-drawn high-detail sprites
+// Dog Entity supporting all 10 distinct custom-drawn sprites
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -404,6 +404,11 @@ class Dog {
         
         const magicBonus = (this.breed === 'corgi' || this.breed === 'shiba') ? 0.15 : 0;
         this.isMagicDig = Math.random() < (state.magicChance + magicBonus);
+        
+        // Shiba Inu rare treasure perk discovery chance on dig finish!
+        if (this.breed === 'shiba' && Math.random() < 0.05) {
+          triggerRareTreasure();
+        }
       } else {
         this.gx += (dx / dist) * speed * dt;
         this.gy += (dy / dist) * speed * dt;
@@ -552,7 +557,6 @@ class Dog {
       ctx.fillStyle = col; ctx.fillRect(-9 - legSwing, -1, 4, 7); ctx.fillRect(5 + legSwing, -1, 4, 7);
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -7, 13, 8.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#dfe6e9'; ctx.beginPath(); ctx.arc(10, -15, 7.5, 0, Math.PI * 2); ctx.fill();
-      // Bat ears
       ctx.fillStyle = '#2d3436';
       ctx.beginPath(); ctx.moveTo(6, -18); ctx.lineTo(4, -27); ctx.lineTo(11, -21); ctx.fill();
       ctx.beginPath(); ctx.moveTo(12, -18); ctx.lineTo(18, -27); ctx.lineTo(13, -21); ctx.fill();
@@ -562,7 +566,6 @@ class Dog {
       const col = this.isShiny ? this.shinyColor : '#d35400';
       ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 9); ctx.fillRect(6 + legSwing, -2, 4, 9);
       ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 5, 4, 2); ctx.fillRect(6 + legSwing, 5, 4, 2);
-      // Curled tail over back
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-14, -14, 4.5, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(0, -9, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, -6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
@@ -585,7 +588,6 @@ class Dog {
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -8, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(7, -7, 6, 5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(10, -15, 7, 0, Math.PI * 2); ctx.fill();
-      // Floppy ears
       ctx.fillStyle = '#795548'; ctx.beginPath(); ctx.ellipse(7, -12, 3, 6, 0.3, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(15, -15, 1.5, 0, Math.PI * 2); ctx.fill();
 
@@ -593,14 +595,18 @@ class Dog {
       ctx.fillStyle = '#fff'; ctx.fillRect(-11 - legSwing, -3, 4, 9); ctx.fillRect(6 + legSwing, -3, 4, 9);
       ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      // Black spots
-      ctx.fillStyle = '#1e1e1e';
-      ctx.fillRect(-5, -11, 3, 3); ctx.fillRect(2, -7, 2.5, 2.5); ctx.fillRect(8, -19, 2, 2);
+      ctx.fillStyle = '#1e1e1e'; ctx.fillRect(-5, -11, 3, 3); ctx.fillRect(2, -7, 2.5, 2.5); ctx.fillRect(8, -19, 2, 2);
       ctx.beginPath(); ctx.arc(15, -15, 1.5, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
   }
+}
+
+function triggerRareTreasure() {
+  sfx.shiny();
+  // Placeholder hook for upcoming 3-option perk draft screen
+  console.log('Shiba Inu found a rare treasure perk!');
 }
 
 function drawIsometricTile(gx, gy) {
@@ -830,6 +836,9 @@ document.getElementById('btnPrestige').addEventListener('click', () => {
     Object.keys(state.dogs).forEach(b => state.dogs[b] = 0);
     state.dogs.aussie = 1;
     
+    // Keep Legendary & Mythic perks, filter out lower tiers on prestige if desired
+    state.perks = state.perks.filter(p => p.rarity === 'Legendary' || p.rarity === 'Mythic');
+
     dogs.length = 0;
     dogs.push(new Dog(1.5, 1.5, 'aussie', false));
     state.shinyDogs.forEach(shiny => {
@@ -850,7 +859,6 @@ function updateUI() {
   const total = getTotalDogs();
   document.getElementById('miniDogs').textContent = total;
 
-  // Update counts for all 10 breeds
   Object.keys(state.dogs).forEach(breed => {
     const el = document.getElementById(`count${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
     if (el) {
@@ -868,6 +876,7 @@ function updateUI() {
   });
 
   document.getElementById('shinyCountDisplay').textContent = state.shinyDogs.length;
+  document.getElementById('perkCountDisplay').textContent = state.perks.length;
   document.getElementById('bpsCount').textContent = `+${getBPS().toFixed(1)}/s`;
 
   document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
