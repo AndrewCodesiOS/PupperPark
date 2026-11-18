@@ -366,7 +366,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Locked-In Aussie/Collie & Reworked Golden Retriever & Dalmatian
+// Dog Entity with Refined Collie/Husky Tails, Shiba Ears, Beagle Body Legs & Boundary Clamping
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -519,7 +519,7 @@ class Dog {
 
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
-    // --- LOCKED IN AUSSIE & COLLIE + REWORKED GOLDEN & DALMATIAN ---
+    // --- RENDER DOG BREEDS ---
     if (this.breed === 'aussie') {
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
       ctx.fillStyle = primaryColor;
@@ -551,6 +551,7 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
+      // Border Collie with long feathered tail matching reference photo[span_2](start_span)[span_2](end_span)
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
@@ -558,9 +559,8 @@ class Dog {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
       ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      const wag = Math.sin(this.animPhase * 1.5) * 3;
-      ctx.fillStyle = collieColor;
-      ctx.beginPath(); ctx.arc(-16, -11 + wag, 4, 0, Math.PI * 2); ctx.fill();
+      const wag = Math.sin(this.animPhase * 2) * 4;
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-24, -15 + wag, -25, -6); ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; ctx.stroke();
       ctx.fillStyle = collieColor;
       ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
@@ -576,24 +576,23 @@ class Dog {
       ctx.beginPath(); ctx.arc(14, -18.5, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'golden') {
-      // Reworked Golden Retriever: Proper floppy ears, clear snout, nose, eyes & long tail
       const col = this.isShiny ? this.shinyColor : '#f39c12';
       ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4.5, 10); ctx.fillRect(6 + legSwing, -3, 4.5, 10);
       const wag = Math.sin(this.animPhase * 2) * 4;
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -16 + wag, -26, -11); ctx.lineWidth = 4; ctx.strokeStyle = col; ctx.stroke();
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -9, 15, 9, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
-      // Floppy golden ear
       ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.ellipse(8, -13, 3, 6, 0.3, 0, Math.PI * 2); ctx.fill();
-      // Defined snout & black nose
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(11, -15); ctx.lineTo(19, -13); ctx.lineTo(13, -10); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(19.5, -13.5, 1.8, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'husky') {
+      // Husky with bushy plumed tail matching reference photo[span_3](start_span)[span_3](end_span)
       const col = this.isShiny ? this.shinyColor : '#636e72';
       ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4, 10); ctx.fillRect(6 + legSwing, -3, 4, 10);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-16, -13, 5, 0, Math.PI * 2); ctx.fill();
+      const wag = Math.sin(this.animPhase * 2) * 3;
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-24, -17 + wag, -27, -10); ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -10, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(10, -17, 7, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(10, -27); ctx.lineTo(13, -18); ctx.fill();
@@ -602,12 +601,15 @@ class Dog {
       ctx.fillStyle = '#0984e3'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'shiba') {
+      // Shiba Inu with added pointed ears
       const col = this.isShiny ? this.shinyColor : '#d35400';
       ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 9); ctx.fillRect(6 + legSwing, -2, 4, 9);
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-14, -15, 5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -9, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, -6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(10, -16, 7, 0, Math.PI * 2); ctx.fill();
+      // Pointed Shiba ears
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(10, -28); ctx.lineTo(14, -18); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -15); ctx.lineTo(17, -13); ctx.lineTo(12, -10); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -13.5, 1.5, 0, Math.PI * 2); ctx.fill();
 
@@ -624,8 +626,9 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(19.5, -13.5, 1.6, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'beagle') {
+      // Beagle with body-colored legs instead of pink
       const col = this.isShiny ? this.shinyColor : '#e67e22';
-      ctx.fillStyle = '#e056fd'; ctx.fillRect(-10 - legSwing, -2, 4, 8); ctx.fillRect(5 + legSwing, -2, 4, 8);
+      ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 8); ctx.fillRect(5 + legSwing, -2, 4, 8);
       ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 4, 4, 3); ctx.fillRect(5 + legSwing, 4, 4, 3);
       const wag = Math.sin(this.animPhase * 2) * 4;
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-14, -9); ctx.quadraticCurveTo(-20, -18 + wag, -18, -22); ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke();
@@ -637,20 +640,17 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -12.5, 1.5, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'dalmatian') {
-      // Reworked Dalmatian: Clean white body with spots, distinct ears, clear face, snout, nose & tail
       ctx.fillStyle = '#fff'; ctx.fillRect(-11 - legSwing, -3, 4, 9); ctx.fillRect(6 + legSwing, -3, 4, 9);
       const wag = Math.sin(this.animPhase * 2) * 3;
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
-      // Black spots on body
       ctx.fillStyle = '#1e1e1e';
       ctx.fillRect(-6, -11, 3.5, 3.5); ctx.fillRect(2, -7, 3, 3); ctx.fillRect(7, -18, 2.5, 2.5);
-      // Head & Ears
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.2, 0, Math.PI * 2); ctx.fill(); // Spotted ear
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill(); // Snout
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill(); // Nose
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill(); // Eye
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill();
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
