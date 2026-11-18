@@ -11,11 +11,15 @@
 <body>
 
   <!-- Top Left Currency HUD -->
-  <div id="topHud">
+  <div id="topHud" style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
     <div class="currency-pill">
       <span class="bone-icon">🦴</span>
       <span id="boneCount">0</span>
       <div class="rate-pill" id="bpsCount">+0.0/s</div>
+    </div>
+    <div class="currency-pill">
+      <span class="bone-icon">✨</span>
+      <span id="magicBoneCount">0</span>
     </div>
   </div>
 
@@ -211,7 +215,6 @@
         <!-- Stats Tab -->
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
-            <div class="stat-box"><span>Magic Bones:</span> <strong id="magicBoneCount">0</strong></div>
             <div class="stat-box"><span>Dig Power:</span> <strong id="statDigPower">1</strong></div>
             <div class="stat-box"><span>Speed Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
             <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">12%</strong></div>
