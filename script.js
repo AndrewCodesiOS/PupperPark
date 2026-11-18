@@ -1,6 +1,83 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- PROCEDURAL WEB AUDIO SYNTHESIZER ---
+let audioCtx = null;
+let isAudioEnabled = false;
+let bgmInterval = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Play a pleasant chime for collection or upgrades
+function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
+  if (!isAudioEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    
+    gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {
+    // Ignore audio context restrictions prior to user gesture
+  }
+}
+
+// Sound Effects
+const sfx = {
+  dig: () => playSound(180, 'triangle', 0.08, 0.03),
+  collect: () => playSound(659.25, 'sine', 0.12, 0.04), // E5 note
+  magicCollect: () => {
+    playSound(880, 'sine', 0.1, 0.04);
+    setTimeout(() => playSound(1318.51, 'sine', 0.2, 0.04), 80); // E6 chime
+  },
+  upgrade: () => {
+    playSound(523.25, 'sine', 0.1, 0.04);
+    setTimeout(() => playSound(783.99, 'sine', 0.2, 0.04), 100);
+  }
+};
+
+// Procedural Background Music (Cozy Pentatonic Arpeggios)
+const pentatonicScale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // C major pentatonic
+function startBGM() {
+  if (bgmInterval) clearInterval(bgmInterval);
+  bgmInterval = setInterval(() => {
+    if (!isAudioEnabled || !audioCtx) return;
+    const note = pentatonicScale[Math.floor(Math.random() * pentatonicScale.length)];
+    playSound(note, 'sine', 0.6, 0.02);
+  }, 1200);
+}
+
+// Audio Toggle Button Listener
+const audioBtn = document.getElementById('btnAudio');
+audioBtn.addEventListener('click', () => {
+  initAudio();
+  isAudioEnabled = !isAudioEnabled;
+  if (isAudioEnabled) {
+    audioBtn.textContent = '🔊 Sound: On';
+    startBGM();
+  } else {
+    audioBtn.textContent = '🔇 Sound: Off';
+    if (bgmInterval) clearInterval(bgmInterval);
+  }
+});
+
+
 // Game State
 let state = {
   bones: 0,
@@ -18,7 +95,6 @@ let state = {
   lastSaveTime: Date.now()
 };
 
-// Load from LocalStorage if available
 function loadGame() {
   const saved = localStorage.getItem('magical_aussie_save');
   if (saved) {
@@ -30,11 +106,9 @@ function loadGame() {
     }
   }
 
-  // Calculate Offline Progression
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
   if (elapsedSeconds > 10) {
-    // Estimate passive offline earnings (50% efficiency while away)
     const bonesPerSec = state.dogCount * state.digPower * state.speedMultiplier * 0.45;
     const earned = Math.floor(bonesPerSec * elapsedSeconds * 0.5);
     
@@ -44,7 +118,6 @@ function loadGame() {
     }
   }
 
-  // Re-instantiate dogs based on saved count
   for (let i = 0; i < state.dogCount; i++) {
     dogs.push(new AustralianShepherd(1.5 + Math.random() * 4, 1.5 + Math.random() * 4));
   }
@@ -55,7 +128,6 @@ function saveGame() {
   localStorage.setItem('magical_aussie_save', JSON.stringify(state));
 }
 
-// Auto-save every 10 seconds
 setInterval(saveGame, 10000);
 
 function showOfflineModal(earned, seconds) {
@@ -70,7 +142,7 @@ document.getElementById('btnCloseModal').addEventListener('click', () => {
   document.getElementById('offlineModal').style.display = 'none';
 });
 
-// Isometric Grid Settings (2.5D Diorama)
+// Isometric Grid Settings
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -104,7 +176,6 @@ function screenToGrid(sx, sy) {
   };
 }
 
-// Environment Props
 const mushrooms = [
   { gx: 1.3, gy: 1.4, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.35)' },
   { gx: 5.5, gy: 1.8, color: '#fd79a8', glow: 'rgba(253, 121, 168, 0.35)' },
@@ -167,6 +238,7 @@ class AustralianShepherd {
     } else if (this.state === 'DIG') {
       this.timer -= dt;
       if (Math.random() < 0.35) {
+        sfx.dig();
         const pos = gridToScreen(this.gx, this.gy);
         particles.push({
           x: pos.x + (this.facingRight ? 12 : -12),
@@ -445,6 +517,7 @@ function drawBoneSprite(x, y, isMagic) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
+  initAudio();
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
@@ -454,6 +527,7 @@ canvas.addEventListener('pointerdown', (e) => {
     gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
     gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
   ) {
+    sfx.dig();
     const isMagic = Math.random() < state.magicChance;
     droppedBones.push({
       x: clickX,
@@ -469,41 +543,49 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 document.getElementById('btnSummon').addEventListener('click', () => {
+  initAudio();
   if (state.bones >= state.costs.summon) {
     state.bones -= state.costs.summon;
     state.costs.summon = Math.floor(state.costs.summon * 1.45);
     state.dogCount++;
     dogs.push(new AustralianShepherd(1.5, 1.5));
+    sfx.upgrade();
     updateUI();
     saveGame();
   }
 });
 
 document.getElementById('btnDigPower').addEventListener('click', () => {
+  initAudio();
   if (state.bones >= state.costs.digPower) {
     state.bones -= state.costs.digPower;
     state.digPower += 1;
     state.costs.digPower = Math.floor(state.costs.digPower * 1.55);
+    sfx.upgrade();
     updateUI();
     saveGame();
   }
 });
 
 document.getElementById('btnZoomies').addEventListener('click', () => {
+  initAudio();
   if (state.bones >= state.costs.zoomies) {
     state.bones -= state.costs.zoomies;
     state.speedMultiplier *= 1.2;
     state.costs.zoomies = Math.floor(state.costs.zoomies * 1.65);
+    sfx.upgrade();
     updateUI();
     saveGame();
   }
 });
 
 document.getElementById('btnMushrooms').addEventListener('click', () => {
+  initAudio();
   if (state.magicBones >= state.costs.mushrooms) {
     state.magicBones -= state.costs.mushrooms;
     state.magicChance = Math.min(0.85, state.magicChance + 0.1);
     state.costs.mushrooms = Math.floor(state.costs.mushrooms * 1.6);
+    sfx.upgrade();
     updateUI();
     saveGame();
   }
@@ -528,7 +610,6 @@ function updateUI() {
   document.getElementById('btnMushrooms').disabled = state.magicBones < state.costs.mushrooms;
 }
 
-// Initialize Save & Load
 loadGame();
 
 let lastTime = performance.now();
@@ -586,8 +667,10 @@ function loop(now) {
       if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
         if (b.isMagic) {
           state.magicBones += b.value;
+          sfx.magicCollect();
         } else {
           state.bones += b.value;
+          sfx.collect();
         }
         droppedBones.splice(i, 1);
         updateUI();
