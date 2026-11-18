@@ -82,16 +82,16 @@ const BREED_CONFIG = {
 };
 
 const PERK_POOL = [
-  { id: 'bp_1', name: 'Sturdy Paws', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.10 },
-  { id: 'bp_2', name: 'Velvet Leash', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
-  { id: 'bp_3', name: 'Chew Toy Mastery', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.20 },
-  { id: 'sp_1', name: 'Brisk Trot', rarity: 'Common', desc: 'Boosts Digging Speed', workMult: 1.10 },
-  { id: 'bp_4', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
-  { id: 'bp_5', name: 'Pup Scout Badge', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
-  { id: 'mp_1', name: 'Mystic Whispers', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
-  { id: 'bp_6', name: 'Alpha Ancestry', rarity: 'Legendary', desc: 'Boosts Bone Generation', mult: 1.80 },
-  { id: 'mp_2', name: 'Astral Snout', rarity: 'Legendary', desc: 'Boosts Magic Bone Chance', magicAdd: 0.10 },
-  { id: 'myth_1', name: 'Celestial Bark', rarity: 'Mythic', desc: 'Boosts Bone Generation & Speed', mult: 3.0, workMult: 1.5 }
+  { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts Bone Generation', mult: 1.10 },
+  { id: 'bp_2', name: 'Squeaky Compass', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
+  { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.20 },
+  { id: 'sp_1', name: 'Sturdy Trowel', rarity: 'Common', desc: 'Boosts Digging Speed', workMult: 1.10 },
+  { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
+  { id: 'bp_5', name: 'Field Scout Journal', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
+  { id: 'mp_1', name: 'Hollow Bone Relic', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
+  { id: 'bp_6', name: 'Hoard of the Golden Retriever', rarity: 'Legendary', desc: 'Massively boosts Bone Generation', mult: 1.80 },
+  { id: 'mp_2', name: 'Astral Snout Relic', rarity: 'Legendary', desc: 'Significantly boosts Magic Bone Chance', magicAdd: 0.10 },
+  { id: 'myth_1', name: 'Crown of the Park Alpha', rarity: 'Mythic', desc: 'Divine relic! Triples bone generation & speed', mult: 3.0, workMult: 1.5 }
 ];
 
 let state = {
@@ -117,6 +117,8 @@ let state = {
   hasFrisbee: false,
   hasRedBone: false,
   hasDuck: false,
+
+  isDraftingPerk: false,
 
   costs: {},
   lastSaveTime: Date.now()
@@ -180,6 +182,7 @@ function loadGame() {
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
       if (!state.idleMultiplier) state.idleMultiplier = 0.6;
+      state.isDraftingPerk = false; // Reset drafting lock on load
       Object.keys(BREED_CONFIG).forEach(b => {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
@@ -346,6 +349,8 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     hasFrisbee: false,
     hasRedBone: false,
     hasDuck: false,
+
+    isDraftingPerk: false,
 
     costs: {},
     lastSaveTime: Date.now()
@@ -623,7 +628,8 @@ class Dog {
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
         const treasureChance = (this.breed === 'shiba') ? 0.003 : 0.0003;
-        if (Math.random() < treasureChance) {
+        // Only trigger perk draft if not already drafting
+        if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
         }
       } else {
@@ -853,20 +859,22 @@ class Dog {
 }
 
 function triggerPerkDraft() {
+  state.isDraftingPerk = true;
   sfx.shiny();
   const modal = document.getElementById('perkModal');
   const choicesContainer = document.getElementById('perkChoices');
   choicesContainer.innerHTML = '';
+  choicesContainer.style.display = 'flex';
+  choicesContainer.style.flexDirection = 'column';
+  choicesContainer.style.gap = '10px';
+  choicesContainer.style.marginTop = '10px';
 
   const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
   const options = shuffled.slice(0, 3);
 
   options.forEach(perk => {
     const btn = document.createElement('button');
-    btn.className = 'action-btn';
-    btn.style.width = '100%';
-    btn.style.padding = '12px';
-    btn.style.alignItems = 'flex-start';
+    btn.className = 'perk-choice-btn';
     
     let rarityColor = '#a29bfe';
     if (perk.rarity === 'Rare') rarityColor = '#0984e3';
@@ -874,12 +882,16 @@ function triggerPerkDraft() {
     if (perk.rarity === 'Mythic') rarityColor = '#e84393';
 
     btn.innerHTML = `
-      <div style="font-weight:800; font-size:0.95rem; color:${rarityColor}">${perk.name} [${perk.rarity}]</div>
-      <div style="font-size:0.8rem; color:#dcdde1; margin-top:2px;">${perk.desc}</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <span style="font-weight: 800; font-size: 1rem; color: #fff;">${perk.name}</span>
+        <span style="font-size: 0.75rem; font-weight: 700; color: ${rarityColor}; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 6px;">[${perk.rarity}]</span>
+      </div>
+      <div style="font-size: 0.8rem; color: #b2bec3; margin-top: 2px;">${perk.desc}</div>
     `;
     
     btn.addEventListener('click', () => {
       state.perks.push(perk);
+      state.isDraftingPerk = false;
       modal.style.display = 'none';
       sfx.upgrade();
       updateUI();
