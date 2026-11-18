@@ -51,6 +51,10 @@ const sfx = {
   gather: () => {
     playSound(587.33, 'sine', 0.2, 0.05);
     setTimeout(() => playSound(880, 'sine', 0.3, 0.05), 100);
+  },
+  treat: () => {
+    playSound(783.99, 'sine', 0.15, 0.06);
+    setTimeout(() => playSound(1046.50, 'sine', 0.25, 0.06), 100);
   }
 };
 
@@ -73,9 +77,9 @@ const PERK_POOL = [
   { id: 'bp_4', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
   { id: 'bp_5', name: 'Pup Scout Badge', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
   { id: 'mp_1', name: 'Mystic Whispers', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
-  { id: 'bp_6', name: 'Alpha Ancestry', rarity: 'Legendary', desc: 'Boosts Bone Generation (Kept on Prestige!)', mult: 1.80 },
-  { id: 'mp_2', name: 'Astral Snout', rarity: 'Legendary', desc: 'Boosts Magic Bone Chance (Kept on Prestige!)', magicAdd: 0.10 },
-  { id: 'myth_1', name: 'Celestial Bark', rarity: 'Mythic', desc: 'Boosts Bone Generation & Speed (Kept on Prestige!)', mult: 3.0, workMult: 1.5 }
+  { id: 'bp_6', name: 'Alpha Ancestry', rarity: 'Legendary', desc: 'Boosts Bone Generation', mult: 1.80 },
+  { id: 'mp_2', name: 'Astral Snout', rarity: 'Legendary', desc: 'Boosts Magic Bone Chance', magicAdd: 0.10 },
+  { id: 'myth_1', name: 'Celestial Bark', rarity: 'Mythic', desc: 'Boosts Bone Generation & Speed', mult: 3.0, workMult: 1.5 }
 ];
 
 let state = {
@@ -89,8 +93,13 @@ let state = {
   perks: [],
   digPower: 1,
   speedMultiplier: 1,
-  idleMultiplier: 0.6, // New idle earnings multiplier factor
+  idleMultiplier: 0.6,
   magicChance: 0.12,
+  
+  kongTimer: 0,
+  baconTimer: 0,
+  pupCupTimer: 0,
+
   costs: {},
   lastSaveTime: Date.now()
 };
@@ -102,7 +111,11 @@ state.costs.toyBones = 25;
 state.costs.toySpeed = 40;
 state.costs.toyDig = 100;
 state.costs.toyIdle = 200;
-state.costs.mushrooms = 5;
+
+state.costs.treatKong = 150;
+state.costs.treatBacon = 300;
+state.costs.treatFeast = 500;
+state.costs.treatCup = 750;
 
 function getTotalDogs() {
   let count = 0;
@@ -130,7 +143,8 @@ function getBPS() {
   });
   const shinyTotal = state.shinyDogs.reduce((acc, d) => acc + (BREED_CONFIG[d.breed] ? BREED_CONFIG[d.breed].baseBps : 1), 0);
   const { boneMult, workBonus } = getPerkMultipliers();
-  return (normalTotal + shinyTotal) * state.digPower * state.speedMultiplier * workBonus * 0.45 * boneMult;
+  const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
+  return (normalTotal + shinyTotal) * state.digPower * state.speedMultiplier * baconBonus * workBonus * 0.45 * boneMult;
 }
 
 function loadGame() {
@@ -146,19 +160,24 @@ function loadGame() {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
       });
-      if (!state.costs.toyBones) state.costs.toyBones = state.costs.digPower || 25;
-      if (!state.costs.toySpeed) state.costs.toySpeed = state.costs.zoomies || 40;
+      if (!state.costs.toyBones) state.costs.toyBones = 25;
+      if (!state.costs.toySpeed) state.costs.toySpeed = 40;
       if (!state.costs.toyDig) state.costs.toyDig = 100;
       if (!state.costs.toyIdle) state.costs.toyIdle = 200;
+      if (!state.costs.treatKong) state.costs.treatKong = 150;
+      if (!state.costs.treatBacon) state.costs.treatBacon = 300;
+      if (!state.costs.treatFeast) state.costs.treatFeast = 500;
+      if (!state.costs.treatCup) state.costs.treatCup = 750;
     } catch (e) {
-      console.error('Failed to load save data', e);
+      console.error('Failed to load save data, resetting save', e);
+      localStorage.removeItem('pupperpark_save');
     }
   }
 
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 15) {
+  if (elapsedSeconds > 15 && elapsedSeconds < 604800) {
     const earned = Math.floor(getBPS() * elapsedSeconds * state.idleMultiplier);
     if (earned > 0) {
       state.bones += earned;
@@ -178,6 +197,11 @@ function loadGame() {
   state.shinyDogs.forEach(shiny => {
     dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, shiny.breed, true, shiny.color));
   });
+
+  if (dogs.length === 0) {
+    dogs.push(new Dog(1.5, 1.5, 'aussie', false));
+    state.dogs.aussie = 1;
+  }
 }
 
 function saveGame() {
@@ -318,7 +342,6 @@ function screenToGrid(sx, sy) {
   };
 }
 
-// Hold-to-Gather & Rotation State
 let isRotating = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -331,7 +354,7 @@ canvas.addEventListener('pointerdown', (e) => {
   isRotating = true;
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
 
   holdStartTime = performance.now();
   holdPosition = { x: e.clientX, y: e.clientY };
@@ -392,9 +415,7 @@ canvas.addEventListener('pointerup', (e) => {
 
   if (!isRotating) {
     isRotating = false;
-    if (e.pointerId) {
-      try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
-    }
+    try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
     return;
   }
 
@@ -414,7 +435,8 @@ canvas.addEventListener('pointerup', (e) => {
       gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
     ) {
       const { magicBonus } = getPerkMultipliers();
-      const isMagic = Math.random() < (state.magicChance + magicBonus);
+      const isMagic = Math.random() < (state.magicChance + magicBonus) || state.kongTimer > 0;
+      const cupMult = state.pupCupTimer > 0 ? 2 : 1;
       droppedBones.push({
         x: clickX,
         y: clickY - 10,
@@ -423,7 +445,7 @@ canvas.addEventListener('pointerup', (e) => {
         groundY: clickY + 5,
         age: 0,
         isMagic,
-        value: isMagic ? 1 : state.digPower
+        value: (isMagic ? 1 : state.digPower) * cupMult
       });
     }
   }
@@ -440,7 +462,6 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Solid Black Dalmatian-Style Collie Tail
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -471,13 +492,14 @@ class Dog {
       shiba: 1.15, shepherd: 1.2, beagle: 1.0, dalmatian: 1.4
     };
     const breedSpeed = speedMults[this.breed] || 1.1;
-    const speed = breedSpeed * Math.min(state.speedMultiplier, 1.4);
+    const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
+    const speed = breedSpeed * Math.min(state.speedMultiplier * baconBonus, 4.0);
     
     const { workBonus } = getPerkMultipliers();
-    this.animPhase += dt * (this.state === 'WALK' ? 10 : 5 * workBonus);
+    this.animPhase += dt * (this.state === 'WALK' ? 10 : 5 * workBonus * baconBonus);
 
     if (this.state === 'IDLE') {
-      this.timer -= dt * state.speedMultiplier * workBonus;
+      this.timer -= dt * state.speedMultiplier * baconBonus * workBonus;
       if (this.timer <= 0) {
         this.pickNewTarget();
       }
@@ -495,11 +517,11 @@ class Dog {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
         this.state = 'DIG';
-        this.timer = ((this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier) / workBonus;
+        this.timer = (((this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier) / workBonus) / baconBonus;
         
         const { magicBonus } = getPerkMultipliers();
         const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus);
-        this.isMagicDig = Math.random() < magicChanceTotal;
+        this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
         const treasureChance = (this.breed === 'shiba') ? 0.003 : 0.0003;
         if (Math.random() < treasureChance) {
@@ -537,7 +559,8 @@ class Dog {
 
   finishDig() {
     const multiplier = (this.breed === 'beagle' || this.breed === 'golden') ? 2 : 1;
-    const amount = state.digPower * multiplier;
+    const cupMult = state.pupCupTimer > 0 ? 2 : 1;
+    const amount = state.digPower * multiplier * cupMult;
     const pos = gridToScreen(this.gx, this.gy);
 
     droppedBones.push({
@@ -548,7 +571,7 @@ class Dog {
       groundY: pos.y + 4,
       age: 0,
       isMagic: this.isMagicDig,
-      value: this.isMagicDig ? 1 : amount
+      value: this.isMagicDig ? cupMult : amount
     });
   }
 
@@ -593,7 +616,6 @@ class Dog {
 
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
-    // --- RENDER DOG BREEDS ---
     if (this.breed === 'aussie') {
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
       ctx.fillStyle = primaryColor;
@@ -995,35 +1017,50 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
   }
 });
 
-document.getElementById('btnMushrooms').addEventListener('click', () => {
+document.getElementById('btnTreatKong').addEventListener('click', () => {
   initAudio();
-  if (state.magicBones >= state.costs.mushrooms) {
-    state.magicBones -= state.costs.mushrooms;
-    state.magicChance = Math.min(0.85, state.magicChance + 0.1);
-    state.costs.mushrooms = Math.floor(state.costs.mushrooms * 1.6);
-    sfx.upgrade();
+  if (state.bones >= state.costs.treatKong) {
+    state.bones -= state.costs.treatKong;
+    state.kongTimer = 15;
+    state.costs.treatKong = Math.floor(state.costs.treatKong * 1.6);
+    sfx.treat();
     updateUI();
     saveGame();
   }
 });
 
-document.getElementById('btnPrestige').addEventListener('click', () => {
+document.getElementById('btnTreatBacon').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= 1000) {
-    state.bones = 0;
-    Object.keys(state.dogs).forEach(b => state.dogs[b] = 0);
-    state.dogs.aussie = 1;
-    
-    state.perks = state.perks.filter(p => p.rarity === 'Legendary' || p.rarity === 'Mythic');
+  if (state.bones >= state.costs.treatBacon) {
+    state.bones -= state.costs.treatBacon;
+    state.baconTimer = 20;
+    state.costs.treatBacon = Math.floor(state.costs.treatBacon * 1.6);
+    sfx.treat();
+    updateUI();
+    saveGame();
+  }
+});
 
-    dogs.length = 0;
-    dogs.push(new Dog(1.5, 1.5, 'aussie', false));
-    state.shinyDogs.forEach(shiny => {
-      dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, shiny.breed, true, shiny.color));
-    });
+document.getElementById('btnTreatFeast').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.treatFeast) {
+    state.bones -= state.costs.treatFeast;
+    const feastPayout = Math.floor(getBPS() * 30);
+    state.bones += feastPayout;
+    state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
+    sfx.treat();
+    updateUI();
+    saveGame();
+  }
+});
 
-    sfx.shiny();
-    closeMenu();
+document.getElementById('btnTreatCup').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.treatCup) {
+    state.bones -= state.costs.treatCup;
+    state.pupCupTimer = 25;
+    state.costs.treatCup = Math.floor(state.costs.treatCup * 1.6);
+    sfx.treat();
     updateUI();
     saveGame();
   }
@@ -1052,7 +1089,6 @@ function updateUI() {
     }
   });
 
-  document.getElementById('shinyCountDisplay').textContent = state.shinyDogs.length;
   document.getElementById('perkCountDisplay').textContent = state.perks.length;
   
   const perkListContainer = document.getElementById('perkListContainer');
@@ -1078,7 +1114,11 @@ function updateUI() {
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
   document.getElementById('costToyDig').textContent = `${state.costs.toyDig.toLocaleString()} 🦴`;
   document.getElementById('costToyIdle').textContent = `${state.costs.toyIdle.toLocaleString()} 🦴`;
-  document.getElementById('costMushrooms').textContent = `${state.costs.mushrooms} ✨`;
+
+  document.getElementById('costTreatKong').textContent = `${state.costs.treatKong.toLocaleString()} 🦴`;
+  document.getElementById('costTreatBacon').textContent = `${state.costs.treatBacon.toLocaleString()} 🦴`;
+  document.getElementById('costTreatFeast').textContent = `${state.costs.treatFeast.toLocaleString()} 🦴`;
+  document.getElementById('costTreatCup').textContent = `${state.costs.treatCup.toLocaleString()} 🦴`;
 
   document.getElementById('statDigPower').textContent = state.digPower;
   document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
@@ -1088,136 +1128,147 @@ function updateUI() {
   document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
   document.getElementById('btnToyDig').disabled = state.bones < state.costs.toyDig;
   document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle;
-  document.getElementById('btnMushrooms').disabled = state.magicBones < state.costs.mushrooms;
-  document.getElementById('btnPrestige').disabled = state.bones < 1000;
+
+  document.getElementById('btnTreatKong').disabled = state.bones < state.costs.treatKong;
+  document.getElementById('btnTreatBacon').disabled = state.bones < state.costs.treatBacon;
+  document.getElementById('btnTreatFeast').disabled = state.bones < state.costs.treatFeast;
+  document.getElementById('btnTreatCup').disabled = state.bones < state.costs.treatCup;
 }
 
 loadGame();
 
 let lastTime = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, (now - lastTime) / 1000);
-  lastTime = now;
+  try {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
 
-  const bps = getBPS();
-  if (bps > 0) {
-    state.bones += bps * dt;
-    updateUI();
-  }
+    if (state.kongTimer > 0) state.kongTimer = Math.max(0, state.kongTimer - dt);
+    if (state.baconTimer > 0) state.baconTimer = Math.max(0, state.baconTimer - dt);
+    if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let gx = 0; gx < GRID_SIZE; gx++) {
-    for (let gy = 0; gy < GRID_SIZE; gy++) {
-      drawIsometricTile(gx, gy);
+    const bps = getBPS();
+    if (bps > 0) {
+      state.bones += bps * dt;
+      updateUI();
     }
-  }
 
-  const renderables = [];
-  renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
-  renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  mushrooms.forEach(m => {
-    renderables.push({
-      sortY: gridToScreen(m.gx, m.gy).y,
-      draw: () => drawMushroomCluster(m)
-    });
-  });
-
-  dogs.forEach(dog => {
-    dog.update(dt);
-    renderables.push({
-      sortY: gridToScreen(dog.gx, dog.gy).y,
-      draw: () => dog.draw(ctx)
-    });
-  });
-
-  renderables.sort((a, b) => a.sortY - b.sortY);
-  renderables.forEach(item => item.draw());
-
-  if (holdTimer) {
-    const elapsed = performance.now() - holdStartTime;
-    const progress = Math.min(1, elapsed / HOLD_DURATION);
-    const rect = canvas.getBoundingClientRect();
-    const hx = holdPosition.x - rect.left;
-    const hy = holdPosition.y - rect.top;
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 234, 167, 0.85)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(hx, hy, 26, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255, 234, 167, 0.25)';
-    ctx.beginPath();
-    ctx.arc(hx, hy, 26, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  for (let i = droppedBones.length - 1; i >= 0; i--) {
-    const b = droppedBones[i];
-    b.age += dt;
-
-    if (b.age < 0.65) {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.vy += 320 * dt;
-      if (b.y > b.groundY) {
-        b.y = b.groundY;
-        b.vy *= -0.4;
+    for (let gx = 0; gx < GRID_SIZE; gx++) {
+      for (let gy = 0; gy < GRID_SIZE; gy++) {
+        drawIsometricTile(gx, gy);
       }
-    } else {
-      const targetX = 35;
-      const targetY = 32;
-      b.x += (targetX - b.x) * 6 * dt;
-      b.y += (targetY - b.y) * 6 * dt;
+    }
 
-      if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
-        if (b.isMagic) {
-          state.magicBones += b.value;
-          sfx.magicCollect();
-        } else {
-          state.bones += b.value;
-          sfx.collect();
+    const renderables = [];
+    renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
+    renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
+
+    mushrooms.forEach(m => {
+      renderables.push({
+        sortY: gridToScreen(m.gx, m.gy).y,
+        draw: () => drawMushroomCluster(m)
+      });
+    });
+
+    dogs.forEach(dog => {
+      dog.update(dt);
+      renderables.push({
+        sortY: gridToScreen(dog.gx, dog.gy).y,
+        draw: () => dog.draw(ctx)
+      });
+    });
+
+    renderables.sort((a, b) => a.sortY - b.sortY);
+    renderables.forEach(item => item.draw());
+
+    if (holdTimer) {
+      const elapsed = performance.now() - holdStartTime;
+      const progress = Math.min(1, elapsed / HOLD_DURATION);
+      const rect = canvas.getBoundingClientRect();
+      const hx = holdPosition.x - rect.left;
+      const hy = holdPosition.y - rect.top;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 234, 167, 0.85)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 26, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 234, 167, 0.25)';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 26, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    for (let i = droppedBones.length - 1; i >= 0; i--) {
+      const b = droppedBones[i];
+      b.age += dt;
+
+      if (b.age < 0.65) {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.vy += 320 * dt;
+        if (b.y > b.groundY) {
+          b.y = b.groundY;
+          b.vy *= -0.4;
         }
-        droppedBones.splice(i, 1);
-        updateUI();
+      } else {
+        const targetX = 35;
+        const targetY = 32;
+        b.x += (targetX - b.x) * 6 * dt;
+        b.y += (targetY - b.y) * 6 * dt;
+
+        if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
+          if (b.isMagic) {
+            state.magicBones += b.value;
+            sfx.magicCollect();
+          } else {
+            state.bones += b.value;
+            sfx.collect();
+          }
+          droppedBones.splice(i, 1);
+          updateUI();
+          continue;
+        }
+      }
+
+      drawBoneSprite(b.x, b.y, b.isMagic);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      if (!p) continue;
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 120 * dt;
+
+      if (p.life <= 0) {
+        particles.splice(i, 1);
         continue;
       }
+
+      ctx.globalAlpha = p.life / p.maxLife;
+      if (p.isRing) {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (1 - p.life / p.maxLife) * 45, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
-
-    drawBoneSprite(b.x, b.y, b.isMagic);
-  }
-
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    if (!p) continue;
-    p.life -= dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vy += 120 * dt;
-
-    if (p.life <= 0) {
-      particles.splice(i, 1);
-      continue;
-    }
-
-    ctx.globalAlpha = p.life / p.maxLife;
-    if (p.isRing) {
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, (1 - p.life / p.maxLife) * 45, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+  } catch (err) {
+    console.error("Game loop error caught:", err);
   }
 
   requestAnimationFrame(loop);
