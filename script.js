@@ -178,35 +178,32 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Isometric Grid Settings with Camera Rotation (Drag to Rotate)
+// Isometric Grid Settings with Perfect Vertical Centering
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
-const TILE_DEPTH = 26;
 
 let originX = 0;
 let originY = 0;
-let cameraAngle = 0; // Current rotation angle in radians
+let cameraAngle = 0;
 
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   originX = canvas.width / 2;
-  originY = canvas.height / 2 - (GRID_SIZE * TILE_H) / 2 + 20;
+  // Perfectly center the grid vertically on the screen
+  originY = canvas.height / 2;
 }
 window.addEventListener('resize', resize);
 resize();
 
-// Transform grid coordinates through camera rotation around the grid center
 function gridToScreen(gx, gy) {
-  // Center of grid is GRID_SIZE / 2
   const cx = GRID_SIZE / 2;
   const cy = GRID_SIZE / 2;
   
   const relX = gx - cx;
   const relY = gy - cy;
 
-  // Rotate around center
   const cosA = Math.cos(cameraAngle);
   const sinA = Math.sin(cameraAngle);
   const rotX = relX * cosA - relY * sinA;
@@ -257,7 +254,6 @@ canvas.addEventListener('pointermove', (e) => {
   const deltaX = e.clientX - lastMouseX;
   lastMouseX = e.clientX;
   
-  // Adjust rotation speed
   cameraAngle += deltaX * 0.008;
 });
 
@@ -266,7 +262,6 @@ canvas.addEventListener('pointerup', (e) => {
   isRotating = false;
   canvas.releasePointerCapture(e.pointerId);
   
-  // If it was a quick click without much drag, treat it as a dig/click interaction
   const totalDrag = Math.abs(e.clientX - lastMouseX);
   if (totalDrag < 5) {
     initAudio();
@@ -486,6 +481,7 @@ class AustralianShepherd {
   }
 }
 
+// Clean flat tiles without glitchy rotating side-cliffs
 function drawIsometricTile(gx, gy) {
   const top = gridToScreen(gx, gy);
   const right = gridToScreen(gx + 1, gy);
@@ -505,28 +501,6 @@ function drawIsometricTile(gx, gy) {
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = 1;
   ctx.stroke();
-
-  if (gy === GRID_SIZE - 1) {
-    ctx.beginPath();
-    ctx.moveTo(left.x, left.y);
-    ctx.lineTo(bottom.x, bottom.y);
-    ctx.lineTo(bottom.x, bottom.y + TILE_DEPTH);
-    ctx.lineTo(left.x, left.y + TILE_DEPTH);
-    ctx.closePath();
-    ctx.fillStyle = '#795548';
-    ctx.fill();
-  }
-
-  if (gx === GRID_SIZE - 1) {
-    ctx.beginPath();
-    ctx.moveTo(right.x, right.y);
-    ctx.lineTo(bottom.x, bottom.y);
-    ctx.lineTo(bottom.x, bottom.y + TILE_DEPTH);
-    ctx.lineTo(right.x, right.y + TILE_DEPTH);
-    ctx.closePath();
-    ctx.fillStyle = '#5d4037';
-    ctx.fill();
-  }
 }
 
 function drawDoghouse() {
@@ -544,7 +518,7 @@ function drawDoghouse() {
   ctx.fillStyle = '#8d5524';
   ctx.fillRect(-20, -24, 40, 26);
 
-  // Clean Doorway (Vortex removed)
+  // Clean Doorway
   ctx.fillStyle = '#171033';
   ctx.beginPath();
   ctx.arc(0, -10, 10, Math.PI, 0);
