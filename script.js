@@ -135,11 +135,11 @@ state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
 
-// Toy state objects with safe initial coordinates
+// Toy state objects with safe initial coordinates and movement flags
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
 let redBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isMoved: false, timer: 9.0 };
-let duck = { gx: 5.0, gy: 5.0, isQuacking: false, timer: 5.5, quackPhase: 0 };
+let duck = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isMoved: false, timer: 5.5, quackPhase: 0 };
 
 function getTotalDogs() {
   let count = 0;
@@ -1067,9 +1067,6 @@ function drawDuck() {
   ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const quackBounce = duck.isQuacking ? Math.abs(Math.sin(duck.quackPhase * 12)) * 5 : 0;
-  ctx.translate(0, -quackBounce);
-
   // Bright Yellow Rubber Duck body
   ctx.fillStyle = '#ffeaa7';
   ctx.strokeStyle = '#fdcb6e';
@@ -1400,25 +1397,27 @@ function loop(now) {
       }
     }
 
-    // 4. Rubber Duck Behavior
+    // 4. Rubber Duck Behavior (Now glides/gets pushed when interacted with!)
     if (state.hasDuck) {
-      if (duck.isQuacking) {
-        duck.quackPhase += dt;
-        if (duck.quackPhase > 1.0) {
-          duck.isQuacking = false;
+      if (duck.isMoved) {
+        duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
+        duck.gy += (duck.targetGy - duck.gy) * (dt * 4);
+        if (Math.hypot(duck.targetGx - duck.gx, duck.targetGy - duck.gy) < 0.05) {
+          duck.isMoved = false;
         }
       } else {
         duck.timer -= dt;
         if (duck.timer <= 0 && dogs.length > 0) {
-          duck.timer = 8.0 + Math.random() * 6.0;
+          duck.timer = 9.0 + Math.random() * 6.0;
           const walker = dogs[Math.floor(Math.random() * dogs.length)];
           walker.targetGx = duck.gx;
           walker.targetGy = duck.gy;
           walker.state = 'WALK';
           walker.onReachToy = () => {
             sfx.quack();
-            duck.isQuacking = true;
-            duck.quackPhase = 0;
+            duck.isMoved = true;
+            duck.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5));
+            duck.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5));
           };
         }
       }
