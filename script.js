@@ -47,16 +47,22 @@ const sfx = {
   }
 };
 
-// Game State
+// Game State with Multiple Dog Breeds
 let state = {
   bones: 0,
   magicBones: 0,
-  dogCount: 1,
+  dogs: {
+    aussie: 1,
+    corgi: 0,
+    collie: 0
+  },
   digPower: 1,
   speedMultiplier: 1,
   magicChance: 0.12,
   costs: {
-    summon: 15,
+    aussie: 15,
+    corgi: 75,
+    collie: 250,
     digPower: 25,
     zoomies: 40,
     mushrooms: 5
@@ -64,12 +70,27 @@ let state = {
   lastSaveTime: Date.now()
 };
 
+function getTotalDogs() {
+  return state.dogs.aussie + state.dogs.corgi + state.dogs.collie;
+}
+
+// Calculate precise Bones Per Second based on breed strengths
+function getBPS() {
+  const base = (state.dogs.aussie * 1) + (state.dogs.corgi * 1.5) + (state.dogs.collie * 4);
+  return base * state.digPower * state.speedMultiplier * 0.45;
+}
+
 function loadGame() {
   const saved = localStorage.getItem('pupperpark_save');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
+      // Backward compatibility if dogs was previously just a number
+      if (typeof state.dogs === 'number') {
+        const oldTotal = state.dogs;
+        state.dogs = { aussie: oldTotal, corgi: 0, collie: 0 };
+      }
     } catch (e) {
       console.error('Failed to load save data', e);
     }
@@ -78,21 +99,25 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 15) {
-    const bonesPerSec = state.dogCount * state.digPower * state.speedMultiplier * 0.45;
-    const earned = Math.floor(bonesPerSec * elapsedSeconds * 0.5);
-    
+  // Accurate offline earnings calculation
+  if (elapsedSeconds > 10) {
+    const earned = Math.floor(getBPS() * elapsedSeconds * 0.6); // 60% offline efficiency
     if (earned > 0) {
       state.bones += earned;
-      showOfflineModal(earned, elapsedSeconds);
+      showOfflineModal(earned);
     }
   }
 
   state.lastSaveTime = now;
   saveGame();
 
-  for (let i = 0; i < state.dogCount; i++) {
-    dogs.push(new AustralianShepherd(1.5 + Math.random() * 4, 1.5 + Math.random() * 4));
+  // Instantiate dog entities onto grid
+  const total = getTotalDogs();
+  for (let i = 0; i < total; i++) {
+    let breed = 'aussie';
+    if (i >= state.dogs.aussie && i < state.dogs.aussie + state.dogs.corgi) breed = 'corgi';
+    else if (i >= state.dogs.aussie + state.dogs.corgi) breed = 'collie';
+    dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, breed));
   }
 }
 
@@ -103,12 +128,11 @@ function saveGame() {
 
 setInterval(saveGame, 10000);
 
-function showOfflineModal(earned, seconds) {
+function showOfflineModal(earned) {
   const modal = document.getElementById('offlineModal');
   const text = document.getElementById('offlineEarnings');
-  const mins = Math.floor(seconds / 60);
   if (text) {
-    text.textContent = `Earned ${earned.toLocaleString()} Bones in ${mins > 0 ? mins + ' mins' : Math.floor(seconds) + ' secs'}!`;
+    text.textContent = `Earned ${earned.toLocaleString()} Bones!`;
   }
   if (modal) {
     modal.style.display = 'flex';
@@ -178,7 +202,7 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Isometric Grid Settings with Perfect Vertical Centering
+// Isometric Grid Settings with Vertical Centering
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -191,7 +215,6 @@ function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   originX = canvas.width / 2;
-  // Perfectly center the grid vertically on the screen
   originY = canvas.height / 2;
 }
 window.addEventListener('resize', resize);
@@ -253,7 +276,6 @@ canvas.addEventListener('pointermove', (e) => {
   if (!isRotating) return;
   const deltaX = e.clientX - lastMouseX;
   lastMouseX = e.clientX;
-  
   cameraAngle += deltaX * 0.008;
 });
 
@@ -300,8 +322,9 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-class AustralianShepherd {
-  constructor(gx, gy) {
+// Dog Entity supporting multiple breeds (Aussie, Corgi, Collie)
+class Dog {
+  constructor(gx, gy, breed = 'aussie') {
     this.gx = gx;
     this.gy = gy;
     this.targetGx = gx;
@@ -310,6 +333,7 @@ class AustralianShepherd {
     this.timer = 0.5 + Math.random() * 1.5;
     this.facingRight = Math.random() > 0.5;
     this.animPhase = Math.random() * Math.PI * 2;
+    this.breed = breed;
     this.isMagicDig = false;
   }
 
@@ -320,7 +344,8 @@ class AustralianShepherd {
   }
 
   update(dt) {
-    const speed = 1.4 * state.speedMultiplier;
+    const speedMultiplier = this.breed === 'collie' ? 1.6 : (this.breed === 'corgi' ? 1.1 : 1.4);
+    const speed = speedMultiplier * state.speedMultiplier;
     this.animPhase += dt * (this.state === 'WALK' ? 12 * state.speedMultiplier : 5);
 
     if (this.state === 'IDLE') {
@@ -342,8 +367,11 @@ class AustralianShepherd {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
         this.state = 'DIG';
-        this.timer = 1.1 / state.speedMultiplier;
-        this.isMagicDig = Math.random() < state.magicChance;
+        this.timer = (this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier;
+        
+        // Corgi gives bonus magic chance
+        const magicBonus = this.breed === 'corgi' ? 0.15 : 0;
+        this.isMagicDig = Math.random() < (state.magicChance + magicBonus);
       } else {
         this.gx += (dx / dist) * speed * dt;
         this.gy += (dy / dist) * speed * dt;
@@ -373,7 +401,7 @@ class AustralianShepherd {
   }
 
   finishDig() {
-    const amount = state.digPower;
+    const amount = state.digPower * (this.breed === 'collie' ? 2 : 1);
     const pos = gridToScreen(this.gx, this.gy);
 
     droppedBones.push({
@@ -412,76 +440,48 @@ class AustralianShepherd {
       ctx.scale(-1, 1);
     }
 
-    const bounce = this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0;
-    const digTilt = this.state === 'DIG' ? 0.25 : 0;
-    ctx.translate(0, -bounce);
-    ctx.rotate(digTilt);
-
-    const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
-    ctx.fillStyle = '#c87d4b';
-    ctx.fillRect(-11 - legSwing, -3, 4, 9);
-    ctx.fillRect(6 + legSwing, -3, 4, 9);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-11 - legSwing, 4, 4, 3);
-    ctx.fillRect(6 + legSwing, 4, 4, 3);
-
-    const wag = Math.sin(this.animPhase * 1.5) * 2;
-    ctx.fillStyle = '#4e433f';
-    ctx.beginPath();
-    ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#4e433f';
-    ctx.beginPath();
-    ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#736560';
-    ctx.beginPath();
-    ctx.ellipse(-3, -11, 9, 5, -0.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#f8f9fa';
-    ctx.beginPath();
-    ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#4e433f';
-    ctx.beginPath();
-    ctx.arc(11, -17, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#d6894b';
-    ctx.beginPath();
-    ctx.arc(13, -15, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(17, -15, 4.5, 3.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#1e1e1e';
-    ctx.beginPath();
-    ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#1e272e';
-    ctx.beginPath();
-    ctx.arc(14, -18.5, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#382f2c';
-    ctx.beginPath();
-    ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2);
-    ctx.fill();
+    // Render features based on breed
+    if (this.breed === 'corgi') {
+      // Short stumpy body and big ears
+      ctx.fillStyle = '#e17055';
+      ctx.fillRect(-10, -6, 20, 10);
+      ctx.fillStyle = '#ffeaa7';
+      ctx.fillRect(-8, -2, 16, 6);
+      // Ears
+      ctx.fillStyle = '#d63031';
+      ctx.beginPath();
+      ctx.moveTo(6, -14); ctx.lineTo(12, -6); ctx.lineTo(4, -6); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-2, -14); ctx.lineTo(4, -6); ctx.lineTo(-4, -6); ctx.fill();
+    } else if (this.breed === 'collie') {
+      // Sleek black and white collie
+      ctx.fillStyle = '#2d3436';
+      ctx.beginPath();
+      ctx.ellipse(0, -7, 16, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-4, -10, 8, 8);
+    } else {
+      // Standard Australian Shepherd
+      const bounce = this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0;
+      ctx.translate(0, -bounce);
+      ctx.fillStyle = '#c87d4b';
+      ctx.fillRect(-11, -3, 4, 9);
+      ctx.fillRect(6, -3, 4, 9);
+      ctx.fillStyle = '#4e433f';
+      ctx.beginPath();
+      ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f8f9fa';
+      ctx.beginPath();
+      ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
 }
 
-// Clean flat tiles without glitchy rotating side-cliffs
 function drawIsometricTile(gx, gy) {
   const top = gridToScreen(gx, gy);
   const right = gridToScreen(gx + 1, gy);
@@ -508,17 +508,14 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Wooden Walls
   ctx.fillStyle = '#8d5524';
   ctx.fillRect(-20, -24, 40, 26);
 
-  // Clean Doorway
   ctx.fillStyle = '#171033';
   ctx.beginPath();
   ctx.arc(0, -10, 10, Math.PI, 0);
@@ -527,13 +524,43 @@ function drawDoghouse() {
   ctx.closePath();
   ctx.fill();
 
-  // Roof
   ctx.fillStyle = '#40739e';
   ctx.beginPath();
   ctx.moveTo(-26, -22);
   ctx.lineTo(0, -40);
   ctx.lineTo(26, -22);
   ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// Procedural Tree Prop in the Park
+function drawTree() {
+  const pos = gridToScreen(5.8, 1.2);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Trunk
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(-4, -18, 8, 20);
+
+  // Foliage Layers
+  ctx.fillStyle = '#27ae60';
+  ctx.beginPath();
+  ctx.arc(0, -26, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#2ecc71';
+  ctx.beginPath();
+  ctx.arc(-6, -32, 12, 0, Math.PI * 2);
+  ctx.arc(6, -32, 12, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -605,13 +632,40 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
-document.getElementById('btnSummon').addEventListener('click', () => {
+// Purchase Handlers for Breeds & Upgrades
+document.getElementById('btnSummonAussie').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.summon) {
-    state.bones -= state.costs.summon;
-    state.costs.summon = Math.floor(state.costs.summon * 1.45);
-    state.dogCount++;
-    dogs.push(new AustralianShepherd(1.5, 1.5));
+  if (state.bones >= state.costs.aussie) {
+    state.bones -= state.costs.aussie;
+    state.costs.aussie = Math.floor(state.costs.aussie * 1.45);
+    state.dogs.aussie++;
+    dogs.push(new Dog(1.5, 1.5, 'aussie'));
+    sfx.upgrade();
+    updateUI();
+    saveGame();
+  }
+});
+
+document.getElementById('btnSummonCorgi').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.corgi) {
+    state.bones -= state.costs.corgi;
+    state.costs.corgi = Math.floor(state.costs.corgi * 1.5);
+    state.dogs.corgi++;
+    dogs.push(new Dog(1.5, 1.5, 'corgi'));
+    sfx.upgrade();
+    updateUI();
+    saveGame();
+  }
+});
+
+document.getElementById('btnSummonCollie').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.collie) {
+    state.bones -= state.costs.collie;
+    state.costs.collie = Math.floor(state.costs.collie * 1.6);
+    state.dogs.collie++;
+    dogs.push(new Dog(1.5, 1.5, 'collie'));
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -657,13 +711,19 @@ document.getElementById('btnMushrooms').addEventListener('click', () => {
 function updateUI() {
   document.getElementById('boneCount').textContent = Math.floor(state.bones).toLocaleString();
   document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
-  document.getElementById('dogCountDisplay').textContent = dogs.length;
-  document.getElementById('miniDogs').textContent = dogs.length;
+  
+  const total = getTotalDogs();
+  document.getElementById('miniDogs').textContent = total;
+  document.getElementById('countAussie').textContent = state.dogs.aussie;
+  document.getElementById('countCorgi').textContent = state.dogs.corgi;
+  document.getElementById('countCollie').textContent = state.dogs.collie;
 
-  const estBps = (dogs.length * state.digPower * state.speedMultiplier * 0.45).toFixed(1);
+  const estBps = getBPS().toFixed(1);
   document.getElementById('bpsCount').textContent = `+${estBps}/s`;
 
-  document.getElementById('costSummon').textContent = `${state.costs.summon.toLocaleString()} 🦴`;
+  document.getElementById('costAussie').textContent = `${state.costs.aussie.toLocaleString()} 🦴`;
+  document.getElementById('costCorgi').textContent = `${state.costs.corgi.toLocaleString()} 🦴`;
+  document.getElementById('costCollie').textContent = `${state.costs.collie.toLocaleString()} 🦴`;
   document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
   document.getElementById('costZoomies').textContent = `${state.costs.zoomies.toLocaleString()} 🦴`;
   document.getElementById('costMushrooms').textContent = `${state.costs.mushrooms} ✨`;
@@ -672,7 +732,9 @@ function updateUI() {
   document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round(state.magicChance * 100)}%`;
 
-  document.getElementById('btnSummon').disabled = state.bones < state.costs.summon;
+  document.getElementById('btnSummonAussie').disabled = state.bones < state.costs.aussie;
+  document.getElementById('btnSummonCorgi').disabled = state.bones < state.costs.corgi;
+  document.getElementById('btnSummonCollie').disabled = state.bones < state.costs.collie;
   document.getElementById('btnDigPower').disabled = state.bones < state.costs.digPower;
   document.getElementById('btnZoomies').disabled = state.bones < state.costs.zoomies;
   document.getElementById('btnMushrooms').disabled = state.magicBones < state.costs.mushrooms;
@@ -685,6 +747,13 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
 
+  // Passive BPS increment
+  const bps = getBPS();
+  if (bps > 0) {
+    state.bones += bps * dt;
+    updateUI();
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   for (let gx = 0; gx < GRID_SIZE; gx++) {
@@ -695,6 +764,7 @@ function loop(now) {
 
   const renderables = [];
   renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
+  renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
 
   mushrooms.forEach(m => {
     renderables.push({
