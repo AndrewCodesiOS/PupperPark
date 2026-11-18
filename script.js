@@ -551,7 +551,6 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // Border Collie with solid black Dalmatian-style tail shape
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
@@ -559,7 +558,6 @@ class Dog {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
       ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      // Solid black Dalmatian-style tail shape
       const wag = Math.sin(this.animPhase * 2) * 3;
       ctx.fillStyle = collieColor; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = collieColor; ctx.stroke();
       ctx.fillStyle = collieColor;
