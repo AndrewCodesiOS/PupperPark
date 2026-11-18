@@ -140,7 +140,6 @@ state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
 
-// Toy state objects with safe initial coordinates and movement flags
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
 let redBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isMoved: false, timer: 9.0 };
@@ -1119,26 +1118,45 @@ function drawFlowerPatch(gx, gy) {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(0, 3, 14, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 3, 15, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const flowerColors = ['#fd79a8', '#ffeaa7', '#fab1a0', '#74b9ff'];
-  const offsets = [
-    { x: -5, y: -2, c: flowerColors[0] },
-    { x: 4, y: -4, c: flowerColors[1] },
-    { x: -2, y: -6, c: flowerColors[2] },
-    { x: 6, y: 1, c: flowerColors[3] }
+  // Dirt mound / garden bed base
+  ctx.fillStyle = '#8b5a2b';
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 13, 6.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5c3a21';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Dense, colorful flower clusters
+  const flowerData = [
+    { x: -5, y: -2, c: '#fd79a8', center: '#ffeaa7' },
+    { x: 4, y: -4, c: '#ff7675', center: '#fab1a0' },
+    { x: -2, y: -6, c: '#a29bfe', center: '#dfe6e9' },
+    { x: 6, y: -1, c: '#ffeaa7', center: '#fdcb6e' },
+    { x: 1, y: -2, c: '#74b9ff', center: '#81ecec' }
   ];
 
-  offsets.forEach(f => {
-    ctx.fillStyle = '#55efc4';
+  flowerData.forEach(f => {
+    // Stem/leaves
+    ctx.fillStyle = '#00b894';
     ctx.fillRect(f.x - 1, f.y, 2, 4);
 
+    // Petals
     ctx.fillStyle = f.c;
     ctx.beginPath();
-    ctx.arc(f.x, f.y - 1, 3.5, 0, Math.PI * 2);
+    ctx.arc(f.x, f.y - 1, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Center pollen glow
+    ctx.fillStyle = f.center;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y - 1, 1.5, 0, Math.PI * 2);
     ctx.fill();
   });
 
@@ -1149,15 +1167,17 @@ let fountainAnimPhase = 0;
 
 function drawWaterFountain(gx, gy, dt) {
   const pos = gridToScreen(gx, gy);
-  fountainAnimPhase += dt * 4;
+  fountainAnimPhase += dt * 5;
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
+  // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Main Ground-Level Stone Basin Base
   ctx.fillStyle = '#b2bec3';
   ctx.strokeStyle = '#636e72';
   ctx.lineWidth = 1.5;
@@ -1166,26 +1186,62 @@ function drawWaterFountain(gx, gy, dt) {
   ctx.fill();
   ctx.stroke();
 
+  // Water inside bottom basin
   ctx.fillStyle = '#0984e3';
   ctx.beginPath();
   ctx.ellipse(0, -1, 13, 6.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+  // Ripple rings in bottom basin
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.lineWidth = 1;
-  const rippleRadius = 4 + (Math.sin(fountainAnimPhase) + 1) * 4;
+  const rippleRadius = 3 + (Math.sin(fountainAnimPhase) + 1) * 4;
   ctx.beginPath();
   ctx.ellipse(0, -1, rippleRadius, rippleRadius * 0.5, 0, 0, Math.PI * 2);
   ctx.stroke();
 
+  // Standing Central Pillar
   ctx.fillStyle = '#dfe6e9';
-  ctx.fillRect(-2, -14, 4, 14);
+  ctx.fillRect(-3, -22, 6, 22);
+  ctx.strokeStyle = '#b2bec3';
+  ctx.strokeRect(-3, -22, 6, 22);
 
-  ctx.fillStyle = '#74b9ff';
-  const jetHeight = Math.abs(Math.sin(fountainAnimPhase * 2)) * 6;
+  // Upper Middle Basin (Tier)
+  ctx.fillStyle = '#b2bec3';
   ctx.beginPath();
-  ctx.arc(0, -16 - jetHeight, 2.5, 0, Math.PI * 2);
+  ctx.ellipse(0, -18, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+
+  // Water in upper basin
+  ctx.fillStyle = '#74b9ff';
+  ctx.beginPath();
+  ctx.ellipse(0, -18.5, 7, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Top Spout Finial
+  ctx.fillStyle = '#dfe6e9';
+  ctx.beginPath();
+  ctx.arc(0, -26, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Animated Water Jets / Spurt from Top
+  ctx.fillStyle = '#ffffff';
+  const jetHeight = Math.abs(Math.sin(fountainAnimPhase * 2)) * 5;
+  ctx.beginPath();
+  ctx.arc(0, -29 - jetHeight, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cascading water streams (left and right arcs)
+  ctx.strokeStyle = 'rgba(116, 185, 255, 0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-2, -26);
+  ctx.quadraticCurveTo(-7, -22, -9, -18);
+  ctx.moveTo(2, -26);
+  ctx.quadraticCurveTo(7, -22, 9, -18);
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -1256,7 +1312,6 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
-// Toy Drawing Functions
 function drawTennisBall() {
   if (!state.hasTennisBall) return;
   const pos = gridToScreen(tennisBall.gx, tennisBall.gy);
@@ -1414,7 +1469,6 @@ document.getElementById('btnSummonShepherd').addEventListener('click', () => rec
 document.getElementById('btnSummonBeagle').addEventListener('click', () => recruitDog('beagle'));
 document.getElementById('btnSummonDalmatian').addEventListener('click', () => recruitDog('dalmatian'));
 
-// Toy button upgrades
 document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.toyBones) {
@@ -1559,7 +1613,6 @@ function updateUI() {
     });
   }
 
-  // Update Decor Tab Counts and Limits
   const treeCount = state.placedDecorations ? state.placedDecorations.filter(d => d.type === 'tree').length : 0;
   const flowerCount = state.placedDecorations ? state.placedDecorations.filter(d => d.type === 'flowers').length : 0;
   const fountainCount = state.placedDecorations ? state.placedDecorations.filter(d => d.type === 'fountain').length : 0;
@@ -1646,7 +1699,6 @@ function loop(now) {
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // 1. Tennis Ball Behavior
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
       if (tennisBall.isRolling) {
@@ -1673,7 +1725,6 @@ function loop(now) {
       }
     }
 
-    // 2. Frisbee Behavior
     if (state.hasFrisbee) {
       if (frisbee.isMoving) {
         frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 5);
@@ -1699,7 +1750,6 @@ function loop(now) {
       }
     }
 
-    // 3. Red Chew Bone Behavior
     if (state.hasRedBone) {
       if (redBone.isMoved) {
         redBone.gx += (redBone.targetGx - redBone.gx) * (dt * 4);
@@ -1725,7 +1775,6 @@ function loop(now) {
       }
     }
 
-    // 4. Rubber Duck Behavior
     if (state.hasDuck) {
       if (duck.isMoved) {
         duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
@@ -1769,7 +1818,6 @@ function loop(now) {
     renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
     renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
 
-    // Render user-placed decor items
     if (state.placedDecorations) {
       state.placedDecorations.forEach(dec => {
         if (dec.type === 'tree') {
