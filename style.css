@@ -326,17 +326,27 @@ html, body {
 /* Decor Tab Button Sizing and Group Layout */
 .decor-btn-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  width: 215px;
 }
 
 .decor-action-btn {
-  width: 105px;
-  min-width: 105px;
-  flex: 0 0 105px;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   text-align: center;
   justify-content: center;
+  padding: 8px 4px;
+  white-space: nowrap;
+}
+
+.decor-action-btn .btn-name {
+  font-size: 0.75rem;
+}
+
+.decor-action-btn .btn-cost {
+  font-size: 0.7rem;
 }
 
 /* Stats Grid */
