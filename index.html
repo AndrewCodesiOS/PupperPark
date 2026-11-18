@@ -36,6 +36,7 @@
           <button class="tab-btn active" data-tab="tab-dogs">🐕 Dogs (10)</button>
           <button class="tab-btn" data-tab="tab-upgrades">⚡ Upgrades</button>
           <button class="tab-btn" data-tab="tab-magic">🍄 Magic</button>
+          <button class="tab-btn" data-tab="tab-perks">🌟 Perks</button>
           <button class="tab-btn" data-tab="tab-prestige">✨ Prestige</button>
           <button class="tab-btn" data-tab="tab-stats">📊 Stats</button>
         </div>
@@ -120,7 +121,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Shiba Inu</h3>
-              <p>Curled tail spirit. Discovers bonus magical artifacts.</p>
+              <p>Curled tail spirit. Discovers rare treasure perks!</p>
               <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShiba">
@@ -204,12 +205,23 @@
           </div>
         </div>
 
+        <!-- Perks Tab -->
+        <div class="tab-content" id="tab-perks">
+          <div class="shop-card" style="border-color: #f1c40f;">
+            <div class="shop-info">
+              <h3 style="color: #f1c40f;">🌟 Active Perks Collection</h3>
+              <p>Legendary & Mythic perks are locked in and kept on Prestige!</p>
+              <div class="shop-owned">Total Unlocked Perks: <span id="perkCountDisplay">0</span></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Prestige Tab -->
         <div class="tab-content" id="tab-prestige">
           <div class="shop-card" style="border-color: #ffeaa7; background: rgba(255, 234, 167, 0.08);">
             <div class="shop-info">
               <h3 style="color: #ffeaa7;">✨ Park Rebirth (Prestige)</h3>
-              <p>Reset standard bones and dogs, but <strong>lock in and keep all your Shiny dogs permanently!</strong></p>
+              <p>Reset standard bones and dogs, but <strong>lock in and keep all Shiny dogs and Legendary/Mythic Perks!</strong></p>
               <div class="shop-owned">Shiny Dogs Kept: <span id="shinyCountDisplay">0</span></div>
             </div>
             <button class="action-btn" id="btnPrestige" style="background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);">
