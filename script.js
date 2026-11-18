@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- PROCEDURAL SOUND EFFECTS (Dig Sound Removed) ---
+// --- PROCEDURAL SOUND EFFECTS ---
 let audioCtx = null;
 
 function initAudio() {
@@ -136,35 +136,34 @@ function closeMenu() {
 
 document.getElementById('btnCloseMenu').addEventListener('click', closeMenu);
 
-// Drag-to-close functionality on handle bar
-let startY = 0;
-let currentY = 0;
-let isDragging = false;
+let drawerStartY = 0;
+let drawerCurrentY = 0;
+let isDrawerDragging = false;
 
 drawerHandle.addEventListener('pointerdown', (e) => {
-  isDragging = true;
-  startY = e.clientY;
+  isDrawerDragging = true;
+  drawerStartY = e.clientY;
   drawerHandle.setPointerCapture(e.pointerId);
 });
 
 drawerHandle.addEventListener('pointermove', (e) => {
-  if (!isDragging) return;
-  currentY = e.clientY - startY;
-  if (currentY > 0) {
-    drawerWindow.style.transform = `translateY(${currentY}px)`;
+  if (!isDrawerDragging) return;
+  drawerCurrentY = e.clientY - drawerStartY;
+  if (drawerCurrentY > 0) {
+    drawerWindow.style.transform = `translateY(${drawerCurrentY}px)`;
   }
 });
 
 drawerHandle.addEventListener('pointerup', (e) => {
-  if (!isDragging) return;
-  isDragging = false;
+  if (!isDrawerDragging) return;
+  isDrawerDragging = false;
   drawerHandle.releasePointerCapture(e.pointerId);
   
-  if (currentY > 80) {
+  if (drawerCurrentY > 80) {
     closeMenu();
   }
   drawerWindow.style.transform = 'translateY(0)';
-  currentY = 0;
+  drawerCurrentY = 0;
 });
 
 // Tab Switching Logic
@@ -179,7 +178,7 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Isometric Grid Settings
+// Isometric Grid Settings with Camera Rotation (Drag to Rotate)
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -187,6 +186,7 @@ const TILE_DEPTH = 26;
 
 let originX = 0;
 let originY = 0;
+let cameraAngle = 0; // Current rotation angle in radians
 
 function resize() {
   canvas.width = window.innerWidth;
@@ -197,21 +197,102 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// Transform grid coordinates through camera rotation around the grid center
 function gridToScreen(gx, gy) {
+  // Center of grid is GRID_SIZE / 2
+  const cx = GRID_SIZE / 2;
+  const cy = GRID_SIZE / 2;
+  
+  const relX = gx - cx;
+  const relY = gy - cy;
+
+  // Rotate around center
+  const cosA = Math.cos(cameraAngle);
+  const sinA = Math.sin(cameraAngle);
+  const rotX = relX * cosA - relY * sinA;
+  const rotY = relX * sinA + relY * cosA;
+
   return {
-    x: originX + (gx - gy) * (TILE_W / 2),
-    y: originY + (gx + gy) * (TILE_H / 2)
+    x: originX + (rotX - rotY) * (TILE_W / 2),
+    y: originY + (rotX + rotY) * (TILE_H / 2)
   };
 }
 
 function screenToGrid(sx, sy) {
   const dx = sx - originX;
   const dy = sy - originY;
+  
+  const isoX = dx / (TILE_W / 2);
+  const isoY = dy / (TILE_H / 2);
+
+  const rotX = (isoX + isoY) / 2;
+  const rotY = (isoY - isoX) / 2;
+
+  const cosA = Math.cos(-cameraAngle);
+  const sinA = Math.sin(-cameraAngle);
+  const relX = rotX * cosA - rotY * sinA;
+  const relY = rotX * sinA + rotY * cosA;
+
+  const cx = GRID_SIZE / 2;
+  const cy = GRID_SIZE / 2;
+
   return {
-    gx: (dx / (TILE_W / 2) + dy / (TILE_H / 2)) / 2,
-    gy: (dy / (TILE_H / 2) - dx / (TILE_W / 2)) / 2
+    gx: relX + cx,
+    gy: relY + cy
   };
 }
+
+// Drag-to-Rotate Canvas Interaction
+let isRotating = false;
+let lastMouseX = 0;
+
+canvas.addEventListener('pointerdown', (e) => {
+  isRotating = true;
+  lastMouseX = e.clientX;
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!isRotating) return;
+  const deltaX = e.clientX - lastMouseX;
+  lastMouseX = e.clientX;
+  
+  // Adjust rotation speed
+  cameraAngle += deltaX * 0.008;
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  if (!isRotating) return;
+  isRotating = false;
+  canvas.releasePointerCapture(e.pointerId);
+  
+  // If it was a quick click without much drag, treat it as a dig/click interaction
+  const totalDrag = Math.abs(e.clientX - lastMouseX);
+  if (totalDrag < 5) {
+    initAudio();
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const gridPos = screenToGrid(clickX, clickY);
+
+    if (
+      gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
+      gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+    ) {
+      const isMagic = Math.random() < state.magicChance;
+      droppedBones.push({
+        x: clickX,
+        y: clickY - 10,
+        vx: (Math.random() - 0.5) * 40,
+        vy: -95,
+        groundY: clickY + 5,
+        age: 0,
+        isMagic,
+        value: isMagic ? 1 : state.digPower
+      });
+    }
+  }
+});
 
 const mushrooms = [
   { gx: 2.2, gy: 2.2, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.35)' },
@@ -275,7 +356,6 @@ class AustralianShepherd {
     } else if (this.state === 'DIG') {
       this.timer -= dt;
       if (Math.random() < 0.35) {
-        // Dig sound removed completely as requested
         const pos = gridToScreen(this.gx, this.gy);
         particles.push({
           x: pos.x + (this.facingRight ? 12 : -12),
@@ -454,40 +534,26 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
+  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Wooden Walls
   ctx.fillStyle = '#8d5524';
   ctx.fillRect(-20, -24, 40, 26);
 
+  // Clean Doorway (Vortex removed)
   ctx.fillStyle = '#171033';
   ctx.beginPath();
-  ctx.arc(0, -10, 11, Math.PI, 0);
-  ctx.lineTo(11, 2);
-  ctx.lineTo(-11, 2);
+  ctx.arc(0, -10, 10, Math.PI, 0);
+  ctx.lineTo(10, 2);
+  ctx.lineTo(-10, 2);
   ctx.closePath();
   ctx.fill();
 
-  const time = Date.now() * 0.003;
-  ctx.strokeStyle = '#00d2d3';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.arc(0, -9, 7 + Math.sin(time * 2) * 2, 0, Math.PI * 1.7);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#ff9ff3';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0, -9, 4 + Math.cos(time * 3) * 1.5, Math.PI, Math.PI * 2.5);
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffeaa7';
-  ctx.beginPath();
-  ctx.arc(Math.sin(time * 4) * 3, -9 + Math.cos(time * 4) * 2, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-
+  // Roof
   ctx.fillStyle = '#40739e';
   ctx.beginPath();
   ctx.moveTo(-26, -22);
@@ -564,31 +630,6 @@ function drawBoneSprite(x, y, isMagic) {
 
   ctx.restore();
 }
-
-canvas.addEventListener('pointerdown', (e) => {
-  initAudio();
-  const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
-  const gridPos = screenToGrid(clickX, clickY);
-
-  if (
-    gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
-    gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
-  ) {
-    const isMagic = Math.random() < state.magicChance;
-    droppedBones.push({
-      x: clickX,
-      y: clickY - 10,
-      vx: (Math.random() - 0.5) * 40,
-      vy: -95,
-      groundY: clickY + 5,
-      age: 0,
-      isMagic,
-      value: isMagic ? 1 : state.digPower
-    });
-  }
-});
 
 document.getElementById('btnSummon').addEventListener('click', () => {
   initAudio();
