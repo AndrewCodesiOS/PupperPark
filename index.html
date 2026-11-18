@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>PupperPark — Idle</title>
+  <title>PupperPark — 2.5D Idle</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -36,6 +36,7 @@
           <button class="tab-btn active" data-tab="tab-dogs">🐕 Dogs</button>
           <button class="tab-btn" data-tab="tab-upgrades">⚡ Upgrades</button>
           <button class="tab-btn" data-tab="tab-magic">🍄 Magic</button>
+          <button class="tab-btn" data-tab="tab-prestige">✨ Prestige</button>
           <button class="tab-btn" data-tab="tab-stats">📊 Stats</button>
         </div>
         <button id="btnCloseMenu" class="close-btn">✕</button>
@@ -115,6 +116,21 @@
             <button class="action-btn" id="btnMushrooms">
               <span class="btn-name">Infuse</span>
               <span class="btn-cost" id="costMushrooms">5 ✨</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Prestige Tab -->
+        <div class="tab-content" id="tab-prestige">
+          <div class="shop-card" style="border-color: #ffeaa7; background: rgba(255, 234, 167, 0.08);">
+            <div class="shop-info">
+              <h3 style="color: #ffeaa7;">✨ Park Rebirth (Prestige)</h3>
+              <p>Reset standard bones and dogs, but <strong>lock in and keep all your Shiny dogs permanently!</strong></p>
+              <div class="shop-owned">Shiny Dogs Kept: <span id="shinyCountDisplay">0</span></div>
+            </div>
+            <button class="action-btn" id="btnPrestige" style="background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);">
+              <span class="btn-name">Prestige</span>
+              <span class="btn-cost">1,000 🦴</span>
             </button>
           </div>
         </div>
