@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- PROCEDURAL SOUND EFFECTS ---
+// --- PROCEDURAL SOUND EFFECTS (Dig Sound Removed) ---
 let audioCtx = null;
 
 function initAudio() {
@@ -36,7 +36,6 @@ function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
 }
 
 const sfx = {
-  dig: () => playSound(180, 'triangle', 0.08, 0.03),
   collect: () => playSound(659.25, 'sine', 0.12, 0.04),
   magicCollect: () => {
     playSound(880, 'sine', 0.1, 0.04);
@@ -120,15 +119,52 @@ document.getElementById('btnCloseOffline').addEventListener('click', () => {
   document.getElementById('offlineModal').style.display = 'none';
 });
 
-// Menu Drawer Controls
+// Menu Drawer Controls & Drag-to-Close Logic
 const gameModal = document.getElementById('gameModal');
+const drawerWindow = document.getElementById('drawerWindow');
+const drawerHandle = document.getElementById('drawerHandle');
+
 document.getElementById('btnOpenMenu').addEventListener('click', () => {
   initAudio();
   gameModal.style.display = 'flex';
+  drawerWindow.style.transform = 'translateY(0)';
 });
 
-document.getElementById('btnCloseMenu').addEventListener('click', () => {
+function closeMenu() {
   gameModal.style.display = 'none';
+}
+
+document.getElementById('btnCloseMenu').addEventListener('click', closeMenu);
+
+// Drag-to-close functionality on handle bar
+let startY = 0;
+let currentY = 0;
+let isDragging = false;
+
+drawerHandle.addEventListener('pointerdown', (e) => {
+  isDragging = true;
+  startY = e.clientY;
+  drawerHandle.setPointerCapture(e.pointerId);
+});
+
+drawerHandle.addEventListener('pointermove', (e) => {
+  if (!isDragging) return;
+  currentY = e.clientY - startY;
+  if (currentY > 0) {
+    drawerWindow.style.transform = `translateY(${currentY}px)`;
+  }
+});
+
+drawerHandle.addEventListener('pointerup', (e) => {
+  if (!isDragging) return;
+  isDragging = false;
+  drawerHandle.releasePointerCapture(e.pointerId);
+  
+  if (currentY > 80) {
+    closeMenu();
+  }
+  drawerWindow.style.transform = 'translateY(0)';
+  currentY = 0;
 });
 
 // Tab Switching Logic
@@ -177,7 +213,6 @@ function screenToGrid(sx, sy) {
   };
 }
 
-// Mushrooms moved inward toward center of the grid
 const mushrooms = [
   { gx: 2.2, gy: 2.2, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.35)' },
   { gx: 4.8, gy: 2.4, color: '#fd79a8', glow: 'rgba(253, 121, 168, 0.35)' },
@@ -240,7 +275,7 @@ class AustralianShepherd {
     } else if (this.state === 'DIG') {
       this.timer -= dt;
       if (Math.random() < 0.35) {
-        sfx.dig();
+        // Dig sound removed completely as requested
         const pos = gridToScreen(this.gx, this.gy);
         particles.push({
           x: pos.x + (this.facingRight ? 12 : -12),
@@ -419,17 +454,14 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Wooden Walls
   ctx.fillStyle = '#8d5524';
   ctx.fillRect(-20, -24, 40, 26);
 
-  // Portal Doorway
   ctx.fillStyle = '#171033';
   ctx.beginPath();
   ctx.arc(0, -10, 11, Math.PI, 0);
@@ -438,30 +470,24 @@ function drawDoghouse() {
   ctx.closePath();
   ctx.fill();
 
-  // Enhanced Multi-Layered Magical Portal Swirl Effect
   const time = Date.now() * 0.003;
-  
-  // Outer Cyan Swirl Ring
   ctx.strokeStyle = '#00d2d3';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(0, -9, 7 + Math.sin(time * 2) * 2, 0, Math.PI * 1.7);
   ctx.stroke();
 
-  // Inner Purple/Gold Vortex Core
   ctx.strokeStyle = '#ff9ff3';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(0, -9, 4 + Math.cos(time * 3) * 1.5, Math.PI, Math.PI * 2.5);
   ctx.stroke();
 
-  // Sparkle center dot
   ctx.fillStyle = '#ffeaa7';
   ctx.beginPath();
   ctx.arc(Math.sin(time * 4) * 3, -9 + Math.cos(time * 4) * 2, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Roof
   ctx.fillStyle = '#40739e';
   ctx.beginPath();
   ctx.moveTo(-26, -22);
@@ -550,7 +576,6 @@ canvas.addEventListener('pointerdown', (e) => {
     gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
     gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
   ) {
-    sfx.dig();
     const isMagic = Math.random() < state.magicChance;
     droppedBones.push({
       x: clickX,
