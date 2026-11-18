@@ -347,7 +347,7 @@ html, body {
   font-size: 1rem;
 }
 
-/* Offline Modal Overlay */
+/* Modals Overlay */
 .modal {
   position: fixed;
   top: 0;
@@ -392,4 +392,37 @@ html, body {
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 20px;
+}
+
+/* Readable Perk Draft Modal Styles */
+.perk-modal-window {
+  width: 90%;
+  max-width: 440px;
+  padding: 24px;
+  border-radius: 20px;
+  border: 2px solid #f1c40f;
+  background: linear-gradient(180deg, #221b44 0%, #15112e 100%);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  pointer-events: auto;
+  text-align: left;
+}
+
+.perk-choice-btn {
+  background: rgba(28, 23, 52, 0.95);
+  border: 1.5px solid rgba(108, 92, 231, 0.6);
+  border-radius: 14px;
+  padding: 14px 16px;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.1s, border-color 0.2s, background 0.2s;
+  text-align: left;
+}
+
+.perk-choice-btn:hover {
+  border-color: #f1c40f;
+  background: rgba(45, 38, 80, 0.95);
+  transform: translateY(-2px);
 }
