@@ -142,17 +142,30 @@ html, body {
   touch-action: none;
 }
 
+/* Extended interactive hit-area for easy menu dragging */
 .drawer-handle-bar {
+  position: relative;
+  width: 100px;
+  height: 24px;
+  align-self: center;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* Visible pill handle inside the extended hit area */
+.drawer-handle-bar::after {
+  content: '';
   width: 50px;
   height: 5px;
   background: rgba(255, 255, 255, 0.35);
   border-radius: 3px;
-  align-self: center;
-  margin-top: 8px;
-  cursor: ns-resize;
+  transition: background 0.2s;
 }
 
-.drawer-handle-bar:hover {
+.drawer-handle-bar:hover::after {
   background: #ffeaa7;
 }
 
@@ -161,205 +174,4 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding: 8px 20px;
-  border-bottom: 1px solid rgba(108, 92, 231, 0.3);
-}
-
-.modal-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-}
-
-.tab-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #a29bfe;
-  padding: 6px 12px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-btn.active {
-  background: #6c5ce7;
-  color: #fff;
-  border-color: #a29bfe;
-  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
-}
-
-.close-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #fff;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.close-btn:hover {
-  background: #ff7675;
-}
-
-.modal-body {
-  padding: 14px 20px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.tab-content {
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.tab-content.active {
-  display: flex;
-}
-
-/* Shop Cards inside Menu */
-.shop-card {
-  background: rgba(28, 23, 52, 0.8);
-  border: 1px solid rgba(108, 92, 231, 0.3);
-  padding: 10px 16px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-}
-
-.shop-info h3 {
-  color: #ffeaa7;
-  font-size: 0.95rem;
-  margin-bottom: 2px;
-}
-
-.shop-info p {
-  color: #b2bec3;
-  font-size: 0.75rem;
-  margin-bottom: 4px;
-}
-
-.shop-owned {
-  font-size: 0.75rem;
-  color: #a29bfe;
-  font-weight: 700;
-}
-
-.action-btn {
-  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
-  border: none;
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 100px;
-  box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
-  transition: transform 0.1s, filter 0.2s;
-}
-
-.action-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-2px);
-}
-
-.action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(0.5);
-}
-
-.btn-name {
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-.btn-cost {
-  font-size: 0.7rem;
-  color: #ffeaa7;
-  font-weight: 800;
-  margin-top: 1px;
-}
-
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.stat-box {
-  background: rgba(28, 23, 52, 0.8);
-  border: 1px solid rgba(108, 92, 231, 0.3);
-  padding: 10px 14px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.8rem;
-  color: #b2bec3;
-}
-
-.stat-box strong {
-  color: #ffeaa7;
-  font-size: 1rem;
-}
-
-/* Offline Modal Overlay */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(13, 11, 26, 0.75);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 200;
-  backdrop-filter: blur(6px);
-}
-
-.modal-window.offline-box {
-  max-width: 380px;
-  height: auto;
-  padding: 30px;
-  text-align: center;
-  border-radius: 20px;
-  border: 2px solid #6c5ce7;
-  background: linear-gradient(180deg, #221b44 0%, #15112e 100%);
-  pointer-events: auto;
-}
-
-.offline-box h2 {
-  color: #ffeaa7;
-  margin-bottom: 10px;
-}
-
-.offline-box p {
-  color: #dcdde1;
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-}
-
-.offline-highlight {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #55efc4;
-  background: rgba(0,0,0,0.3);
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
+  border-bottom: 1px solid rgba(108, 
