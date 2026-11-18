@@ -103,8 +103,8 @@ let state = {
   kongTimer: 0,
   baconTimer: 0,
   pupCupTimer: 0,
-  feastAnimTimer: 0, // Triggers pack celebration jump
-  hasTennisBall: false, // Unlocked upon first Squeaky Tennis Ball purchase
+  feastAnimTimer: 0,
+  hasTennisBall: false,
 
   costs: {},
   lastSaveTime: Date.now()
@@ -123,15 +123,11 @@ state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
 
-// Tennis Ball Entity state for chasing
 let tennisBall = {
   gx: 3.5,
   gy: 3.5,
-  targetGx: 3.5,
-  targetGy: 3.5,
   timer: 3.0,
   bouncePhase: 0,
-  isBeingChased: false,
   chaserDog: null
 };
 
@@ -534,6 +530,18 @@ class Dog {
       if (dist < 0.08) {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
+
+        // If this dog was chasing the tennis ball, make the ball bounce away to a new spot!
+        if (state.hasTennisBall && tennisBall.chaserDog === this) {
+          tennisBall.chaserDog = null;
+          tennisBall.gx = this.gx;
+          tennisBall.gy = this.gy;
+          // Bounce away to new random coordinates
+          tennisBall.gx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gx + (Math.random() - 0.5) * 3.0));
+          tennisBall.gy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gy + (Math.random() - 0.5) * 3.0));
+          sfx.squeak();
+        }
+
         this.state = 'DIG';
         this.timer = (((this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier) / workBonus) / baconBonus;
         
@@ -627,7 +635,6 @@ class Dog {
       ctx.scale(-1, 1);
     }
 
-    // Celebration jump offset if feast celebration is active
     let feastJump = 0;
     if (state.feastAnimTimer > 0) {
       feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
@@ -964,7 +971,6 @@ function drawTennisBall() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 4, 7, 3.5, 0, 0, Math.PI * 2);
@@ -973,7 +979,6 @@ function drawTennisBall() {
   const bounceOffset = Math.abs(Math.sin(tennisBall.bouncePhase * 6)) * 8;
   ctx.translate(0, -bounceOffset);
 
-  // Ball body (Bright tennis yellow-green)
   ctx.fillStyle = '#ccff00';
   ctx.strokeStyle = '#739900';
   ctx.lineWidth = 1.5;
@@ -982,7 +987,6 @@ function drawTennisBall() {
   ctx.fill();
   ctx.stroke();
 
-  // White curved seam line
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -1033,7 +1037,7 @@ document.getElementById('btnToyBones').addEventListener('click', () => {
     state.bones -= state.costs.toyBones;
     state.digPower += 1;
     state.costs.toyBones = Math.floor(state.costs.toyBones * 1.55);
-    state.hasTennisBall = true; // Unlock bouncing tennis ball on first purchase!
+    state.hasTennisBall = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1107,10 +1111,7 @@ document.getElementById('btnTreatFeast').addEventListener('click', () => {
     const feastPayout = Math.floor(getBPS() * 30);
     state.bones += feastPayout;
     state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
-    
-    // Trigger celebration jump animation across all dogs!
     state.feastAnimTimer = 1.5;
-    
     sfx.treat();
     updateUI();
     saveGame();
@@ -1211,35 +1212,17 @@ function loop(now) {
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // Update tennis ball bouncing and chasing
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
       tennisBall.timer -= dt;
 
-      if (tennisBall.isBeingChased) {
-        // Move towards target
-        const tdx = tennisBall.targetGx - tennisBall.gx;
-        const tdy = tennisBall.targetGy - tennisBall.gy;
-        const tdist = Math.hypot(tdx, tdy);
-        if (tdist < 0.05) {
-          tennisBall.isBeingChased = false;
-          tennisBall.timer = 4.0 + Math.random() * 5.0; // Rest before moving again
-        } else {
-          tennisBall.gx += (tdx / tdist) * 1.5 * dt;
-          tennisBall.gy += (tdy / tdist) * 1.5 * dt;
-        }
-      } else if (tennisBall.timer <= 0) {
-        // Pick a new random spot in the yard and pick a random dog to chase it
-        tennisBall.targetGx = 1.0 + Math.random() * (GRID_SIZE - 2.0);
-        tennisBall.targetGy = 1.0 + Math.random() * (GRID_SIZE - 2.0);
-        tennisBall.isBeingChased = true;
-        
-        if (dogs.length > 0) {
-          const chaser = dogs[Math.floor(Math.random() * dogs.length)];
-          chaser.targetGx = tennisBall.targetGx;
-          chaser.targetGy = tennisBall.targetGy;
-          chaser.state = 'WALK';
-        }
+      // If no dog is currently tasked with chasing the ball and timer is ready, pick a dog to run toward it!
+      if (!tennisBall.chaserDog && tennisBall.timer <= 0 && dogs.length > 0) {
+        tennisBall.chaserDog = dogs[Math.floor(Math.random() * dogs.length)];
+        tennisBall.chaserDog.targetGx = tennisBall.gx;
+        tennisBall.chaserDog.targetGy = tennisBall.gy;
+        tennisBall.chaserDog.state = 'WALK';
+        tennisBall.timer = 5.0 + Math.random() * 4.0; // Reset timer for next chase event
       }
     }
 
