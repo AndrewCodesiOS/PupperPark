@@ -103,6 +103,8 @@ let state = {
   },
   shinyDogs: [],
   perks: [],
+  placedDecorations: [],
+  isPlacingDecor: false,
   digPower: 1,
   speedMultiplier: 1,
   idleMultiplier: 0.6,
@@ -181,8 +183,10 @@ function loadGame() {
       state = { ...state, ...parsed };
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
+      if (!state.placedDecorations) state.placedDecorations = [];
       if (!state.idleMultiplier) state.idleMultiplier = 0.6;
-      state.isDraftingPerk = false; // Reset drafting lock on load
+      state.isDraftingPerk = false;
+      state.isPlacingDecor = false;
       Object.keys(BREED_CONFIG).forEach(b => {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
@@ -310,6 +314,43 @@ tabBtns.forEach(btn => {
   });
 });
 
+// Decor: Buy Tree & Enter Placement Mode
+document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
+  initAudio();
+  if (state.placedDecorations.length >= 3) return;
+  const cost = 500;
+  if (state.magicBones >= cost) {
+    state.magicBones -= cost;
+    state.isPlacingDecor = true;
+    closeMenu();
+    document.getElementById('placementBanner').style.display = 'block';
+    sfx.upgrade();
+    updateUI();
+    saveGame();
+  }
+});
+
+// Decor: Clear Park Confirmation Modal Handlers
+const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
+document.getElementById('btnClearDecor').addEventListener('click', () => {
+  initAudio();
+  clearDecorConfirmModal.style.display = 'flex';
+});
+
+document.getElementById('btnCancelClearDecor').addEventListener('click', () => {
+  initAudio();
+  clearDecorConfirmModal.style.display = 'none';
+});
+
+document.getElementById('btnConfirmClearDecor').addEventListener('click', () => {
+  initAudio();
+  state.placedDecorations = [];
+  sfx.thud();
+  clearDecorConfirmModal.style.display = 'none';
+  updateUI();
+  saveGame();
+});
+
 // Settings: Reset Progress Modal Handlers
 const resetConfirmModal = document.getElementById('resetConfirmModal');
 document.getElementById('btnResetProgress').addEventListener('click', () => {
@@ -335,6 +376,8 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     },
     shinyDogs: [],
     perks: [],
+    placedDecorations: [],
+    isPlacingDecor: false,
     digPower: 1,
     speedMultiplier: 1,
     idleMultiplier: 0.6,
@@ -375,6 +418,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   particles.length = 0;
 
   resetConfirmModal.style.display = 'none';
+  document.getElementById('placementBanner').style.display = 'none';
   closeMenu();
   updateUI();
   saveGame();
@@ -527,6 +571,26 @@ canvas.addEventListener('pointerup', (e) => {
     const clickY = e.clientY - rect.top;
     const gridPos = screenToGrid(clickX, clickY);
 
+    // Handle Tree Placement Mode
+    if (state.isPlacingDecor) {
+      if (
+        gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
+        gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+      ) {
+        state.placedDecorations.push({
+          type: 'tree',
+          gx: Math.floor(gridPos.gx),
+          gy: Math.floor(gridPos.gy)
+        });
+        state.isPlacingDecor = false;
+        document.getElementById('placementBanner').style.display = 'none';
+        sfx.gather();
+        updateUI();
+        saveGame();
+      }
+      return;
+    }
+
     if (
       gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
       gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
@@ -628,7 +692,6 @@ class Dog {
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
         const treasureChance = (this.breed === 'shiba') ? 0.003 : 0.0003;
-        // Only trigger perk draft if not already drafting
         if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
         }
@@ -984,6 +1047,33 @@ function drawTree() {
   ctx.restore();
 }
 
+function drawCustomTree(gx, gy) {
+  const pos = gridToScreen(gx, gy);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(-4, -18, 8, 20);
+
+  ctx.fillStyle = '#27ae60';
+  ctx.beginPath();
+  ctx.arc(0, -26, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#2ecc71';
+  ctx.beginPath();
+  ctx.arc(-6, -32, 12, 0, Math.PI * 2);
+  ctx.arc(6, -32, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function drawMushroomCluster(m) {
   const pos = gridToScreen(m.gx, m.gy);
   ctx.save();
@@ -1120,7 +1210,6 @@ function drawRedBone() {
   ctx.ellipse(0, 4, 10, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Vibrant Red Chew Bone Toy
   ctx.fillStyle = '#ff7675';
   ctx.strokeStyle = '#d63031';
   ctx.lineWidth = 1.5;
@@ -1147,7 +1236,6 @@ function drawDuck() {
   ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Bright Yellow Rubber Duck body
   ctx.fillStyle = '#ffeaa7';
   ctx.strokeStyle = '#fdcb6e';
   ctx.lineWidth = 1.5;
@@ -1157,19 +1245,16 @@ function drawDuck() {
   ctx.fill();
   ctx.stroke();
 
-  // Duck Head
   ctx.beginPath();
   ctx.arc(5, -10, 5, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Orange Beak
   ctx.fillStyle = '#e17055';
   ctx.beginPath();
   ctx.ellipse(9, -9, 3.5, 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Black Eye
   ctx.fillStyle = '#2d3436';
   ctx.beginPath();
   ctx.arc(6, -11, 1, 0, Math.PI * 2);
@@ -1358,6 +1443,22 @@ function updateUI() {
     });
   }
 
+  // Update Decor Tab Counts and Limits
+  const decorCount = state.placedDecorations ? state.placedDecorations.length : 0;
+  const countDecorTreeEl = document.getElementById('countDecorTree');
+  if (countDecorTreeEl) countDecorTreeEl.textContent = decorCount;
+
+  const btnBuyDecorTree = document.getElementById('btnBuyDecorTree');
+  if (btnBuyDecorTree) {
+    if (decorCount >= 3) {
+      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Max Reached';
+      btnBuyDecorTree.disabled = true;
+    } else {
+      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Place Tree';
+      btnBuyDecorTree.disabled = state.magicBones < 500;
+    }
+  }
+
   document.getElementById('bpsCount').textContent = `+${getBPS().toFixed(1)}/s`;
 
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
@@ -1477,7 +1578,7 @@ function loop(now) {
       }
     }
 
-    // 4. Rubber Duck Behavior (Glides/gets pushed when interacted with!)
+    // 4. Rubber Duck Behavior
     if (state.hasDuck) {
       if (duck.isMoved) {
         duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
@@ -1521,6 +1622,18 @@ function loop(now) {
     renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
     renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
 
+    // Render user-placed decor items
+    if (state.placedDecorations) {
+      state.placedDecorations.forEach(dec => {
+        if (dec.type === 'tree') {
+          renderables.push({
+            sortY: gridToScreen(dec.gx, dec.gy).y,
+            draw: () => drawCustomTree(dec.gx, dec.gy)
+          });
+        }
+      });
+    }
+
     if (state.hasTennisBall) {
       renderables.push({ sortY: gridToScreen(tennisBall.gx, tennisBall.gy).y, draw: drawTennisBall });
     }
@@ -1549,7 +1662,6 @@ function loop(now) {
       });
     });
 
-    // Safely sort and filter renderables to prevent any missing sprite glitches
     renderables.sort((a, b) => a.sortY - b.sortY);
     renderables.forEach(item => {
       if (item && typeof item.draw === 'function') {
