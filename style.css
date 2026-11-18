@@ -183,3 +183,18 @@ body {
 .modal-content button:hover {
   background: #a29bfe;
 }
+.audio-btn {
+  background: rgba(108, 92, 231, 0.3);
+  border: 1px solid #8c7ae6;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.audio-btn:hover {
+  background: rgba(108, 92, 231, 0.6);
+}
