@@ -941,8 +941,8 @@ function recruitDog(breed) {
     state.bones -= cost;
     state.costs[breed] = Math.floor(cost * BREED_CONFIG[breed].costMult);
     
-    const isShiny = true;
-    
+const isShiny = Math.random() < (1 / 8000);
+
     if (isShiny) {
       const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
       const chosenColor = shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
