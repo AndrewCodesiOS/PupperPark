@@ -59,6 +59,10 @@ const sfx = {
   squeak: () => {
     playSound(1200, 'triangle', 0.08, 0.04);
     setTimeout(() => playSound(950, 'triangle', 0.08, 0.04), 60);
+  },
+  thud: () => {
+    playSound(220, 'square', 0.1, 0.04);
+    setTimeout(() => playSound(150, 'square', 0.15, 0.04), 50);
   }
 };
 
@@ -104,7 +108,12 @@ let state = {
   baconTimer: 0,
   pupCupTimer: 0,
   feastAnimTimer: 0,
+  
+  // Unlocks for toys mapped to shop buttons
   hasTennisBall: false,
+  hasFrisbee: false,
+  hasHeavyBone: false,
+  hasPlush: false,
 
   costs: {},
   lastSaveTime: Date.now()
@@ -123,15 +132,11 @@ state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
 
-let tennisBall = {
-  gx: 3.5,
-  gy: 3.5,
-  targetGx: 3.5,
-  targetGy: 3.5,
-  isRolling: false,
-  timer: 6.0,
-  bouncePhase: 0
-};
+// Toy state objects
+let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
+let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isGliding: false, timer: 7.5, rotAngle: 0 };
+let heavyBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 5.0, isDragging: false, timer: 9.0, wobblePhase: 0 };
+let plush = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isSqueaking: false, timer: 5.5, squeezePhase: 0 };
 
 function getTotalDogs() {
   let count = 0;
@@ -494,7 +499,7 @@ class Dog {
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
     this.isMagicDig = false;
-    this.onReachTennisBall = null;
+    this.onReachToy = null;
   }
 
   pickNewTarget() {
@@ -534,9 +539,9 @@ class Dog {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
 
-        if (this.onReachTennisBall) {
-          this.onReachTennisBall();
-          this.onReachTennisBall = null;
+        if (this.onReachToy) {
+          this.onReachToy();
+          this.onReachToy = null;
         }
 
         this.state = 'DIG';
@@ -962,6 +967,7 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
+// Toy Drawing Functions
 function drawTennisBall() {
   if (!state.hasTennisBall) return;
   const pos = gridToScreen(tennisBall.gx, tennisBall.gy);
@@ -988,6 +994,96 @@ function drawTennisBall() {
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.arc(-2, -6, 4, 0.2, Math.PI * 0.8);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawFrisbee() {
+  if (!state.hasFrisbee) return;
+  const pos = gridToScreen(frisbee.gx, frisbee.gy);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.rotate(frisbee.rotAngle);
+
+  ctx.fillStyle = '#0984e3';
+  ctx.strokeStyle = '#00cec9';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 11, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#74b9ff';
+  ctx.beginPath();
+  ctx.ellipse(0, -3, 6, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawHeavyBone() {
+  if (!state.hasHeavyBone) return;
+  const pos = gridToScreen(heavyBone.gx, heavyBone.gy);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 10, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const wobble = Math.sin(heavyBone.wobblePhase * 8) * 0.1;
+  ctx.rotate(wobble);
+
+  ctx.fillStyle = '#636e72';
+  ctx.strokeStyle = '#2d3436';
+  ctx.lineWidth = 2;
+
+  ctx.fillRect(-10, -4, 20, 8);
+  [[ -10, -5 ], [ -10, 5 ], [ 10, -5 ], [ 10, 5 ]].forEach(([kx, ky]) => {
+    ctx.beginPath();
+    ctx.arc(kx, ky, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
+function drawPlush() {
+  if (!state.hasPlush) return;
+  const pos = gridToScreen(plush.gx, plush.gy);
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const sq = Math.abs(Math.sin(plush.squeezePhase * 10)) * 2;
+  ctx.scale(1 + sq * 0.2, 1 - sq * 0.2);
+
+  ctx.fillStyle = '#e84393';
+  ctx.strokeStyle = '#fd79a8';
+  ctx.lineWidth = 1.5;
+
+  ctx.beginPath();
+  ctx.arc(0, -7, 6.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(-5, -12, 4, 0, Math.PI * 2);
+  ctx.arc(5, -12, 4, 0, Math.PI * 2);
+  ctx.fill();
   ctx.stroke();
 
   ctx.restore();
@@ -1028,6 +1124,7 @@ document.getElementById('btnSummonShepherd').addEventListener('click', () => rec
 document.getElementById('btnSummonBeagle').addEventListener('click', () => recruitDog('beagle'));
 document.getElementById('btnSummonDalmatian').addEventListener('click', () => recruitDog('dalmatian'));
 
+// Toy button upgrades
 document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.toyBones) {
@@ -1047,6 +1144,7 @@ document.getElementById('btnToySpeed').addEventListener('click', () => {
     state.bones -= state.costs.toySpeed;
     state.speedMultiplier *= 1.2;
     state.costs.toySpeed = Math.floor(state.costs.toySpeed * 1.65);
+    state.hasFrisbee = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1059,6 +1157,7 @@ document.getElementById('btnToyDig').addEventListener('click', () => {
     state.bones -= state.costs.toyDig;
     state.digPower += 2;
     state.costs.toyDig = Math.floor(state.costs.toyDig * 1.60);
+    state.hasHeavyBone = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1071,6 +1170,7 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
     state.bones -= state.costs.toyIdle;
     state.idleMultiplier = Math.min(0.95, state.idleMultiplier + 0.1);
     state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.70);
+    state.hasPlush = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1209,9 +1309,9 @@ function loop(now) {
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
+    // 1. Tennis Ball Behavior
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
-
       if (tennisBall.isRolling) {
         tennisBall.gx += (tennisBall.targetGx - tennisBall.gx) * (dt * 5);
         tennisBall.gy += (tennisBall.targetGy - tennisBall.gy) * (dt * 5);
@@ -1222,17 +1322,93 @@ function loop(now) {
         tennisBall.timer -= dt;
         if (tennisBall.timer <= 0 && dogs.length > 0) {
           tennisBall.timer = 8.0 + Math.random() * 6.0;
-
           const walker = dogs[Math.floor(Math.random() * dogs.length)];
           walker.targetGx = tennisBall.gx;
           walker.targetGy = tennisBall.gy;
           walker.state = 'WALK';
-
-          walker.onReachTennisBall = () => {
+          walker.onReachToy = () => {
             sfx.squeak();
             tennisBall.isRolling = true;
             tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5));
             tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5));
+          };
+        }
+      }
+    }
+
+    // 2. Frisbee Behavior
+    if (state.hasFrisbee) {
+      frisbee.rotAngle += dt * 4;
+      if (frisbee.isGliding) {
+        frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 6);
+        frisbee.gy += (frisbee.targetGy - frisbee.gy) * (dt * 6);
+        if (Math.hypot(frisbee.targetGx - frisbee.gx, frisbee.targetGy - frisbee.gy) < 0.05) {
+          frisbee.isGliding = false;
+        }
+      } else {
+        frisbee.timer -= dt;
+        if (frisbee.timer <= 0 && dogs.length > 0) {
+          frisbee.timer = 10.0 + Math.random() * 8.0;
+          const walker = dogs[Math.floor(Math.random() * dogs.length)];
+          walker.targetGx = frisbee.gx;
+          walker.targetGy = frisbee.gy;
+          walker.state = 'WALK';
+          walker.onReachToy = () => {
+            sfx.shiny();
+            frisbee.isGliding = true;
+            frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 4.0));
+            frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 4.0));
+          };
+        }
+      }
+    }
+
+    // 3. Heavy Bone Behavior
+    if (state.hasHeavyBone) {
+      if (heavyBone.isDragging) {
+        heavyBone.wobblePhase += dt;
+        heavyBone.gx += (heavyBone.targetGx - heavyBone.gx) * (dt * 3);
+        heavyBone.gy += (heavyBone.targetGy - heavyBone.gy) * (dt * 3);
+        if (Math.hypot(heavyBone.targetGx - heavyBone.gx, heavyBone.targetGy - heavyBone.gy) < 0.05) {
+          heavyBone.isDragging = false;
+        }
+      } else {
+        heavyBone.timer -= dt;
+        if (heavyBone.timer <= 0 && dogs.length > 0) {
+          heavyBone.timer = 12.0 + Math.random() * 8.0;
+          const walker = dogs[Math.floor(Math.random() * dogs.length)];
+          walker.targetGx = heavyBone.gx;
+          walker.targetGy = heavyBone.gy;
+          walker.state = 'WALK';
+          walker.onReachToy = () => {
+            sfx.thud();
+            heavyBone.isDragging = true;
+            heavyBone.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, heavyBone.gx + (Math.random() - 0.5) * 2.5));
+            heavyBone.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, heavyBone.gy + (Math.random() - 0.5) * 2.5));
+          };
+        }
+      }
+    }
+
+    // 4. Plush Toy Behavior
+    if (state.hasPlush) {
+      if (plush.isSqueaking) {
+        plush.squeezePhase += dt;
+        if (plush.squeezePhase > 1.2) {
+          plush.isSqueaking = false;
+        }
+      } else {
+        plush.timer -= dt;
+        if (plush.timer <= 0 && dogs.length > 0) {
+          plush.timer = 7.0 + Math.random() * 5.0;
+          const walker = dogs[Math.floor(Math.random() * dogs.length)];
+          walker.targetGx = plush.gx;
+          walker.targetGy = plush.gy;
+          walker.state = 'WALK';
+          walker.onReachToy = () => {
+            sfx.squeak();
+            plush.isSqueaking = true;
+            plush.squeezePhase = 0;
           };
         }
       }
@@ -1257,10 +1433,16 @@ function loop(now) {
     renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
 
     if (state.hasTennisBall) {
-      renderables.push({
-        sortY: gridToScreen(tennisBall.gx, tennisBall.gy).y,
-        draw: drawTennisBall
-      });
+      renderables.push({ sortY: gridToScreen(tennisBall.gx, tennisBall.gy).y, draw: drawTennisBall });
+    }
+    if (state.hasFrisbee) {
+      renderables.push({ sortY: gridToScreen(frisbee.gx, frisbee.gy).y, draw: drawFrisbee });
+    }
+    if (state.hasHeavyBone) {
+      renderables.push({ sortY: gridToScreen(heavyBone.gx, heavyBone.gy).y, draw: drawHeavyBone });
+    }
+    if (state.hasPlush) {
+      renderables.push({ sortY: gridToScreen(plush.gx, plush.gy).y, draw: drawPlush });
     }
 
     mushrooms.forEach(m => {
@@ -1278,6 +1460,7 @@ function loop(now) {
       });
     });
 
+    // Perfect depth sorting so all toys and dogs layer correctly on the ground
     renderables.sort((a, b) => a.sortY - b.sortY);
     renderables.forEach(item => item.draw());
 
