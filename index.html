@@ -21,16 +21,16 @@
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Bottom Right Mini Bar (Dog Count & Menu Toggle Only) -->
+  <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
     <div class="mini-stat">🐕 <span id="miniDogs">1</span></div>
     <button id="btnOpenMenu" class="menu-toggle-btn">▲ Open Menu</button>
   </div>
 
-  <!-- Bottom Slide-Up Menu Drawer -->
+  <!-- Bottom Slide-Up & Draggable Menu Drawer -->
   <div id="gameModal" class="drawer-overlay" style="display: none;">
-    <div class="drawer-window">
-      <div class="drawer-handle-bar"></div>
+    <div class="drawer-window" id="drawerWindow">
+      <div class="drawer-handle-bar" id="drawerHandle" title="Drag down to close"></div>
       <div class="modal-header">
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="tab-dogs">🐕 Dogs</button>
