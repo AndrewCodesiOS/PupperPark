@@ -103,6 +103,7 @@ let state = {
   },
   shinyDogs: [],
   perks: [],
+  decorInventory: { tree: 0, flowers: 0, fountain: 0 },
   placedDecorations: [],
   isPlacingDecor: false,
   activeDecorType: null,
@@ -183,6 +184,7 @@ function loadGame() {
       state = { ...state, ...parsed };
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
+      if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
       if (!state.placedDecorations) state.placedDecorations = [];
       if (!state.idleMultiplier) state.idleMultiplier = 0.6;
       state.isDraftingPerk = false;
@@ -315,18 +317,12 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Decor Purchase Handlers
+// Decor Buy Handlers
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
   initAudio();
-  const treeCount = state.placedDecorations.filter(d => d.type === 'tree').length;
-  if (treeCount >= 3) return;
   if (state.magicBones >= 500) {
     state.magicBones -= 500;
-    state.isPlacingDecor = true;
-    state.activeDecorType = 'tree';
-    closeMenu();
-    document.getElementById('placementBanner').textContent = 'Tap any park tile to place your tree!';
-    document.getElementById('placementBanner').style.display = 'block';
+    state.decorInventory.tree = (state.decorInventory.tree || 0) + 1;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -335,15 +331,9 @@ document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
 
 document.getElementById('btnBuyDecorFlowers').addEventListener('click', () => {
   initAudio();
-  const flowerCount = state.placedDecorations.filter(d => d.type === 'flowers').length;
-  if (flowerCount >= 5) return;
   if (state.magicBones >= 250) {
     state.magicBones -= 250;
-    state.isPlacingDecor = true;
-    state.activeDecorType = 'flowers';
-    closeMenu();
-    document.getElementById('placementBanner').textContent = 'Tap any park tile to place your flower patch!';
-    document.getElementById('placementBanner').style.display = 'block';
+    state.decorInventory.flowers = (state.decorInventory.flowers || 0) + 1;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -352,19 +342,55 @@ document.getElementById('btnBuyDecorFlowers').addEventListener('click', () => {
 
 document.getElementById('btnBuyDecorFountain').addEventListener('click', () => {
   initAudio();
-  const fountainCount = state.placedDecorations.filter(d => d.type === 'fountain').length;
-  if (fountainCount >= 2) return;
   if (state.magicBones >= 1000) {
     state.magicBones -= 1000;
-    state.isPlacingDecor = true;
-    state.activeDecorType = 'fountain';
-    closeMenu();
-    document.getElementById('placementBanner').textContent = 'Tap any park tile to place your water fountain!';
-    document.getElementById('placementBanner').style.display = 'block';
+    state.decorInventory.fountain = (state.decorInventory.fountain || 0) + 1;
     sfx.upgrade();
-    updateUI();
     saveGame();
   }
+});
+
+// Decor Place Handlers
+document.getElementById('btnPlaceDecorTree').addEventListener('click', () => {
+  initAudio();
+  const placedCount = state.placedDecorations.filter(d => d.type === 'tree').length;
+  const available = (state.decorInventory.tree || 0) - placedCount;
+  if (available <= 0 || placedCount >= 3) return;
+
+  state.isPlacingDecor = true;
+  state.activeDecorType = 'tree';
+  closeMenu();
+  document.getElementById('placementBanner').textContent = 'Tap any park tile to place your tree!';
+  document.getElementById('placementBanner').style.display = 'block';
+  sfx.gather();
+});
+
+document.getElementById('btnPlaceDecorFlowers').addEventListener('click', () => {
+  initAudio();
+  const placedCount = state.placedDecorations.filter(d => d.type === 'flowers').length;
+  const available = (state.decorInventory.flowers || 0) - placedCount;
+  if (available <= 0 || placedCount >= 5) return;
+
+  state.isPlacingDecor = true;
+  state.activeDecorType = 'flowers';
+  closeMenu();
+  document.getElementById('placementBanner').textContent = 'Tap any park tile to place your flower patch!';
+  document.getElementById('placementBanner').style.display = 'block';
+  sfx.gather();
+});
+
+document.getElementById('btnPlaceDecorFountain').addEventListener('click', () => {
+  initAudio();
+  const placedCount = state.placedDecorations.filter(d => d.type === 'fountain').length;
+  const available = (state.decorInventory.fountain || 0) - placedCount;
+  if (available <= 0 || placedCount >= 2) return;
+
+  state.isPlacingDecor = true;
+  state.activeDecorType = 'fountain';
+  closeMenu();
+  document.getElementById('placementBanner').textContent = 'Tap any park tile to place your water fountain!';
+  document.getElementById('placementBanner').style.display = 'block';
+  sfx.gather();
 });
 
 // Clear Park Confirmation Modal Handlers
@@ -413,6 +439,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     },
     shinyDogs: [],
     perks: [],
+    decorInventory: { tree: 0, flowers: 0, fountain: 0 },
     placedDecorations: [],
     isPlacingDecor: false,
     activeDecorType: null,
@@ -609,7 +636,6 @@ canvas.addEventListener('pointerup', (e) => {
     const clickY = e.clientY - rect.top;
     const gridPos = screenToGrid(clickX, clickY);
 
-    // Handle Decoration Placement Mode
     if (state.isPlacingDecor) {
       if (
         gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
@@ -1118,13 +1144,11 @@ function drawFlowerPatch(gx, gy) {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 3, 15, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Dirt mound / garden bed base
   ctx.fillStyle = '#8b5a2b';
   ctx.beginPath();
   ctx.ellipse(0, 1, 13, 6.5, 0, 0, Math.PI * 2);
@@ -1133,7 +1157,6 @@ function drawFlowerPatch(gx, gy) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Dense, colorful flower clusters
   const flowerData = [
     { x: -5, y: -2, c: '#fd79a8', center: '#ffeaa7' },
     { x: 4, y: -4, c: '#ff7675', center: '#fab1a0' },
@@ -1143,17 +1166,14 @@ function drawFlowerPatch(gx, gy) {
   ];
 
   flowerData.forEach(f => {
-    // Stem/leaves
     ctx.fillStyle = '#00b894';
     ctx.fillRect(f.x - 1, f.y, 2, 4);
 
-    // Petals
     ctx.fillStyle = f.c;
     ctx.beginPath();
     ctx.arc(f.x, f.y - 1, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Center pollen glow
     ctx.fillStyle = f.center;
     ctx.beginPath();
     ctx.arc(f.x, f.y - 1, 1.5, 0, Math.PI * 2);
@@ -1171,13 +1191,11 @@ function drawWaterFountain(gx, gy, dt) {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Main Ground-Level Stone Basin Base
   ctx.fillStyle = '#b2bec3';
   ctx.strokeStyle = '#636e72';
   ctx.lineWidth = 1.5;
@@ -1186,13 +1204,11 @@ function drawWaterFountain(gx, gy, dt) {
   ctx.fill();
   ctx.stroke();
 
-  // Water inside bottom basin
   ctx.fillStyle = '#0984e3';
   ctx.beginPath();
   ctx.ellipse(0, -1, 13, 6.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ripple rings in bottom basin
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.lineWidth = 1;
   const rippleRadius = 3 + (Math.sin(fountainAnimPhase) + 1) * 4;
@@ -1200,40 +1216,34 @@ function drawWaterFountain(gx, gy, dt) {
   ctx.ellipse(0, -1, rippleRadius, rippleRadius * 0.5, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Standing Central Pillar
   ctx.fillStyle = '#dfe6e9';
   ctx.fillRect(-3, -22, 6, 22);
   ctx.strokeStyle = '#b2bec3';
   ctx.strokeRect(-3, -22, 6, 22);
 
-  // Upper Middle Basin (Tier)
   ctx.fillStyle = '#b2bec3';
   ctx.beginPath();
   ctx.ellipse(0, -18, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Water in upper basin
   ctx.fillStyle = '#74b9ff';
   ctx.beginPath();
   ctx.ellipse(0, -18.5, 7, 3.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Top Spout Finial
   ctx.fillStyle = '#dfe6e9';
   ctx.beginPath();
   ctx.arc(0, -26, 3.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Animated Water Jets / Spurt from Top
   ctx.fillStyle = '#ffffff';
   const jetHeight = Math.abs(Math.sin(fountainAnimPhase * 2)) * 5;
   ctx.beginPath();
   ctx.arc(0, -29 - jetHeight, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Cascading water streams (left and right arcs)
   ctx.strokeStyle = 'rgba(116, 185, 255, 0.8)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -1617,45 +1627,73 @@ function updateUI() {
   const flowerCount = state.placedDecorations ? state.placedDecorations.filter(d => d.type === 'flowers').length : 0;
   const fountainCount = state.placedDecorations ? state.placedDecorations.filter(d => d.type === 'fountain').length : 0;
 
-  const countDecorTreeEl = document.getElementById('countDecorTree');
-  if (countDecorTreeEl) countDecorTreeEl.textContent = treeCount;
+  const ownedTree = state.decorInventory.tree || 0;
+  const ownedFlowers = state.decorInventory.flowers || 0;
+  const ownedFountain = state.decorInventory.fountain || 0;
 
-  const countDecorFlowersEl = document.getElementById('countDecorFlowers');
-  if (countDecorFlowersEl) countDecorFlowersEl.textContent = flowerCount;
+  document.getElementById('ownedDecorTree').textContent = ownedTree;
+  document.getElementById('countDecorTree').textContent = treeCount;
 
-  const countDecorFountainEl = document.getElementById('countDecorFountain');
-  if (countDecorFountainEl) countDecorFountainEl.textContent = fountainCount;
+  document.getElementById('ownedDecorFlowers').textContent = ownedFlowers;
+  document.getElementById('countDecorFlowers').textContent = flowerCount;
+
+  document.getElementById('ownedDecorFountain').textContent = ownedFountain;
+  document.getElementById('countDecorFountain').textContent = fountainCount;
 
   const btnBuyDecorTree = document.getElementById('btnBuyDecorTree');
   if (btnBuyDecorTree) {
+    btnBuyDecorTree.disabled = state.magicBones < 500;
+  }
+  const btnPlaceDecorTree = document.getElementById('btnPlaceDecorTree');
+  if (btnPlaceDecorTree) {
+    const unplacedTree = ownedTree - treeCount;
     if (treeCount >= 3) {
-      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Max Reached';
-      btnBuyDecorTree.disabled = true;
+      btnPlaceDecorTree.querySelector('.btn-name').textContent = 'Max Placed';
+      btnPlaceDecorTree.disabled = true;
+    } else if (unplacedTree <= 0) {
+      btnPlaceDecorTree.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorTree.disabled = true;
     } else {
-      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Place Tree';
-      btnBuyDecorTree.disabled = state.magicBones < 500;
+      btnPlaceDecorTree.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorTree.disabled = false;
     }
   }
 
   const btnBuyDecorFlowers = document.getElementById('btnBuyDecorFlowers');
   if (btnBuyDecorFlowers) {
+    btnBuyDecorFlowers.disabled = state.magicBones < 250;
+  }
+  const btnPlaceDecorFlowers = document.getElementById('btnPlaceDecorFlowers');
+  if (btnPlaceDecorFlowers) {
+    const unplacedFlowers = ownedFlowers - flowerCount;
     if (flowerCount >= 5) {
-      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Max Reached';
-      btnBuyDecorFlowers.disabled = true;
+      btnPlaceDecorFlowers.querySelector('.btn-name').textContent = 'Max Placed';
+      btnPlaceDecorFlowers.disabled = true;
+    } else if (unplacedFlowers <= 0) {
+      btnPlaceDecorFlowers.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorFlowers.disabled = true;
     } else {
-      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Place Flowers';
-      btnBuyDecorFlowers.disabled = state.magicBones < 250;
+      btnPlaceDecorFlowers.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorFlowers.disabled = false;
     }
   }
 
   const btnBuyDecorFountain = document.getElementById('btnBuyDecorFountain');
   if (btnBuyDecorFountain) {
+    btnBuyDecorFountain.disabled = state.magicBones < 1000;
+  }
+  const btnPlaceDecorFountain = document.getElementById('btnPlaceDecorFountain');
+  if (btnPlaceDecorFountain) {
+    const unplacedFountain = ownedFountain - fountainCount;
     if (fountainCount >= 2) {
-      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Max Reached';
-      btnBuyDecorFountain.disabled = true;
+      btnPlaceDecorFountain.querySelector('.btn-name').textContent = 'Max Placed';
+      btnPlaceDecorFountain.disabled = true;
+    } else if (unplacedFountain <= 0) {
+      btnPlaceDecorFountain.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorFountain.disabled = true;
     } else {
-      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Place Fountain';
-      btnBuyDecorFountain.disabled = state.magicBones < 1000;
+      btnPlaceDecorFountain.querySelector('.btn-name').textContent = 'Place';
+      btnPlaceDecorFountain.disabled = false;
     }
   }
 
