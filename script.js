@@ -46,12 +46,12 @@ const sfx = {
     setTimeout(() => playSound(783.99, 'sine', 0.2, 0.04), 100);
   },
   shiny: () => {
-    playSound(1046.50, 'sine', 0.15, 0.06); // C6 sparkle
+    playSound(1046.50, 'sine', 0.15, 0.06);
     setTimeout(() => playSound(1318.51, 'sine', 0.3, 0.06), 120);
   }
 };
 
-// Game State with Shiny Dogs & Prestige Storage
+// Game State
 let state = {
   bones: 0,
   magicBones: 0,
@@ -60,7 +60,7 @@ let state = {
     corgi: 0,
     collie: 0
   },
-  shinyDogs: [], // Stores objects like { breed: 'aussie', shinyColor: '#f1c40f' }
+  shinyDogs: [],
   digPower: 1,
   speedMultiplier: 1,
   magicChance: 0.12,
@@ -81,7 +81,6 @@ function getTotalDogs() {
 
 function getBPS() {
   const normalBase = (state.dogs.aussie * 1) + (state.dogs.corgi * 1.5) + (state.dogs.collie * 4);
-  // Shiny dogs contribute base power matching their breed
   const shinyBase = state.shinyDogs.reduce((acc, d) => acc + (d.breed === 'collie' ? 4 : (d.breed === 'corgi' ? 1.5 : 1)), 0);
   return (normalBase + shinyBase) * state.digPower * state.speedMultiplier * 0.45;
 }
@@ -105,7 +104,7 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 10) {
+  if (elapsedSeconds > 15) {
     const earned = Math.floor(getBPS() * elapsedSeconds * 0.6);
     if (earned > 0) {
       state.bones += earned;
@@ -116,14 +115,14 @@ function loadGame() {
   state.lastSaveTime = now;
   saveGame();
 
-  // Instantiate normal dogs
+  // Load normal dogs
   ['aussie', 'corgi', 'collie'].forEach(breed => {
     for (let i = 0; i < state.dogs[breed]; i++) {
       dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, breed, false));
     }
   });
 
-  // Instantiate saved shiny dogs
+  // Load shiny dogs
   state.shinyDogs.forEach(shiny => {
     dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, shiny.breed, true, shiny.color));
   });
@@ -210,7 +209,7 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Isometric Grid Settings with Vertical Centering
+// Isometric Grid Settings with Vertical Centering & Camera Rotation
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -330,7 +329,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Cute Detailed Aussie Art Style & 1-in-8000 Shiny Chance
+// Dog Entity with Gorgeous Detailed Sprites for All 3 Breeds + 1-in-8000 Shiny Chance
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -344,7 +343,6 @@ class Dog {
     this.breed = breed;
     this.isShiny = isShiny;
     
-    // Pick shiny alternate color palette if shiny
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
     this.isMagicDig = false;
@@ -433,7 +431,6 @@ class Dog {
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
-    // Shiny starlight aura effect
     if (this.isShiny) {
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 234, 167, 0.8)';
@@ -468,47 +465,128 @@ class Dog {
     ctx.translate(0, -bounce);
     ctx.rotate(digTilt);
 
-    // Cute detailed Aussie sprite drawing restored!
-    const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
-    
-    // Legs
-    ctx.fillStyle = primaryColor;
-    ctx.fillRect(-11 - legSwing, -3, 4, 9);
-    ctx.fillRect(6 + legSwing, -3, 4, 9);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-11 - legSwing, 4, 4, 3);
-    ctx.fillRect(6 + legSwing, 4, 4, 3);
+    if (this.breed === 'aussie') {
+      // --- AUSTRALIAN SHEPHERD SPRITE ---
+      const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
+      
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(-11 - legSwing, -3, 4, 9);
+      ctx.fillRect(6 + legSwing, -3, 4, 9);
 
-    // Tail / Wag
-    const wag = Math.sin(this.animPhase * 1.5) * 2;
-    ctx.fillStyle = '#4e433f';
-    ctx.beginPath();
-    ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-11 - legSwing, 4, 4, 3);
+      ctx.fillRect(6 + legSwing, 4, 4, 3);
 
-    // Body
-    ctx.fillStyle = primaryColor;
-    ctx.beginPath();
-    ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
+      const wag = Math.sin(this.animPhase * 1.5) * 2;
+      ctx.fillStyle = '#4e433f';
+      ctx.beginPath();
+      ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Head & Muzzle
-    ctx.fillStyle = '#f8f9fa';
-    ctx.beginPath();
-    ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = primaryColor;
-    ctx.beginPath();
-    ctx.arc(11, -17, 8, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = '#f8f9fa';
+      ctx.beginPath();
+      ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = '#1e1e1e';
-    ctx.beginPath();
-    ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.arc(11, -17, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (this.breed === 'corgi') {
+      // --- PEMBROKE CORGI SPRITE ---
+      const corgiColor = this.isShiny ? this.shinyColor : '#e17055';
+
+      // Short stubby legs
+      ctx.fillStyle = corgiColor;
+      ctx.fillRect(-9 - legSwing, -1, 4, 7);
+      ctx.fillRect(5 + legSwing, -1, 4, 7);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-9 - legSwing, 5, 4, 2);
+      ctx.fillRect(5 + legSwing, 5, 4, 2);
+
+      // Low elongated body
+      ctx.fillStyle = corgiColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -6, 15, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // White chest blaze
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(8, -6, 5, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Big pointy upright ears & head
+      ctx.fillStyle = corgiColor;
+      ctx.beginPath();
+      ctx.arc(10, -14, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(6, -18); ctx.lineTo(12, -24); ctx.lineTo(14, -16); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(10, -18); ctx.lineTo(16, -22); ctx.lineTo(12, -14); ctx.fill();
+
+      // Black nose & eye
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(15, -14, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (this.breed === 'collie') {
+      // --- BORDER COLLIE SPRITE ---
+      const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
+
+      // Long athletic legs
+      ctx.fillStyle = collieColor;
+      ctx.fillRect(-12 - legSwing, -4, 3, 11);
+      ctx.fillRect(7 + legSwing, -4, 3, 11);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-12 - legSwing, 6, 3, 2);
+      ctx.fillRect(7 + legSwing, 6, 3, 2);
+
+      // Sleek body
+      ctx.fillStyle = collieColor;
+      ctx.beginPath();
+      ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // White collar
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(6, -10, 4, 6, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Refined head and snout
+      ctx.fillStyle = collieColor;
+      ctx.beginPath();
+      ctx.arc(11, -17, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(11, -16); ctx.lineTo(19, -14); ctx.lineTo(13, -11); ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(18, -14.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -660,14 +738,13 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
-// Helper to recruit with 1-in-8000 Shiny chance check
+// Recruit Handlers with 1-in-8000 Shiny Chance
 function recruitDog(breed, costKey) {
   initAudio();
   if (state.bones >= state.costs[costKey]) {
     state.bones -= state.costs[costKey];
     state.costs[costKey] = Math.floor(state.costs[costKey] * 1.45);
     
-    // 1 in 8000 chance for shiny!
     const isShiny = Math.random() < (1 / 8000);
     
     if (isShiny) {
@@ -731,11 +808,9 @@ document.getElementById('btnMushrooms').addEventListener('click', () => {
 document.getElementById('btnPrestige').addEventListener('click', () => {
   initAudio();
   if (state.bones >= 1000) {
-    // Reset standard bones and standard dogs, but KEEP shinyDogs!
     state.bones = 0;
     state.dogs = { aussie: 1, corgi: 0, collie: 0 };
     
-    // Clear and re-populate park canvas with only the saved shiny dogs + 1 starter aussie
     dogs.length = 0;
     dogs.push(new Dog(1.5, 1.5, 'aussie', false));
     state.shinyDogs.forEach(shiny => {
@@ -887,3 +962,4 @@ function loop(now) {
 
 updateUI();
 requestAnimationFrame(loop);
+yes
