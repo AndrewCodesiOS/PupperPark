@@ -96,7 +96,7 @@ const PERK_POOL = [
 
 let state = {
   bones: 0,
-  magicBones: 500,
+  magicBones: 10000,
   dogs: {
     aussie: 1, collie: 0, golden: 0, husky: 0,
     shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
