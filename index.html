@@ -25,6 +25,11 @@
 
   <canvas id="gameCanvas"></canvas>
 
+  <!-- Placement Helper Banner -->
+  <div id="placementBanner" style="position: absolute; top: 90px; left: 50%; transform: translateX(-50%); background: rgba(108, 92, 231, 0.9); border: 2px solid #ffeaa7; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; z-index: 50; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    🌲 Tap any park tile to place your tree!
+  </div>
+
   <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
     <div class="mini-stat">🐕 <span id="miniDogs">1</span></div>
@@ -41,6 +46,7 @@
           <button class="tab-btn" data-tab="tab-toys">Toys</button>
           <button class="tab-btn" data-tab="tab-treats">Treats</button>
           <button class="tab-btn" data-tab="tab-perks">Treasures</button>
+          <button class="tab-btn" data-tab="tab-decor">Decor</button>
           <button class="tab-btn" data-tab="tab-stats">Stats</button>
           <button class="tab-btn" data-tab="tab-settings">Settings</button>
         </div>
@@ -253,6 +259,31 @@
           <div id="perkListContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
         </div>
 
+        <!-- Decor Tab -->
+        <div class="tab-content" id="tab-decor">
+          <div class="shop-card" style="border-color: #f1c40f;">
+            <div class="shop-info">
+              <h3 style="color: #f1c40f;">Park Tree</h3>
+              <p>A lovely decorative tree to beautify your park. (Max 3)</p>
+              <div class="shop-owned">Placed: <span id="countDecorTree">0</span> / 3</div>
+            </div>
+            <button class="action-btn" id="btnBuyDecorTree">
+              <span class="btn-name">Place Tree</span>
+              <span class="btn-cost">500 ✨</span>
+            </button>
+          </div>
+
+          <div class="shop-card" style="border-color: #ff7675; flex-direction: column; align-items: flex-start; gap: 8px;">
+            <div class="shop-info">
+              <h3 style="color: #ff7675;">Clear Park Layout</h3>
+              <p>Remove all placed decorations. Note: No magic bones are refunded, and you will need to rebuy decor items!</p>
+            </div>
+            <button id="btnClearDecor" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); width: 100%; min-width: unset; padding: 8px;">
+              <span class="btn-name">Clear All Decor</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Stats Tab -->
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
@@ -284,6 +315,18 @@
       <h2 style="color: #f1c40f; margin-bottom: 4px;">Rare Treasure Found!</h2>
       <p style="color: #dcdde1; font-size: 0.85rem; margin-bottom: 12px;">Your pack uncovered a hidden treasure chest! Choose 1 of 3 treasures to claim:</p>
       <div id="perkChoices"></div>
+    </div>
+  </div>
+
+  <!-- Clear Decor Confirmation Modal -->
+  <div id="clearDecorConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2 style="color: #ff7675;">Clear Park Decor?</h2>
+      <p>Are you sure you want to remove all placed decorations? <strong>You will have to rebuy decor items</strong> with magic bones if you want them back—no refunds will be given!</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="btnCancelClearDecor" class="action-btn" style="background: rgba(255,255,255,0.1); flex: 1;">Cancel</button>
+        <button id="btnConfirmClearDecor" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); flex: 1;">Yes, Clear</button>
+      </div>
     </div>
   </div>
 
