@@ -366,7 +366,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Straight Black-and-White Collie Tail, Shiba Ears, Beagle Body Legs & Boundary Clamping
+// Dog Entity with Solid Black Dalmatian-Style Collie Tail
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -551,7 +551,7 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // Border Collie with straight black and white tail matching photo reference
+      // Border Collie with solid black Dalmatian-style tail shape
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
@@ -559,10 +559,9 @@ class Dog {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
       ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      // Straight black/white tail
-      const wag = Math.sin(this.animPhase * 1.5) * 2;
-      ctx.fillStyle = collieColor; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.lineTo(-24, -12 + wag); ctx.lineTo(-24, -6 + wag); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-21, -11); ctx.lineTo(-25, -9 + wag); ctx.lineTo(-21, -7); ctx.closePath(); ctx.fill();
+      // Solid black Dalmatian-style tail shape
+      const wag = Math.sin(this.animPhase * 2) * 3;
+      ctx.fillStyle = collieColor; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = collieColor; ctx.stroke();
       ctx.fillStyle = collieColor;
       ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
