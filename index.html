@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>PupperPark — 2.5D Idle</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -19,16 +21,16 @@
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Bottom Right Mini Bar -->
+  <!-- Bottom Right Mini Bar (Dog Count & Menu Toggle Only) -->
   <div id="bottomBar">
-    <div class="mini-stat">⚡ <span id="miniBps">0.0</span>/s</div>
     <div class="mini-stat">🐕 <span id="miniDogs">1</span></div>
     <button id="btnOpenMenu" class="menu-toggle-btn">▲ Open Menu</button>
   </div>
 
-  <!-- Pull Down / Slide Up Menu Modal -->
-  <div id="gameModal" class="modal" style="display: none;">
-    <div class="modal-window">
+  <!-- Bottom Slide-Up Menu Drawer -->
+  <div id="gameModal" class="drawer-overlay" style="display: none;">
+    <div class="drawer-window">
+      <div class="drawer-handle-bar"></div>
       <div class="modal-header">
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="tab-dogs">🐕 Dogs</button>
