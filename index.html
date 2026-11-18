@@ -44,7 +44,7 @@
       </div>
 
       <div class="modal-body">
-        <!-- Dogs Tab (All 10 Breeds) -->
+        <!-- Dogs Tab -->
         <div class="tab-content active" id="tab-dogs">
           <div class="shop-card">
             <div class="shop-info">
@@ -121,7 +121,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Shiba Inu</h3>
-              <p>Curled tail spirit. Discovers rare treasure perks!</p>
+              <p>Curled tail spirit. Higher chance of finding rare treasures!</p>
               <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShiba">
@@ -210,10 +210,11 @@
           <div class="shop-card" style="border-color: #f1c40f;">
             <div class="shop-info">
               <h3 style="color: #f1c40f;">🌟 Active Perks Collection</h3>
-              <p>Legendary & Mythic perks are locked in and kept on Prestige!</p>
+              <p>Legendary & Mythic perks lock in and stay with you on Prestige!</p>
               <div class="shop-owned">Total Unlocked Perks: <span id="perkCountDisplay">0</span></div>
             </div>
           </div>
+          <div id="perkListContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
         </div>
 
         <!-- Prestige Tab -->
@@ -241,6 +242,15 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Perk Draft Modal (3 Options) -->
+  <div id="perkModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 440px;">
+      <h2 style="color: #f1c40f;">🌟 Rare Treasure Found!</h2>
+      <p>Your pack uncovered a hidden treasure chest! Choose 1 of 3 perks to claim:</p>
+      <div id="perkChoices" style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0;"></div>
     </div>
   </div>
 
