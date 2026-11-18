@@ -89,6 +89,7 @@ let state = {
   perks: [],
   digPower: 1,
   speedMultiplier: 1,
+  idleMultiplier: 0.6, // New idle earnings multiplier factor
   magicChance: 0.12,
   costs: {},
   lastSaveTime: Date.now()
@@ -97,8 +98,10 @@ let state = {
 Object.keys(BREED_CONFIG).forEach(b => {
   state.costs[b] = BREED_CONFIG[b].cost;
 });
-state.costs.digPower = 25;
-state.costs.zoomies = 40;
+state.costs.toyBones = 25;
+state.costs.toySpeed = 40;
+state.costs.toyDig = 100;
+state.costs.toyIdle = 200;
 state.costs.mushrooms = 5;
 
 function getTotalDogs() {
@@ -138,10 +141,15 @@ function loadGame() {
       state = { ...state, ...parsed };
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
+      if (!state.idleMultiplier) state.idleMultiplier = 0.6;
       Object.keys(BREED_CONFIG).forEach(b => {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
       });
+      if (!state.costs.toyBones) state.costs.toyBones = state.costs.digPower || 25;
+      if (!state.costs.toySpeed) state.costs.toySpeed = state.costs.zoomies || 40;
+      if (!state.costs.toyDig) state.costs.toyDig = 100;
+      if (!state.costs.toyIdle) state.costs.toyIdle = 200;
     } catch (e) {
       console.error('Failed to load save data', e);
     }
@@ -151,7 +159,7 @@ function loadGame() {
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
   if (elapsedSeconds > 15) {
-    const earned = Math.floor(getBPS() * elapsedSeconds * 0.6);
+    const earned = Math.floor(getBPS() * elapsedSeconds * state.idleMultiplier);
     if (earned > 0) {
       state.bones += earned;
       showOfflineModal(earned);
@@ -317,7 +325,7 @@ let lastMouseY = 0;
 let holdTimer = null;
 let holdStartTime = 0;
 let holdPosition = { x: 0, y: 0 };
-const HOLD_DURATION = 4000; // 4 seconds
+const HOLD_DURATION = 4000;
 
 canvas.addEventListener('pointerdown', (e) => {
   isRotating = true;
@@ -325,7 +333,6 @@ canvas.addEventListener('pointerdown', (e) => {
   lastMouseY = e.clientY;
   canvas.setPointerCapture(e.pointerId);
 
-  // Start 4-second hold timer for gathering dogs
   holdStartTime = performance.now();
   holdPosition = { x: e.clientX, y: e.clientY };
   
@@ -940,24 +947,48 @@ document.getElementById('btnSummonShepherd').addEventListener('click', () => rec
 document.getElementById('btnSummonBeagle').addEventListener('click', () => recruitDog('beagle'));
 document.getElementById('btnSummonDalmatian').addEventListener('click', () => recruitDog('dalmatian'));
 
-document.getElementById('btnDigPower').addEventListener('click', () => {
+document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.digPower) {
-    state.bones -= state.costs.digPower;
+  if (state.bones >= state.costs.toyBones) {
+    state.bones -= state.costs.toyBones;
     state.digPower += 1;
-    state.costs.digPower = Math.floor(state.costs.digPower * 1.55);
+    state.costs.toyBones = Math.floor(state.costs.toyBones * 1.55);
     sfx.upgrade();
     updateUI();
     saveGame();
   }
 });
 
-document.getElementById('btnZoomies').addEventListener('click', () => {
+document.getElementById('btnToySpeed').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.zoomies) {
-    state.bones -= state.costs.zoomies;
+  if (state.bones >= state.costs.toySpeed) {
+    state.bones -= state.costs.toySpeed;
     state.speedMultiplier *= 1.2;
-    state.costs.zoomies = Math.floor(state.costs.zoomies * 1.65);
+    state.costs.toySpeed = Math.floor(state.costs.toySpeed * 1.65);
+    sfx.upgrade();
+    updateUI();
+    saveGame();
+  }
+});
+
+document.getElementById('btnToyDig').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.toyDig) {
+    state.bones -= state.costs.toyDig;
+    state.digPower += 2;
+    state.costs.toyDig = Math.floor(state.costs.toyDig * 1.60);
+    sfx.upgrade();
+    updateUI();
+    saveGame();
+  }
+});
+
+document.getElementById('btnToyIdle').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= state.costs.toyIdle) {
+    state.bones -= state.costs.toyIdle;
+    state.idleMultiplier = Math.min(0.95, state.idleMultiplier + 0.1);
+    state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.70);
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1043,16 +1074,20 @@ function updateUI() {
 
   document.getElementById('bpsCount').textContent = `+${getBPS().toFixed(1)}/s`;
 
-  document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
-  document.getElementById('costZoomies').textContent = `${state.costs.zoomies.toLocaleString()} 🦴`;
+  document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
+  document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
+  document.getElementById('costToyDig').textContent = `${state.costs.toyDig.toLocaleString()} 🦴`;
+  document.getElementById('costToyIdle').textContent = `${state.costs.toyIdle.toLocaleString()} 🦴`;
   document.getElementById('costMushrooms').textContent = `${state.costs.mushrooms} ✨`;
 
   document.getElementById('statDigPower').textContent = state.digPower;
   document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
 
-  document.getElementById('btnDigPower').disabled = state.bones < state.costs.digPower;
-  document.getElementById('btnZoomies').disabled = state.bones < state.costs.zoomies;
+  document.getElementById('btnToyBones').disabled = state.bones < state.costs.toyBones;
+  document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
+  document.getElementById('btnToyDig').disabled = state.bones < state.costs.toyDig;
+  document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle;
   document.getElementById('btnMushrooms').disabled = state.magicBones < state.costs.mushrooms;
   document.getElementById('btnPrestige').disabled = state.bones < 1000;
 }
@@ -1100,7 +1135,6 @@ function loop(now) {
   renderables.sort((a, b) => a.sortY - b.sortY);
   renderables.forEach(item => item.draw());
 
-  // Draw hold timer charging indicator if holding down
   if (holdTimer) {
     const elapsed = performance.now() - holdStartTime;
     const progress = Math.min(1, elapsed / HOLD_DURATION);
