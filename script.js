@@ -3,8 +3,9 @@ const ctx = canvas.getContext('2d');
 
 // --- PROCEDURAL WEB AUDIO SYNTHESIZER ---
 let audioCtx = null;
-let isAudioEnabled = false;
+let isAudioEnabled = true; // Default to enabled
 let bgmInterval = null;
+let hasUnlockedAudio = false;
 
 function initAudio() {
   if (!audioCtx) {
@@ -12,6 +13,12 @@ function initAudio() {
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
+  }
+  
+  // Start background music automatically on first unlock if enabled
+  if (isAudioEnabled && !hasUnlockedAudio) {
+    hasUnlockedAudio = true;
+    startBGM();
   }
 }
 
@@ -34,7 +41,7 @@ function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {
-    // Ignore audio context restrictions prior to user gesture
+    // Ignore restrictions prior to user gesture
   }
 }
 
@@ -63,20 +70,26 @@ function startBGM() {
   }, 1200);
 }
 
-// Audio Toggle Button Listener
+// Audio Toggle Button Listener (Music Note with Slash when Muted)
 const audioBtn = document.getElementById('btnAudio');
-audioBtn.addEventListener('click', () => {
-  initAudio();
-  isAudioEnabled = !isAudioEnabled;
-  if (isAudioEnabled) {
-    audioBtn.textContent = '🔊 Sound: On';
-    startBGM();
-  } else {
-    audioBtn.textContent = '🔇 Sound: Off';
-    if (bgmInterval) clearInterval(bgmInterval);
-  }
-});
-
+if (audioBtn) {
+  audioBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent triggering canvas click
+    initAudio();
+    isAudioEnabled = !isAudioEnabled;
+    if (isAudioEnabled) {
+      audioBtn.textContent = '🎵';
+      audioBtn.classList.remove('muted');
+      audioBtn.title = 'Sound: On';
+      startBGM();
+    } else {
+      audioBtn.textContent = '🔇';
+      audioBtn.classList.add('muted');
+      audioBtn.title = 'Sound: Off';
+      if (bgmInterval) clearInterval(bgmInterval);
+    }
+  });
+}
 
 // Game State
 let state = {
@@ -96,7 +109,7 @@ let state = {
 };
 
 function loadGame() {
-  const saved = localStorage.getItem('magical_aussie_save');
+  const saved = localStorage.getItem('pupperpark_save');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -108,6 +121,7 @@ function loadGame() {
 
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
+
   if (elapsedSeconds > 10) {
     const bonesPerSec = state.dogCount * state.digPower * state.speedMultiplier * 0.45;
     const earned = Math.floor(bonesPerSec * elapsedSeconds * 0.5);
@@ -118,6 +132,9 @@ function loadGame() {
     }
   }
 
+  state.lastSaveTime = now;
+  saveGame();
+
   for (let i = 0; i < state.dogCount; i++) {
     dogs.push(new AustralianShepherd(1.5 + Math.random() * 4, 1.5 + Math.random() * 4));
   }
@@ -125,7 +142,7 @@ function loadGame() {
 
 function saveGame() {
   state.lastSaveTime = Date.now();
-  localStorage.setItem('magical_aussie_save', JSON.stringify(state));
+  localStorage.setItem('pupperpark_save', JSON.stringify(state));
 }
 
 setInterval(saveGame, 10000);
@@ -134,15 +151,23 @@ function showOfflineModal(earned, seconds) {
   const modal = document.getElementById('offlineModal');
   const text = document.getElementById('offlineEarnings');
   const mins = Math.floor(seconds / 60);
-  text.textContent = `Earned ${earned.toLocaleString()} Bones in ${mins} minutes!`;
-  modal.style.display = 'flex';
+  if (text) {
+    text.textContent = `Earned ${earned.toLocaleString()} Bones in ${mins} minutes!`;
+  }
+  if (modal) {
+    modal.style.display = 'flex';
+  }
 }
 
-document.getElementById('btnCloseModal').addEventListener('click', () => {
-  document.getElementById('offlineModal').style.display = 'none';
-});
+const closeModalBtn = document.getElementById('btnCloseModal');
+if (closeModalBtn) {
+  closeModalBtn.addEventListener('click', () => {
+    const modal = document.getElementById('offlineModal');
+    if (modal) modal.style.display = 'none';
+  });
+}
 
-// Isometric Grid Settings
+// Isometric Grid Settings (2.5D Diorama)
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -517,7 +542,7 @@ function drawBoneSprite(x, y, isMagic) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-  initAudio();
+  initAudio(); // Unlocks audio context and starts BGM on very first tap!
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
@@ -683,6 +708,7 @@ function loop(now) {
 
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
+    if (!p) continue;
     p.life -= dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
