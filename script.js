@@ -109,7 +109,6 @@ let state = {
   pupCupTimer: 0,
   feastAnimTimer: 0,
   
-  // Unlocks for toys mapped to shop buttons
   hasTennisBall: false,
   hasFrisbee: false,
   hasHeavyBone: false,
@@ -134,9 +133,9 @@ state.costs.treatCup = 750;
 
 // Toy state objects
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
-let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isGliding: false, timer: 7.5, rotAngle: 0 };
+let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
 let heavyBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 5.0, isDragging: false, timer: 9.0, wobblePhase: 0 };
-let plush = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isSqueaking: false, timer: 5.5, squeezePhase: 0 };
+let plush = { gx: 5.0, gy: 5.0, isSqueaking: false, timer: 5.5, squeezePhase: 0 };
 
 function getTotalDogs() {
   let count = 0;
@@ -1010,8 +1009,6 @@ function drawFrisbee() {
   ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.rotate(frisbee.rotAngle);
-
   ctx.fillStyle = '#0984e3';
   ctx.strokeStyle = '#00cec9';
   ctx.lineWidth = 2;
@@ -1071,8 +1068,9 @@ function drawPlush() {
   const sq = Math.abs(Math.sin(plush.squeezePhase * 10)) * 2;
   ctx.scale(1 + sq * 0.2, 1 - sq * 0.2);
 
-  ctx.fillStyle = '#e84393';
-  ctx.strokeStyle = '#fd79a8';
+  // Warm brown plush toy styling
+  ctx.fillStyle = '#b26a36';
+  ctx.strokeStyle = '#8d4e22';
   ctx.lineWidth = 1.5;
 
   ctx.beginPath();
@@ -1309,7 +1307,7 @@ function loop(now) {
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // 1. Tennis Ball Behavior
+    // 1. Tennis Ball Behavior (Bounces/rolls away)
     if (state.hasTennisBall) {
       tennisBall.bouncePhase += dt;
       if (tennisBall.isRolling) {
@@ -1336,14 +1334,13 @@ function loop(now) {
       }
     }
 
-    // 2. Frisbee Behavior
+    // 2. Frisbee Behavior (Static stationary toy, dog walks up and nudges it to a new spot)
     if (state.hasFrisbee) {
-      frisbee.rotAngle += dt * 4;
-      if (frisbee.isGliding) {
-        frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 6);
-        frisbee.gy += (frisbee.targetGy - frisbee.gy) * (dt * 6);
+      if (frisbee.isMoving) {
+        frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 5);
+        frisbee.gy += (frisbee.targetGy - frisbee.gy) * (dt * 5);
         if (Math.hypot(frisbee.targetGx - frisbee.gx, frisbee.targetGy - frisbee.gy) < 0.05) {
-          frisbee.isGliding = false;
+          frisbee.isMoving = false;
         }
       } else {
         frisbee.timer -= dt;
@@ -1355,15 +1352,15 @@ function loop(now) {
           walker.state = 'WALK';
           walker.onReachToy = () => {
             sfx.shiny();
-            frisbee.isGliding = true;
-            frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 4.0));
-            frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 4.0));
+            frisbee.isMoving = true;
+            frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5));
+            frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5));
           };
         }
       }
     }
 
-    // 3. Heavy Bone Behavior
+    // 3. Heavy Bone Behavior (Drags with a thud)
     if (state.hasHeavyBone) {
       if (heavyBone.isDragging) {
         heavyBone.wobblePhase += dt;
@@ -1390,7 +1387,7 @@ function loop(now) {
       }
     }
 
-    // 4. Plush Toy Behavior
+    // 4. Plush Toy Behavior (Squeaks in place)
     if (state.hasPlush) {
       if (plush.isSqueaking) {
         plush.squeezePhase += dt;
