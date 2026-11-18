@@ -1,11 +1,8 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- PROCEDURAL WEB AUDIO SYNTHESIZER ---
+// --- PROCEDURAL SOUND EFFECTS (No BGM) ---
 let audioCtx = null;
-let isAudioEnabled = true; // Default to enabled
-let bgmInterval = null;
-let hasUnlockedAudio = false;
 
 function initAudio() {
   if (!audioCtx) {
@@ -14,17 +11,10 @@ function initAudio() {
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
-  
-  // Start background music automatically on first unlock if enabled
-  if (isAudioEnabled && !hasUnlockedAudio) {
-    hasUnlockedAudio = true;
-    startBGM();
-  }
 }
 
-// Play a pleasant chime for collection or upgrades
 function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
-  if (!isAudioEnabled || !audioCtx) return;
+  if (!audioCtx) return;
   try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -41,55 +31,22 @@ function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {
-    // Ignore restrictions prior to user gesture
+    // Ignore restrictions
   }
 }
 
-// Sound Effects
 const sfx = {
   dig: () => playSound(180, 'triangle', 0.08, 0.03),
-  collect: () => playSound(659.25, 'sine', 0.12, 0.04), // E5 note
+  collect: () => playSound(659.25, 'sine', 0.12, 0.04),
   magicCollect: () => {
     playSound(880, 'sine', 0.1, 0.04);
-    setTimeout(() => playSound(1318.51, 'sine', 0.2, 0.04), 80); // E6 chime
+    setTimeout(() => playSound(1318.51, 'sine', 0.2, 0.04), 80);
   },
   upgrade: () => {
     playSound(523.25, 'sine', 0.1, 0.04);
     setTimeout(() => playSound(783.99, 'sine', 0.2, 0.04), 100);
   }
 };
-
-// Procedural Background Music (Cozy Pentatonic Arpeggios)
-const pentatonicScale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // C major pentatonic
-function startBGM() {
-  if (bgmInterval) clearInterval(bgmInterval);
-  bgmInterval = setInterval(() => {
-    if (!isAudioEnabled || !audioCtx) return;
-    const note = pentatonicScale[Math.floor(Math.random() * pentatonicScale.length)];
-    playSound(note, 'sine', 0.6, 0.02);
-  }, 1200);
-}
-
-// Audio Toggle Button Listener (Music Note with Slash when Muted)
-const audioBtn = document.getElementById('btnAudio');
-if (audioBtn) {
-  audioBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); // Prevent triggering canvas click
-    initAudio();
-    isAudioEnabled = !isAudioEnabled;
-    if (isAudioEnabled) {
-      audioBtn.textContent = '🎵';
-      audioBtn.classList.remove('muted');
-      audioBtn.title = 'Sound: On';
-      startBGM();
-    } else {
-      audioBtn.textContent = '🔇';
-      audioBtn.classList.add('muted');
-      audioBtn.title = 'Sound: Off';
-      if (bgmInterval) clearInterval(bgmInterval);
-    }
-  });
-}
 
 // Game State
 let state = {
@@ -122,7 +79,8 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 10) {
+  // Strict check: Only trigger offline modal if away for more than 15 seconds
+  if (elapsedSeconds > 15) {
     const bonesPerSec = state.dogCount * state.digPower * state.speedMultiplier * 0.45;
     const earned = Math.floor(bonesPerSec * elapsedSeconds * 0.5);
     
@@ -152,22 +110,41 @@ function showOfflineModal(earned, seconds) {
   const text = document.getElementById('offlineEarnings');
   const mins = Math.floor(seconds / 60);
   if (text) {
-    text.textContent = `Earned ${earned.toLocaleString()} Bones in ${mins} minutes!`;
+    text.textContent = `Earned ${earned.toLocaleString()} Bones in ${mins > 0 ? mins + ' mins' : Math.floor(seconds) + ' secs'}!`;
   }
   if (modal) {
     modal.style.display = 'flex';
   }
 }
 
-const closeModalBtn = document.getElementById('btnCloseModal');
-if (closeModalBtn) {
-  closeModalBtn.addEventListener('click', () => {
-    const modal = document.getElementById('offlineModal');
-    if (modal) modal.style.display = 'none';
-  });
-}
+document.getElementById('btnCloseOffline').addEventListener('click', () => {
+  document.getElementById('offlineModal').style.display = 'none';
+});
 
-// Isometric Grid Settings (2.5D Diorama)
+// Menu Modal Controls
+const gameModal = document.getElementById('gameModal');
+document.getElementById('btnOpenMenu').addEventListener('click', () => {
+  initAudio();
+  gameModal.style.display = 'flex';
+});
+
+document.getElementById('btnCloseMenu').addEventListener('click', () => {
+  gameModal.style.display = 'none';
+});
+
+// Tab Switching Logic
+const tabBtns = document.querySelectorAll('.tab-btn');
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Isometric Grid Settings
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -542,7 +519,7 @@ function drawBoneSprite(x, y, isMagic) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-  initAudio(); // Unlocks audio context and starts BGM on very first tap!
+  initAudio();
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
@@ -617,17 +594,23 @@ document.getElementById('btnMushrooms').addEventListener('click', () => {
 });
 
 function updateUI() {
-  document.getElementById('boneCount').textContent = Math.floor(state.bones);
-  document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones);
-  document.getElementById('dogCount').textContent = dogs.length;
+  document.getElementById('boneCount').textContent = Math.floor(state.bones).toLocaleString();
+  document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
+  document.getElementById('dogCountDisplay').textContent = dogs.length;
+  document.getElementById('miniDogs').textContent = dogs.length;
 
   const estBps = (dogs.length * state.digPower * state.speedMultiplier * 0.45).toFixed(1);
-  document.getElementById('bpsCount').textContent = estBps;
+  document.getElementById('bpsCount').textContent = `+${estBps}/s`;
+  document.getElementById('miniBps').textContent = estBps;
 
-  document.getElementById('costSummon').textContent = `${state.costs.summon} Bones`;
-  document.getElementById('costDigPower').textContent = `${state.costs.digPower} Bones`;
-  document.getElementById('costZoomies').textContent = `${state.costs.zoomies} Bones`;
-  document.getElementById('costMushrooms').textContent = `${state.costs.mushrooms} Magic Bones`;
+  document.getElementById('costSummon').textContent = `${state.costs.summon.toLocaleString()} 🦴`;
+  document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
+  document.getElementById('costZoomies').textContent = `${state.costs.zoomies.toLocaleString()} 🦴`;
+  document.getElementById('costMushrooms').textContent = `${state.costs.mushrooms} ✨`;
+
+  document.getElementById('statDigPower').textContent = state.digPower;
+  document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
+  document.getElementById('statChance').textContent = `${Math.round(state.magicChance * 100)}%`;
 
   document.getElementById('btnSummon').disabled = state.bones < state.costs.summon;
   document.getElementById('btnDigPower').disabled = state.bones < state.costs.digPower;
@@ -684,8 +667,8 @@ function loop(now) {
         b.vy *= -0.4;
       }
     } else {
-      const targetX = canvas.width / 2 - 120;
-      const targetY = 36;
+      const targetX = 35;
+      const targetY = 32;
       b.x += (targetX - b.x) * 6 * dt;
       b.y += (targetY - b.y) * 6 * dt;
 
