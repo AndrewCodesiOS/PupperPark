@@ -129,10 +129,8 @@ let tennisBall = {
   targetGx: 3.5,
   targetGy: 3.5,
   isRolling: false,
-  hasRolledOnce: false, // Tracks the single chase cycle phase
-  timer: 5.0,
-  bouncePhase: 0,
-  chaserDog: null
+  timer: 6.0,
+  bouncePhase: 0
 };
 
 function getTotalDogs() {
@@ -496,6 +494,7 @@ class Dog {
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
     this.isMagicDig = false;
+    this.onReachTennisBall = null;
   }
 
   pickNewTarget() {
@@ -535,27 +534,9 @@ class Dog {
         this.gx = this.targetGx;
         this.gy = this.targetGy;
 
-        // If this dog reached the tennis ball during a chase cycle:
-        if (state.hasTennisBall && tennisBall.chaserDog === this) {
-          sfx.squeak();
-          if (!tennisBall.hasRolledOnce) {
-            // First arrival: Ball rolls/bounces away to a second spot, dog chases it there!
-            tennisBall.hasRolledOnce = true;
-            tennisBall.isRolling = true;
-            tennisBall.gx = this.gx;
-            tennisBall.gy = this.gy;
-            tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gx + (Math.random() - 0.5) * 3.5));
-            tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, this.gy + (Math.random() - 0.5) * 3.5));
-            
-            this.targetGx = tennisBall.targetGx;
-            this.targetGy = tennisBall.targetGy;
-            return;
-          } else {
-            // Second arrival: Chase complete! Dog stops chasing, ball settles, dog goes back to normal work.
-            tennisBall.chaserDog = null;
-            tennisBall.hasRolledOnce = false;
-            tennisBall.timer = 10.0 + Math.random() * 8.0; // Cooldown before next chase event
-          }
+        if (this.onReachTennisBall) {
+          this.onReachTennisBall();
+          this.onReachTennisBall = null;
         }
 
         this.state = 'DIG';
@@ -574,12 +555,6 @@ class Dog {
         this.gy += (dy / dist) * speed * dt;
         this.gx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gx));
         this.gy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gy));
-
-        // If dog is walking to the ball initially, ball moves with him until first reach
-        if (state.hasTennisBall && tennisBall.chaserDog === this && !tennisBall.hasRolledOnce && !tennisBall.isRolling) {
-          tennisBall.gx = this.gx;
-          tennisBall.gy = this.gy;
-        }
       }
     } else if (this.state === 'DIG') {
       this.timer -= dt;
@@ -1238,20 +1213,27 @@ function loop(now) {
       tennisBall.bouncePhase += dt;
 
       if (tennisBall.isRolling) {
-        tennisBall.gx += (tennisBall.targetGx - tennisBall.gx) * (dt * 6);
-        tennisBall.gy += (tennisBall.targetGy - tennisBall.gy) * (dt * 6);
+        tennisBall.gx += (tennisBall.targetGx - tennisBall.gx) * (dt * 5);
+        tennisBall.gy += (tennisBall.targetGy - tennisBall.gy) * (dt * 5);
         if (Math.hypot(tennisBall.targetGx - tennisBall.gx, tennisBall.targetGy - tennisBall.gy) < 0.05) {
           tennisBall.isRolling = false;
         }
-      } else if (!tennisBall.chaserDog) {
+      } else {
         tennisBall.timer -= dt;
         if (tennisBall.timer <= 0 && dogs.length > 0) {
-          // Periodically pick a random dog to initiate one chase cycle
-          tennisBall.chaserDog = dogs[Math.floor(Math.random() * dogs.length)];
-          tennisBall.hasRolledOnce = false;
-          tennisBall.chaserDog.targetGx = tennisBall.gx;
-          tennisBall.chaserDog.targetGy = tennisBall.gy;
-          tennisBall.chaserDog.state = 'WALK';
+          tennisBall.timer = 8.0 + Math.random() * 6.0;
+
+          const walker = dogs[Math.floor(Math.random() * dogs.length)];
+          walker.targetGx = tennisBall.gx;
+          walker.targetGy = tennisBall.gy;
+          walker.state = 'WALK';
+
+          walker.onReachTennisBall = () => {
+            sfx.squeak();
+            tennisBall.isRolling = true;
+            tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5));
+            tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5));
+          };
         }
       }
     }
@@ -1296,7 +1278,6 @@ function loop(now) {
       });
     });
 
-    // Properly sort renderables by screen Y coordinate to maintain perfect depth sorting
     renderables.sort((a, b) => a.sortY - b.sortY);
     renderables.forEach(item => item.draw());
 
