@@ -60,8 +60,12 @@ html, body {
   width: 100%;
   height: 100%;
   display: block;
-  cursor: pointer;
+  cursor: grab;
   background: radial-gradient(circle at center, #1b1734 0%, #0d0b1a 100%);
+}
+
+#gameCanvas:active {
+  cursor: grabbing;
 }
 
 /* Bottom Right Mini Bar */
@@ -108,32 +112,32 @@ html, body {
   transform: translateY(-1px);
 }
 
-/* Slide-Up Bottom Drawer Menu (Transparent overlay so top park is fully active & visible) */
+/* Slide-Up Bottom Drawer Menu */
 .drawer-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0); /* Fully transparent backdrop so park is interactive */
+  background: rgba(0, 0, 0, 0);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   z-index: 100;
-  pointer-events: none; /* Allows clicking through top overlay onto the canvas */
+  pointer-events: none;
 }
 
 .drawer-window {
   background: linear-gradient(180deg, #221b44 0%, #15112e 100%);
   border-top: 2px solid #6c5ce7;
   width: 100%;
-  max-height: 38vh; /* Keeps top park visible */
+  max-height: 38vh;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 -10px 30px rgba(0,0,0,0.6);
-  pointer-events: auto; /* Captures interactions inside the drawer */
+  pointer-events: auto;
   transition: transform 0.15s ease-out;
   touch-action: none;
 }
