@@ -327,7 +327,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Restored Proto-Launch Aussie Art Style
+// Dog Entity with High-Detail Multi-Layered Art for Aussie, Corgi, and Collie
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -466,7 +466,7 @@ class Dog {
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
     if (this.breed === 'aussie') {
-      // --- RESTORED PROTO-LAUNCH AUSTRALIAN SHEPHERD SPRITE ---
+      // --- AUSTRALIAN SHEPHERD ---
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
 
       ctx.fillStyle = primaryColor;
@@ -529,76 +529,125 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'corgi') {
-      // --- PEMBROKE CORGI SPRITE ---
+      // --- PEMBROKE CORGI (Redesigned with high-detail multi-layer style) ---
       const corgiColor = this.isShiny ? this.shinyColor : '#e17055';
 
+      // Stubby legs with white paws
       ctx.fillStyle = corgiColor;
-      ctx.fillRect(-9 - legSwing, -1, 4, 7);
-      ctx.fillRect(5 + legSwing, -1, 4, 7);
+      ctx.fillRect(-10 - legSwing, -1, 4, 8);
+      ctx.fillRect(5 + legSwing, -1, 4, 8);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-9 - legSwing, 5, 4, 2);
-      ctx.fillRect(5 + legSwing, 5, 4, 2);
+      ctx.fillRect(-10 - legSwing, 5, 4, 3);
+      ctx.fillRect(5 + legSwing, 5, 4, 3);
 
+      // Low fluffy tail wagging
+      const wag = Math.sin(this.animPhase * 1.5) * 2;
       ctx.fillStyle = corgiColor;
       ctx.beginPath();
-      ctx.ellipse(0, -6, 15, 8, 0, 0, Math.PI * 2);
+      ctx.arc(-14, -7 + wag, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
+      // Long low-slung body
+      ctx.fillStyle = corgiColor;
+      ctx.beginPath();
+      ctx.ellipse(-1, -7, 15, 8.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Golden tan back shading
+      ctx.fillStyle = '#fab1a0';
+      ctx.beginPath();
+      ctx.ellipse(-1, -9, 10, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // White chest ruff
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(8, -6, 5, 6, 0, 0, Math.PI * 2);
+      ctx.arc(8, -7, 7, 0, Math.PI * 2);
       ctx.fill();
 
+      // Head
       ctx.fillStyle = corgiColor;
       ctx.beginPath();
-      ctx.arc(10, -14, 7, 0, Math.PI * 2);
+      ctx.arc(11, -16, 7.5, 0, Math.PI * 2);
       ctx.fill();
 
+      // Large upright pointed ears
+      ctx.fillStyle = '#d63031';
       ctx.beginPath();
-      ctx.moveTo(6, -18); ctx.lineTo(12, -24); ctx.lineTo(14, -16); ctx.fill();
+      ctx.moveTo(7, -20); ctx.lineTo(13, -27); ctx.lineTo(15, -18); ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(10, -18); ctx.lineTo(16, -22); ctx.lineTo(12, -14); ctx.fill();
+      ctx.moveTo(11, -19); ctx.lineTo(17, -24); ctx.lineTo(13, -15); ctx.fill();
+
+      // White snout & dark nose/eye
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(15, -15, 4, 3, 0.2, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
-      ctx.arc(15, -14, 1.5, 0, Math.PI * 2);
+      ctx.arc(18, -16, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(13, -18, 1.3, 0, Math.PI * 2);
       ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // --- BORDER COLLIE SPRITE ---
+      // --- BORDER COLLIE (Redesigned with high-detail multi-layer style) ---
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
 
+      // Athletic legs with white paws
       ctx.fillStyle = collieColor;
-      ctx.fillRect(-12 - legSwing, -4, 3, 11);
-      ctx.fillRect(7 + legSwing, -4, 3, 11);
+      ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
+      ctx.fillRect(7 + legSwing, -3, 3.5, 10);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-12 - legSwing, 6, 3, 2);
-      ctx.fillRect(7 + legSwing, 6, 3, 2);
+      ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
+      ctx.fillRect(7 + legSwing, 4, 3.5, 3);
 
+      // Graceful flowing tail
+      const wag = Math.sin(this.animPhase * 1.5) * 3;
+      ctx.fillStyle = collieColor;
+      ctx.beginPath();
+      ctx.arc(-16, -11 + wag, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sleek athletic torso
       ctx.fillStyle = collieColor;
       ctx.beginPath();
       ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2);
       ctx.fill();
 
+      // Iconic white collar ruff
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(6, -10, 4, 6, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(5, -11, 5, 7, 0.25, 0, Math.PI * 2);
       ctx.fill();
 
+      // Intelligent refined head & long snout
       ctx.fillStyle = collieColor;
       ctx.beginPath();
-      ctx.arc(11, -17, 7, 0, Math.PI * 2);
+      ctx.arc(11, -17, 7.5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(11, -16); ctx.lineTo(19, -14); ctx.lineTo(13, -11); ctx.fill();
+      ctx.moveTo(11, -16); ctx.lineTo(20, -14); ctx.lineTo(13, -11); ctx.fill();
 
+      // Semi-floppy tipped ears
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath();
+      ctx.ellipse(8, -21, 3, 5, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Black nose & alert eye
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
-      ctx.arc(18, -14.5, 1.5, 0, Math.PI * 2);
+      ctx.arc(20.5, -14.5, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(14, -18.5, 1.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -752,14 +801,13 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
-// Recruit Handlers with Shiny Chance (Line ~233)
+// Recruit Handlers with Shiny Chance
 function recruitDog(breed, costKey) {
   initAudio();
   if (state.bones >= state.costs[costKey]) {
     state.bones -= state.costs[costKey];
     state.costs[costKey] = Math.floor(state.costs[costKey] * 1.45);
     
-    // Change `false` to `true` here temporarily for testing shiny odds
     const isShiny = Math.random() < (1 / 8000);
     
     if (isShiny) {
