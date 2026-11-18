@@ -44,10 +44,14 @@ const sfx = {
   upgrade: () => {
     playSound(523.25, 'sine', 0.1, 0.04);
     setTimeout(() => playSound(783.99, 'sine', 0.2, 0.04), 100);
+  },
+  shiny: () => {
+    playSound(1046.50, 'sine', 0.15, 0.06); // C6 sparkle
+    setTimeout(() => playSound(1318.51, 'sine', 0.3, 0.06), 120);
   }
 };
 
-// Game State with Multiple Dog Breeds
+// Game State with Shiny Dogs & Prestige Storage
 let state = {
   bones: 0,
   magicBones: 0,
@@ -56,6 +60,7 @@ let state = {
     corgi: 0,
     collie: 0
   },
+  shinyDogs: [], // Stores objects like { breed: 'aussie', shinyColor: '#f1c40f' }
   digPower: 1,
   speedMultiplier: 1,
   magicChance: 0.12,
@@ -71,13 +76,14 @@ let state = {
 };
 
 function getTotalDogs() {
-  return state.dogs.aussie + state.dogs.corgi + state.dogs.collie;
+  return state.dogs.aussie + state.dogs.corgi + state.dogs.collie + state.shinyDogs.length;
 }
 
-// Calculate precise Bones Per Second based on breed strengths
 function getBPS() {
-  const base = (state.dogs.aussie * 1) + (state.dogs.corgi * 1.5) + (state.dogs.collie * 4);
-  return base * state.digPower * state.speedMultiplier * 0.45;
+  const normalBase = (state.dogs.aussie * 1) + (state.dogs.corgi * 1.5) + (state.dogs.collie * 4);
+  // Shiny dogs contribute base power matching their breed
+  const shinyBase = state.shinyDogs.reduce((acc, d) => acc + (d.breed === 'collie' ? 4 : (d.breed === 'corgi' ? 1.5 : 1)), 0);
+  return (normalBase + shinyBase) * state.digPower * state.speedMultiplier * 0.45;
 }
 
 function loadGame() {
@@ -86,7 +92,7 @@ function loadGame() {
     try {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
-      // Backward compatibility if dogs was previously just a number
+      if (!state.shinyDogs) state.shinyDogs = [];
       if (typeof state.dogs === 'number') {
         const oldTotal = state.dogs;
         state.dogs = { aussie: oldTotal, corgi: 0, collie: 0 };
@@ -99,9 +105,8 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  // Accurate offline earnings calculation
   if (elapsedSeconds > 10) {
-    const earned = Math.floor(getBPS() * elapsedSeconds * 0.6); // 60% offline efficiency
+    const earned = Math.floor(getBPS() * elapsedSeconds * 0.6);
     if (earned > 0) {
       state.bones += earned;
       showOfflineModal(earned);
@@ -111,14 +116,17 @@ function loadGame() {
   state.lastSaveTime = now;
   saveGame();
 
-  // Instantiate dog entities onto grid
-  const total = getTotalDogs();
-  for (let i = 0; i < total; i++) {
-    let breed = 'aussie';
-    if (i >= state.dogs.aussie && i < state.dogs.aussie + state.dogs.corgi) breed = 'corgi';
-    else if (i >= state.dogs.aussie + state.dogs.corgi) breed = 'collie';
-    dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, breed));
-  }
+  // Instantiate normal dogs
+  ['aussie', 'corgi', 'collie'].forEach(breed => {
+    for (let i = 0; i < state.dogs[breed]; i++) {
+      dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, breed, false));
+    }
+  });
+
+  // Instantiate saved shiny dogs
+  state.shinyDogs.forEach(shiny => {
+    dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, shiny.breed, true, shiny.color));
+  });
 }
 
 function saveGame() {
@@ -322,9 +330,9 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity supporting multiple breeds (Aussie, Corgi, Collie)
+// Dog Entity with Cute Detailed Aussie Art Style & 1-in-8000 Shiny Chance
 class Dog {
-  constructor(gx, gy, breed = 'aussie') {
+  constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
     this.gy = gy;
     this.targetGx = gx;
@@ -334,6 +342,11 @@ class Dog {
     this.facingRight = Math.random() > 0.5;
     this.animPhase = Math.random() * Math.PI * 2;
     this.breed = breed;
+    this.isShiny = isShiny;
+    
+    // Pick shiny alternate color palette if shiny
+    const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
+    this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
     this.isMagicDig = false;
   }
 
@@ -369,7 +382,6 @@ class Dog {
         this.state = 'DIG';
         this.timer = (this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier;
         
-        // Corgi gives bonus magic chance
         const magicBonus = this.breed === 'corgi' ? 0.15 : 0;
         this.isMagicDig = Math.random() < (state.magicChance + magicBonus);
       } else {
@@ -421,6 +433,17 @@ class Dog {
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
+    // Shiny starlight aura effect
+    if (this.isShiny) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 234, 167, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 24 + Math.sin(this.animPhase * 3) * 3, 12, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if (this.state === 'DIG' && this.isMagicDig) {
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 234, 167, 0.85)';
@@ -440,43 +463,52 @@ class Dog {
       ctx.scale(-1, 1);
     }
 
-    // Render features based on breed
-    if (this.breed === 'corgi') {
-      // Short stumpy body and big ears
-      ctx.fillStyle = '#e17055';
-      ctx.fillRect(-10, -6, 20, 10);
-      ctx.fillStyle = '#ffeaa7';
-      ctx.fillRect(-8, -2, 16, 6);
-      // Ears
-      ctx.fillStyle = '#d63031';
-      ctx.beginPath();
-      ctx.moveTo(6, -14); ctx.lineTo(12, -6); ctx.lineTo(4, -6); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-2, -14); ctx.lineTo(4, -6); ctx.lineTo(-4, -6); ctx.fill();
-    } else if (this.breed === 'collie') {
-      // Sleek black and white collie
-      ctx.fillStyle = '#2d3436';
-      ctx.beginPath();
-      ctx.ellipse(0, -7, 16, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-4, -10, 8, 8);
-    } else {
-      // Standard Australian Shepherd
-      const bounce = this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0;
-      ctx.translate(0, -bounce);
-      ctx.fillStyle = '#c87d4b';
-      ctx.fillRect(-11, -3, 4, 9);
-      ctx.fillRect(6, -3, 4, 9);
-      ctx.fillStyle = '#4e433f';
-      ctx.beginPath();
-      ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f8f9fa';
-      ctx.beginPath();
-      ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const bounce = this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0;
+    const digTilt = this.state === 'DIG' ? 0.25 : 0;
+    ctx.translate(0, -bounce);
+    ctx.rotate(digTilt);
+
+    // Cute detailed Aussie sprite drawing restored!
+    const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
+    const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
+    
+    // Legs
+    ctx.fillStyle = primaryColor;
+    ctx.fillRect(-11 - legSwing, -3, 4, 9);
+    ctx.fillRect(6 + legSwing, -3, 4, 9);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-11 - legSwing, 4, 4, 3);
+    ctx.fillRect(6 + legSwing, 4, 4, 3);
+
+    // Tail / Wag
+    const wag = Math.sin(this.animPhase * 1.5) * 2;
+    ctx.fillStyle = '#4e433f';
+    ctx.beginPath();
+    ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = primaryColor;
+    ctx.beginPath();
+    ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head & Muzzle
+    ctx.fillStyle = '#f8f9fa';
+    ctx.beginPath();
+    ctx.arc(9, -8, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = primaryColor;
+    ctx.beginPath();
+    ctx.arc(11, -17, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1e1e1e';
+    ctx.beginPath();
+    ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -535,23 +567,19 @@ function drawDoghouse() {
   ctx.restore();
 }
 
-// Procedural Tree Prop in the Park
 function drawTree() {
   const pos = gridToScreen(5.8, 1.2);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Trunk
   ctx.fillStyle = '#795548';
   ctx.fillRect(-4, -18, 8, 20);
 
-  // Foliage Layers
   ctx.fillStyle = '#27ae60';
   ctx.beginPath();
   ctx.arc(0, -26, 16, 0, Math.PI * 2);
@@ -632,45 +660,36 @@ function drawBoneSprite(x, y, isMagic) {
   ctx.restore();
 }
 
-// Purchase Handlers for Breeds & Upgrades
-document.getElementById('btnSummonAussie').addEventListener('click', () => {
+// Helper to recruit with 1-in-8000 Shiny chance check
+function recruitDog(breed, costKey) {
   initAudio();
-  if (state.bones >= state.costs.aussie) {
-    state.bones -= state.costs.aussie;
-    state.costs.aussie = Math.floor(state.costs.aussie * 1.45);
-    state.dogs.aussie++;
-    dogs.push(new Dog(1.5, 1.5, 'aussie'));
-    sfx.upgrade();
-    updateUI();
-    saveGame();
-  }
-});
+  if (state.bones >= state.costs[costKey]) {
+    state.bones -= state.costs[costKey];
+    state.costs[costKey] = Math.floor(state.costs[costKey] * 1.45);
+    
+    // 1 in 8000 chance for shiny!
+    const isShiny = Math.random() < (1 / 8000);
+    
+    if (isShiny) {
+      const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
+      const chosenColor = shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
+      state.shinyDogs.push({ breed, color: chosenColor });
+      dogs.push(new Dog(1.5, 1.5, breed, true, chosenColor));
+      sfx.shiny();
+    } else {
+      state.dogs[breed]++;
+      dogs.push(new Dog(1.5, 1.5, breed, false));
+      sfx.upgrade();
+    }
 
-document.getElementById('btnSummonCorgi').addEventListener('click', () => {
-  initAudio();
-  if (state.bones >= state.costs.corgi) {
-    state.bones -= state.costs.corgi;
-    state.costs.corgi = Math.floor(state.costs.corgi * 1.5);
-    state.dogs.corgi++;
-    dogs.push(new Dog(1.5, 1.5, 'corgi'));
-    sfx.upgrade();
     updateUI();
     saveGame();
   }
-});
+}
 
-document.getElementById('btnSummonCollie').addEventListener('click', () => {
-  initAudio();
-  if (state.bones >= state.costs.collie) {
-    state.bones -= state.costs.collie;
-    state.costs.collie = Math.floor(state.costs.collie * 1.6);
-    state.dogs.collie++;
-    dogs.push(new Dog(1.5, 1.5, 'collie'));
-    sfx.upgrade();
-    updateUI();
-    saveGame();
-  }
-});
+document.getElementById('btnSummonAussie').addEventListener('click', () => recruitDog('aussie', 'aussie'));
+document.getElementById('btnSummonCorgi').addEventListener('click', () => recruitDog('corgi', 'corgi'));
+document.getElementById('btnSummonCollie').addEventListener('click', () => recruitDog('collie', 'collie'));
 
 document.getElementById('btnDigPower').addEventListener('click', () => {
   initAudio();
@@ -708,15 +727,38 @@ document.getElementById('btnMushrooms').addEventListener('click', () => {
   }
 });
 
+// Prestige Button Handler
+document.getElementById('btnPrestige').addEventListener('click', () => {
+  initAudio();
+  if (state.bones >= 1000) {
+    // Reset standard bones and standard dogs, but KEEP shinyDogs!
+    state.bones = 0;
+    state.dogs = { aussie: 1, corgi: 0, collie: 0 };
+    
+    // Clear and re-populate park canvas with only the saved shiny dogs + 1 starter aussie
+    dogs.length = 0;
+    dogs.push(new Dog(1.5, 1.5, 'aussie', false));
+    state.shinyDogs.forEach(shiny => {
+      dogs.push(new Dog(1.5 + Math.random() * 4, 1.5 + Math.random() * 4, shiny.breed, true, shiny.color));
+    });
+
+    sfx.shiny();
+    closeMenu();
+    updateUI();
+    saveGame();
+  }
+});
+
 function updateUI() {
   document.getElementById('boneCount').textContent = Math.floor(state.bones).toLocaleString();
   document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
   
   const total = getTotalDogs();
   document.getElementById('miniDogs').textContent = total;
-  document.getElementById('countAussie').textContent = state.dogs.aussie;
-  document.getElementById('countCorgi').textContent = state.dogs.corgi;
-  document.getElementById('countCollie').textContent = state.dogs.collie;
+  document.getElementById('countAussie').textContent = state.dogs.aussie + state.shinyDogs.filter(d => d.breed === 'aussie').length;
+  document.getElementById('countCorgi').textContent = state.dogs.corgi + state.shinyDogs.filter(d => d.breed === 'corgi').length;
+  document.getElementById('countCollie').textContent = state.dogs.collie + state.shinyDogs.filter(d => d.breed === 'collie').length;
+  document.getElementById('shinyCountDisplay').textContent = state.shinyDogs.length;
 
   const estBps = getBPS().toFixed(1);
   document.getElementById('bpsCount').textContent = `+${estBps}/s`;
@@ -738,6 +780,7 @@ function updateUI() {
   document.getElementById('btnDigPower').disabled = state.bones < state.costs.digPower;
   document.getElementById('btnZoomies').disabled = state.bones < state.costs.zoomies;
   document.getElementById('btnMushrooms').disabled = state.magicBones < state.costs.mushrooms;
+  document.getElementById('btnPrestige').disabled = state.bones < 1000;
 }
 
 loadGame();
@@ -747,7 +790,6 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
 
-  // Passive BPS increment
   const bps = getBPS();
   if (bps > 0) {
     state.bones += bps * dt;
