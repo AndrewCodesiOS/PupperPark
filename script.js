@@ -307,6 +307,74 @@ tabBtns.forEach(btn => {
   });
 });
 
+// Settings: Reset Progress Modal Handlers
+const resetConfirmModal = document.getElementById('resetConfirmModal');
+document.getElementById('btnResetProgress').addEventListener('click', () => {
+  initAudio();
+  resetConfirmModal.style.display = 'flex';
+});
+
+document.getElementById('btnCancelReset').addEventListener('click', () => {
+  initAudio();
+  resetConfirmModal.style.display = 'none';
+});
+
+document.getElementById('btnConfirmReset').addEventListener('click', () => {
+  initAudio();
+  localStorage.removeItem('pupperpark_save');
+
+  state = {
+    bones: 0,
+    magicBones: 0,
+    dogs: {
+      aussie: 1, collie: 0, golden: 0, husky: 0,
+      shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
+    },
+    shinyDogs: [],
+    perks: [],
+    digPower: 1,
+    speedMultiplier: 1,
+    idleMultiplier: 0.6,
+    magicChance: 0.12,
+    
+    kongTimer: 0,
+    baconTimer: 0,
+    pupCupTimer: 0,
+    feastAnimTimer: 0,
+    
+    hasTennisBall: false,
+    hasFrisbee: false,
+    hasRedBone: false,
+    hasDuck: false,
+
+    costs: {},
+    lastSaveTime: Date.now()
+  };
+
+  Object.keys(BREED_CONFIG).forEach(b => {
+    state.costs[b] = BREED_CONFIG[b].cost;
+  });
+  state.costs.toyBones = 25;
+  state.costs.toySpeed = 40;
+  state.costs.toyDig = 100;
+  state.costs.toyIdle = 200;
+
+  state.costs.treatKong = 150;
+  state.costs.treatBacon = 300;
+  state.costs.treatFeast = 500;
+  state.costs.treatCup = 750;
+
+  dogs.length = 0;
+  dogs.push(new Dog(1.5, 1.5, 'aussie', false));
+  droppedBones.length = 0;
+  particles.length = 0;
+
+  resetConfirmModal.style.display = 'none';
+  closeMenu();
+  updateUI();
+  saveGame();
+});
+
 const GRID_SIZE = 7;
 const TILE_W = 96;
 const TILE_H = 48;
@@ -1397,7 +1465,7 @@ function loop(now) {
       }
     }
 
-    // 4. Rubber Duck Behavior (Now glides/gets pushed when interacted with!)
+    // 4. Rubber Duck Behavior (Glides/gets pushed when interacted with!)
     if (state.hasDuck) {
       if (duck.isMoved) {
         duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
