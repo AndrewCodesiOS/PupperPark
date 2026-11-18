@@ -47,6 +47,10 @@ const sfx = {
   shiny: () => {
     playSound(1046.50, 'sine', 0.15, 0.06);
     setTimeout(() => playSound(1318.51, 'sine', 0.3, 0.06), 120);
+  },
+  gather: () => {
+    playSound(587.33, 'sine', 0.2, 0.05);
+    setTimeout(() => playSound(880, 'sine', 0.3, 0.05), 100);
   }
 };
 
@@ -62,16 +66,16 @@ const BREED_CONFIG = {
 };
 
 const PERK_POOL = [
-  { id: 'bp_1', name: 'Sturdy Paws', rarity: 'Common', desc: '+10% Bone Generation', mult: 1.10 },
-  { id: 'bp_2', name: 'Velvet Leash', rarity: 'Common', desc: '+15% Bone Generation', mult: 1.15 },
-  { id: 'bp_3', name: 'Chew Toy Mastery', rarity: 'Common', desc: '+20% Bone Generation', mult: 1.20 },
-  { id: 'sp_1', name: 'Brisk Trot', rarity: 'Common', desc: '+10% Digging Speed', workMult: 1.10 },
-  { id: 'bp_4', name: 'Golden Collar', rarity: 'Rare', desc: '+30% Bone Generation', mult: 1.30 },
-  { id: 'bp_5', name: 'Pup Scout Badge', rarity: 'Rare', desc: '+40% Bone Generation', mult: 1.40 },
-  { id: 'mp_1', name: 'Mystic Whispers', rarity: 'Rare', desc: '+4% Magic Bone Chance', magicAdd: 0.04 },
-  { id: 'bp_6', name: 'Alpha Ancestry', rarity: 'Legendary', desc: '+80% Bone Generation (Kept on Prestige!)', mult: 1.80 },
-  { id: 'mp_2', name: 'Astral Snout', rarity: 'Legendary', desc: '+10% Magic Bone Chance (Kept on Prestige!)', magicAdd: 0.10 },
-  { id: 'myth_1', name: 'Celestial Bark', rarity: 'Mythic', desc: '+200% Bone Generation & Speed (Kept on Prestige!)', mult: 3.0, workMult: 1.5 }
+  { id: 'bp_1', name: 'Sturdy Paws', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.10 },
+  { id: 'bp_2', name: 'Velvet Leash', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
+  { id: 'bp_3', name: 'Chew Toy Mastery', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.20 },
+  { id: 'sp_1', name: 'Brisk Trot', rarity: 'Common', desc: 'Boosts Digging Speed', workMult: 1.10 },
+  { id: 'bp_4', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
+  { id: 'bp_5', name: 'Pup Scout Badge', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
+  { id: 'mp_1', name: 'Mystic Whispers', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
+  { id: 'bp_6', name: 'Alpha Ancestry', rarity: 'Legendary', desc: 'Boosts Bone Generation (Kept on Prestige!)', mult: 1.80 },
+  { id: 'mp_2', name: 'Astral Snout', rarity: 'Legendary', desc: 'Boosts Magic Bone Chance (Kept on Prestige!)', magicAdd: 0.10 },
+  { id: 'myth_1', name: 'Celestial Bark', rarity: 'Mythic', desc: 'Boosts Bone Generation & Speed (Kept on Prestige!)', mult: 3.0, workMult: 1.5 }
 ];
 
 let state = {
@@ -306,26 +310,89 @@ function screenToGrid(sx, sy) {
   };
 }
 
+// Hold-to-Gather & Rotation State
 let isRotating = false;
 let lastMouseX = 0;
+let lastMouseY = 0;
+let holdTimer = null;
+let holdStartTime = 0;
+let holdPosition = { x: 0, y: 0 };
+const HOLD_DURATION = 4000; // 4 seconds
 
 canvas.addEventListener('pointerdown', (e) => {
   isRotating = true;
   lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
   canvas.setPointerCapture(e.pointerId);
+
+  // Start 4-second hold timer for gathering dogs
+  holdStartTime = performance.now();
+  holdPosition = { x: e.clientX, y: e.clientY };
+  
+  if (holdTimer) clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    initAudio();
+    sfx.gather();
+    const rect = canvas.getBoundingClientRect();
+    const clickX = holdPosition.x - rect.left;
+    const clickY = holdPosition.y - rect.top;
+    const targetGrid = screenToGrid(clickX, clickY);
+
+    dogs.forEach(dog => {
+      dog.targetGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, targetGrid.gx + (Math.random() - 0.5) * 0.6));
+      dog.targetGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, targetGrid.gy + (Math.random() - 0.5) * 0.6));
+      dog.state = 'WALK';
+    });
+
+    particles.push({
+      x: clickX,
+      y: clickY,
+      vx: 0,
+      vy: 0,
+      life: 0.8,
+      maxLife: 0.8,
+      color: '#ffeaa7',
+      size: 5,
+      isRing: true
+    });
+
+    isRotating = false;
+  }, HOLD_DURATION);
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  const moveDist = Math.hypot(e.clientX - lastMouseX, e.clientY - lastMouseY);
+  
+  if (moveDist > 15) {
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+  }
+
   if (!isRotating) return;
   const deltaX = e.clientX - lastMouseX;
   lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
   cameraAngle += deltaX * 0.008;
 });
 
 canvas.addEventListener('pointerup', (e) => {
-  if (!isRotating) return;
+  if (holdTimer) {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+  }
+
+  if (!isRotating) {
+    isRotating = false;
+    if (e.pointerId) {
+      try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+    }
+    return;
+  }
+
   isRotating = false;
-  canvas.releasePointerCapture(e.pointerId);
+  try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
   
   const totalDrag = Math.abs(e.clientX - lastMouseX);
   if (totalDrag < 5) {
@@ -1033,6 +1100,28 @@ function loop(now) {
   renderables.sort((a, b) => a.sortY - b.sortY);
   renderables.forEach(item => item.draw());
 
+  // Draw hold timer charging indicator if holding down
+  if (holdTimer) {
+    const elapsed = performance.now() - holdStartTime;
+    const progress = Math.min(1, elapsed / HOLD_DURATION);
+    const rect = canvas.getBoundingClientRect();
+    const hx = holdPosition.x - rect.left;
+    const hy = holdPosition.y - rect.top;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 234, 167, 0.85)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 26, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 234, 167, 0.25)';
+    ctx.beginPath();
+    ctx.arc(hx, hy, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   for (let i = droppedBones.length - 1; i >= 0; i--) {
     const b = droppedBones[i];
     b.age += dt;
@@ -1082,10 +1171,18 @@ function loop(now) {
     }
 
     ctx.globalAlpha = p.life / p.maxLife;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.isRing) {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, (1 - p.life / p.maxLife) * 45, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
 
