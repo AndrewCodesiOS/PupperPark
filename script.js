@@ -63,6 +63,10 @@ const sfx = {
   quack: () => {
     playSound(450, 'sawtooth', 0.1, 0.04);
     setTimeout(() => playSound(380, 'sawtooth', 0.12, 0.04), 70);
+  },
+  thud: () => {
+    playSound(220, 'square', 0.1, 0.04);
+    setTimeout(() => playSound(150, 'square', 0.15, 0.04), 50);
   }
 };
 
@@ -111,7 +115,7 @@ let state = {
   
   hasTennisBall: false,
   hasFrisbee: false,
-  hasRope: false,
+  hasRedBone: false,
   hasDuck: false,
 
   costs: {},
@@ -131,10 +135,10 @@ state.costs.treatBacon = 300;
 state.costs.treatFeast = 500;
 state.costs.treatCup = 750;
 
-// Toy state objects
+// Toy state objects with safe initial coordinates
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
-let rope = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isTugged: false, timer: 9.0 };
+let redBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isMoved: false, timer: 9.0 };
 let duck = { gx: 5.0, gy: 5.0, isQuacking: false, timer: 5.5, quackPhase: 0 };
 
 function getTotalDogs() {
@@ -1025,37 +1029,29 @@ function drawFrisbee() {
   ctx.restore();
 }
 
-function drawRope() {
-  if (!state.hasRope) return;
-  const pos = gridToScreen(rope.gx, rope.gy);
+function drawRedBone() {
+  if (!state.hasRedBone) return;
+  const pos = gridToScreen(redBone.gx, redBone.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(0, 4, 12, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, 10, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Braided Rope Toy (Cream and Mint Green twisted design with frayed ends)
-  ctx.fillStyle = '#dfe6e9';
-  ctx.strokeStyle = '#b2bec3';
+  // Vibrant Red Chew Bone Toy
+  ctx.fillStyle = '#ff7675';
+  ctx.strokeStyle = '#d63031';
   ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.ellipse(0, -2, 12, 5, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
 
-  // Mint green stripes
-  ctx.fillStyle = '#55efc4';
-  ctx.fillRect(-5, -5, 3, 6);
-  ctx.fillRect(2, -3, 3, 6);
-
-  // Frayed tufts at ends
-  ctx.fillStyle = '#f5f6fa';
-  ctx.beginPath();
-  ctx.arc(-12, -3, 3.5, 0, Math.PI * 2);
-  ctx.arc(12, 0, 3.5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillRect(-8, -3, 16, 6);
+  [[ -8, -3.5 ], [ -8, 3.5 ], [ 8, -3.5 ], [ 8, 3.5 ]].forEach(([kx, ky]) => {
+    ctx.beginPath();
+    ctx.arc(kx, ky, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
 
   ctx.restore();
 }
@@ -1173,7 +1169,7 @@ document.getElementById('btnToyDig').addEventListener('click', () => {
     state.bones -= state.costs.toyDig;
     state.digPower += 2;
     state.costs.toyDig = Math.floor(state.costs.toyDig * 1.60);
-    state.hasRope = true;
+    state.hasRedBone = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -1378,33 +1374,33 @@ function loop(now) {
       }
     }
 
-    // 3. Rope Toy Behavior (Nudged by dog)
-    if (state.hasRope) {
-      if (rope.isTugged) {
-        rope.gx += (rope.targetGx - rope.gx) * (dt * 4);
-        rope.gy += (rope.targetGy - rope.gy) * (dt * 4);
-        if (Math.hypot(rope.targetGx - rope.gx, rope.targetGy - rope.gy) < 0.05) {
-          rope.isTugged = false;
+    // 3. Red Chew Bone Behavior
+    if (state.hasRedBone) {
+      if (redBone.isMoved) {
+        redBone.gx += (redBone.targetGx - redBone.gx) * (dt * 4);
+        redBone.gy += (redBone.targetGy - redBone.gy) * (dt * 4);
+        if (Math.hypot(redBone.targetGx - redBone.gx, redBone.targetGy - redBone.gy) < 0.05) {
+          redBone.isMoved = false;
         }
       } else {
-        rope.timer -= dt;
-        if (rope.timer <= 0 && dogs.length > 0) {
-          rope.timer = 11.0 + Math.random() * 7.0;
+        redBone.timer -= dt;
+        if (redBone.timer <= 0 && dogs.length > 0) {
+          redBone.timer = 11.0 + Math.random() * 7.0;
           const walker = dogs[Math.floor(Math.random() * dogs.length)];
-          walker.targetGx = rope.gx;
-          walker.targetGy = rope.gy;
+          walker.targetGx = redBone.gx;
+          walker.targetGy = redBone.gy;
           walker.state = 'WALK';
           walker.onReachToy = () => {
             sfx.thud();
-            rope.isTugged = true;
-            rope.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, rope.gx + (Math.random() - 0.5) * 2.5));
-            rope.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, rope.gy + (Math.random() - 0.5) * 2.5));
+            redBone.isMoved = true;
+            redBone.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, redBone.gx + (Math.random() - 0.5) * 2.5));
+            redBone.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, redBone.gy + (Math.random() - 0.5) * 2.5));
           };
         }
       }
     }
 
-    // 4. Rubber Duck Behavior (Squeaks/Quacks in place)
+    // 4. Rubber Duck Behavior
     if (state.hasDuck) {
       if (duck.isQuacking) {
         duck.quackPhase += dt;
@@ -1452,8 +1448,8 @@ function loop(now) {
     if (state.hasFrisbee) {
       renderables.push({ sortY: gridToScreen(frisbee.gx, frisbee.gy).y, draw: drawFrisbee });
     }
-    if (state.hasRope) {
-      renderables.push({ sortY: gridToScreen(rope.gx, rope.gy).y, draw: drawRope });
+    if (state.hasRedBone) {
+      renderables.push({ sortY: gridToScreen(redBone.gx, redBone.gy).y, draw: drawRedBone });
     }
     if (state.hasDuck) {
       renderables.push({ sortY: gridToScreen(duck.gx, duck.gy).y, draw: drawDuck });
@@ -1474,9 +1470,13 @@ function loop(now) {
       });
     });
 
-    // Perfect depth sorting so all toys and dogs layer correctly on the ground
+    // Safely sort and filter renderables to prevent any missing sprite glitches
     renderables.sort((a, b) => a.sortY - b.sortY);
-    renderables.forEach(item => item.draw());
+    renderables.forEach(item => {
+      if (item && typeof item.draw === 'function') {
+        item.draw();
+      }
+    });
 
     if (holdTimer) {
       const elapsed = performance.now() - holdStartTime;
