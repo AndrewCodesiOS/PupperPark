@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- PROCEDURAL SOUND EFFECTS (No BGM) ---
+// --- PROCEDURAL SOUND EFFECTS ---
 let audioCtx = null;
 
 function initAudio() {
@@ -79,7 +79,6 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  // Strict check: Only trigger offline modal if away for more than 15 seconds
   if (elapsedSeconds > 15) {
     const bonesPerSec = state.dogCount * state.digPower * state.speedMultiplier * 0.45;
     const earned = Math.floor(bonesPerSec * elapsedSeconds * 0.5);
@@ -121,7 +120,7 @@ document.getElementById('btnCloseOffline').addEventListener('click', () => {
   document.getElementById('offlineModal').style.display = 'none';
 });
 
-// Menu Modal Controls
+// Menu Drawer Controls
 const gameModal = document.getElementById('gameModal');
 document.getElementById('btnOpenMenu').addEventListener('click', () => {
   initAudio();
@@ -178,11 +177,12 @@ function screenToGrid(sx, sy) {
   };
 }
 
+// Mushrooms moved inward toward center of the grid
 const mushrooms = [
-  { gx: 1.3, gy: 1.4, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.35)' },
-  { gx: 5.5, gy: 1.8, color: '#fd79a8', glow: 'rgba(253, 121, 168, 0.35)' },
-  { gx: 1.6, gy: 5.3, color: '#55efc4', glow: 'rgba(85, 239, 196, 0.35)' },
-  { gx: 5.2, gy: 5.4, color: '#ffeaa7', glow: 'rgba(255, 234, 167, 0.35)' }
+  { gx: 2.2, gy: 2.2, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.35)' },
+  { gx: 4.8, gy: 2.4, color: '#fd79a8', glow: 'rgba(253, 121, 168, 0.35)' },
+  { gx: 2.4, gy: 4.8, color: '#55efc4', glow: 'rgba(85, 239, 196, 0.35)' },
+  { gx: 4.6, gy: 4.6, color: '#ffeaa7', glow: 'rgba(255, 234, 167, 0.35)' }
 ];
 
 const dogs = [];
@@ -419,28 +419,49 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
+  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Wooden Walls
   ctx.fillStyle = '#8d5524';
   ctx.fillRect(-20, -24, 40, 26);
 
-  ctx.fillStyle = '#2c2c54';
+  // Portal Doorway
+  ctx.fillStyle = '#171033';
   ctx.beginPath();
-  ctx.arc(0, -10, 10, Math.PI, 0);
-  ctx.lineTo(10, 2);
-  ctx.lineTo(-10, 2);
+  ctx.arc(0, -10, 11, Math.PI, 0);
+  ctx.lineTo(11, 2);
+  ctx.lineTo(-11, 2);
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = '#70a1ff';
-  ctx.lineWidth = 2;
+  // Enhanced Multi-Layered Magical Portal Swirl Effect
+  const time = Date.now() * 0.003;
+  
+  // Outer Cyan Swirl Ring
+  ctx.strokeStyle = '#00d2d3';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(0, -8, 5 + Math.sin(Date.now() * 0.005) * 1.5, 0, Math.PI * 1.5);
+  ctx.arc(0, -9, 7 + Math.sin(time * 2) * 2, 0, Math.PI * 1.7);
   ctx.stroke();
 
+  // Inner Purple/Gold Vortex Core
+  ctx.strokeStyle = '#ff9ff3';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, -9, 4 + Math.cos(time * 3) * 1.5, Math.PI, Math.PI * 2.5);
+  ctx.stroke();
+
+  // Sparkle center dot
+  ctx.fillStyle = '#ffeaa7';
+  ctx.beginPath();
+  ctx.arc(Math.sin(time * 4) * 3, -9 + Math.cos(time * 4) * 2, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Roof
   ctx.fillStyle = '#40739e';
   ctx.beginPath();
   ctx.moveTo(-26, -22);
@@ -601,7 +622,6 @@ function updateUI() {
 
   const estBps = (dogs.length * state.digPower * state.speedMultiplier * 0.45).toFixed(1);
   document.getElementById('bpsCount').textContent = `+${estBps}/s`;
-  document.getElementById('miniBps').textContent = estBps;
 
   document.getElementById('costSummon').textContent = `${state.costs.summon.toLocaleString()} 🦴`;
   document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
