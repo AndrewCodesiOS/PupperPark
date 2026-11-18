@@ -51,7 +51,6 @@ const sfx = {
   }
 };
 
-// Breed Configuration & Base Yields for All 10 Breeds
 const BREED_CONFIG = {
   aussie:    { baseBps: 1.0,    cost: 15,     costMult: 1.45 },
   corgi:     { baseBps: 1.5,    cost: 75,     costMult: 1.48 },
@@ -65,6 +64,16 @@ const BREED_CONFIG = {
   dalmatian: { baseBps: 2500.0, cost: 150000, costMult: 1.68 }
 };
 
+// Available Perk Pool
+const PERK_POOL = [
+  { id: 'bone_boost_1', name: 'Sturdy Paws', rarity: 'Common', desc: '+15% Global Bone Generation', mult: 1.15 },
+  { id: 'bone_boost_2', name: 'Golden Collar', rarity: 'Rare', desc: '+35% Global Bone Generation', mult: 1.35 },
+  { id: 'speed_boost_1', name: 'Quick Snout', rarity: 'Common', desc: '+10% Park Movement Speed', speedMult: 1.10 },
+  { id: 'magic_boost_1', name: 'Mystic Aura', rarity: 'Rare', desc: '+5% Magic Bone Find Chance', magicAdd: 0.05 },
+  { id: 'pack_legend', name: 'Alpha Ancestry', rarity: 'Legendary', desc: '+100% Global Bone Generation (Kept on Prestige!)', mult: 2.0 },
+  { id: 'mythic_harmony', name: 'Celestial Bark', rarity: 'Mythic', desc: '+300% Global Bone Generation & Speed (Kept on Prestige!)', mult: 4.0, speedMult: 1.5 }
+];
+
 // Game State
 let state = {
   bones: 0,
@@ -74,7 +83,7 @@ let state = {
     frenchie: 0, shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
   },
   shinyDogs: [],
-  perks: [], // Stores unlocked perk objects { id, name, rarity }
+  perks: [],
   digPower: 1,
   speedMultiplier: 1,
   magicChance: 0.12,
@@ -96,13 +105,26 @@ function getTotalDogs() {
   return count;
 }
 
+function getPerkMultipliers() {
+  let boneMult = 1;
+  let speedBonus = 1;
+  let magicBonus = 0;
+  state.perks.forEach(p => {
+    if (p.mult) boneMult *= p.mult;
+    if (p.speedMult) speedBonus *= p.speedMult;
+    if (p.magicAdd) magicBonus += p.magicAdd;
+  });
+  return { boneMult, speedBonus, magicBonus };
+}
+
 function getBPS() {
   let normalTotal = 0;
   Object.keys(state.dogs).forEach(b => {
     normalTotal += state.dogs[b] * BREED_CONFIG[b].baseBps;
   });
   const shinyTotal = state.shinyDogs.reduce((acc, d) => acc + (BREED_CONFIG[d.breed] ? BREED_CONFIG[d.breed].baseBps : 1), 0);
-  return (normalTotal + shinyTotal) * state.digPower * state.speedMultiplier * 0.45;
+  const { boneMult, speedBonus } = getPerkMultipliers();
+  return (normalTotal + shinyTotal) * state.digPower * (state.speedMultiplier * speedBonus) * 0.45 * boneMult;
 }
 
 function loadGame() {
@@ -321,7 +343,8 @@ canvas.addEventListener('pointerup', (e) => {
       gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
       gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
     ) {
-      const isMagic = Math.random() < state.magicChance;
+      const { magicBonus } = getPerkMultipliers();
+      const isMagic = Math.random() < (state.magicChance + magicBonus);
       droppedBones.push({
         x: clickX,
         y: clickY - 10,
@@ -347,7 +370,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity supporting all 10 distinct custom-drawn sprites
+// Dog Entity with Fully Restored High-Detail Sprites for All 10 Breeds
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -378,7 +401,8 @@ class Dog {
       frenchie: 1.0, shiba: 1.35, shepherd: 1.45, beagle: 1.2, dalmatian: 1.8
     };
     const breedSpeed = speedMults[this.breed] || 1.3;
-    const speed = breedSpeed * state.speedMultiplier;
+    const { speedBonus } = getPerkMultipliers();
+    const speed = breedSpeed * state.speedMultiplier * speedBonus;
     this.animPhase += dt * (this.state === 'WALK' ? 12 * state.speedMultiplier : 5);
 
     if (this.state === 'IDLE') {
@@ -402,12 +426,13 @@ class Dog {
         this.state = 'DIG';
         this.timer = (this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier;
         
-        const magicBonus = (this.breed === 'corgi' || this.breed === 'shiba') ? 0.15 : 0;
-        this.isMagicDig = Math.random() < (state.magicChance + magicBonus);
+        const { magicBonus } = getPerkMultipliers();
+        const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus + ((this.breed === 'corgi') ? 0.15 : 0));
+        this.isMagicDig = Math.random() < magicChanceTotal;
         
-        // Shiba Inu rare treasure perk discovery chance on dig finish!
-        if (this.breed === 'shiba' && Math.random() < 0.05) {
-          triggerRareTreasure();
+        const treasureChance = (this.breed === 'shiba') ? 0.08 : 0.005;
+        if (Math.random() < treasureChance) {
+          triggerPerkDraft();
         }
       } else {
         this.gx += (dx / dist) * speed * dt;
@@ -495,43 +520,88 @@ class Dog {
 
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
-    // --- RENDER 10 DISTINCT BREEDS ---
+    // --- FULL 10-BREED DRAWING LOGIC ---
     if (this.breed === 'aussie') {
-      const col = this.isShiny ? this.shinyColor : '#c87d4b';
-      ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4, 9); ctx.fillRect(6 + legSwing, -3, 4, 9);
-      ctx.fillStyle = '#fff'; ctx.fillRect(-11 - legSwing, 4, 4, 3); ctx.fillRect(6 + legSwing, 4, 4, 3);
-      ctx.fillStyle = '#4e433f'; ctx.beginPath(); ctx.arc(-15, -10 + Math.sin(this.animPhase)*2, 4.5, 0, Math.PI * 2); ctx.fill();
+      const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(-11 - legSwing, -3, 4, 9);
+      ctx.fillRect(6 + legSwing, -3, 4, 9);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-11 - legSwing, 4, 4, 3);
+      ctx.fillRect(6 + legSwing, 4, 4, 3);
+      const wag = Math.sin(this.animPhase * 1.5) * 2;
+      ctx.fillStyle = '#4e433f';
+      ctx.beginPath(); ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4e433f';
       ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#736560'; ctx.beginPath(); ctx.ellipse(-3, -11, 9, 5, -0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f8f9fa'; ctx.beginPath(); ctx.arc(9, -8, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4e433f'; ctx.beginPath(); ctx.arc(11, -17, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(13, -15, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(17, -15, 4.5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#736560';
+      ctx.beginPath(); ctx.ellipse(-3, -11, 9, 5, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8f9fa';
+      ctx.beginPath(); ctx.arc(9, -8, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4e433f';
+      ctx.beginPath(); ctx.arc(11, -17, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath(); ctx.arc(13, -15, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(17, -15, 4.5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath(); ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath(); ctx.arc(14, -18.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#382f2c';
+      ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'corgi') {
-      const col = this.isShiny ? this.shinyColor : '#e17055';
-      ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -1, 4, 8); ctx.fillRect(5 + legSwing, -1, 4, 8);
-      ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 5, 4, 3); ctx.fillRect(5 + legSwing, 5, 4, 3);
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-14, -7, 3.5, 0, Math.PI * 2); ctx.fill();
+      const corgiColor = this.isShiny ? this.shinyColor : '#e17055';
+      ctx.fillStyle = corgiColor;
+      ctx.fillRect(-10 - legSwing, -1, 4, 8);
+      ctx.fillRect(5 + legSwing, -1, 4, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-10 - legSwing, 5, 4, 3);
+      ctx.fillRect(5 + legSwing, 5, 4, 3);
+      const wag = Math.sin(this.animPhase * 1.5) * 2;
+      ctx.fillStyle = corgiColor;
+      ctx.beginPath(); ctx.arc(-14, -7 + wag, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = corgiColor;
       ctx.beginPath(); ctx.ellipse(-1, -7, 15, 8.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fab1a0'; ctx.beginPath(); ctx.ellipse(-1, -9, 10, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8, -7, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.moveTo(7, -20); ctx.lineTo(13, -27); ctx.lineTo(15, -18); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(15, -15, 4, 3, 0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18, -16, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fab1a0';
+      ctx.beginPath(); ctx.ellipse(-1, -9, 10, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(8, -7, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = corgiColor;
+      ctx.beginPath(); ctx.arc(11, -16, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d63031';
+      ctx.beginPath(); ctx.moveTo(7, -20); ctx.lineTo(13, -27); ctx.lineTo(15, -18); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(11, -19); ctx.lineTo(17, -24); ctx.lineTo(13, -15); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(15, -15, 4, 3, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath(); ctx.arc(18, -16, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(13, -18, 1.3, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
-      const col = this.isShiny ? this.shinyColor : '#2d3436';
-      ctx.fillStyle = col; ctx.fillRect(-12 - legSwing, -3, 3.5, 10); ctx.fillRect(7 + legSwing, -3, 3.5, 10);
-      ctx.fillStyle = '#fff'; ctx.fillRect(-12 - legSwing, 4, 3.5, 3); ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-16, -11, 4, 0, Math.PI * 2); ctx.fill();
+      const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
+      ctx.fillStyle = collieColor;
+      ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
+      ctx.fillRect(7 + legSwing, -3, 3.5, 10);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
+      ctx.fillRect(7 + legSwing, 4, 3.5, 3);
+      ctx.fillStyle = collieColor;
+      ctx.beginPath(); ctx.arc(-16, -11, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = collieColor;
       ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(5, -11, 5, 7, 0.25, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(20, -14); ctx.lineTo(13, -11); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(20.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(5, -11, 5, 7, 0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = collieColor;
+      ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(20, -14); ctx.lineTo(13, -11); ctx.fill();
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath(); ctx.arc(20.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -18.5, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'golden') {
       const col = this.isShiny ? this.shinyColor : '#f39c12';
@@ -603,10 +673,45 @@ class Dog {
   }
 }
 
-function triggerRareTreasure() {
+// Perk Draft System
+function triggerPerkDraft() {
   sfx.shiny();
-  // Placeholder hook for upcoming 3-option perk draft screen
-  console.log('Shiba Inu found a rare treasure perk!');
+  const modal = document.getElementById('perkModal');
+  const choicesContainer = document.getElementById('perkChoices');
+  choicesContainer.innerHTML = '';
+
+  const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
+  const options = shuffled.slice(0, 3);
+
+  options.forEach(perk => {
+    const btn = document.createElement('button');
+    btn.className = 'action-btn';
+    btn.style.width = '100%';
+    btn.style.padding = '12px';
+    btn.style.alignItems = 'flex-start';
+    
+    let rarityColor = '#a29bfe';
+    if (perk.rarity === 'Rare') rarityColor = '#0984e3';
+    if (perk.rarity === 'Legendary') rarityColor = '#f1c40f';
+    if (perk.rarity === 'Mythic') rarityColor = '#e84393';
+
+    btn.innerHTML = `
+      <div style="font-weight:800; font-size:0.95rem; color:${rarityColor}">${perk.name} [${perk.rarity}]</div>
+      <div style="font-size:0.8rem; color:#dcdde1; margin-top:2px;">${perk.desc}</div>
+    `;
+    
+    btn.addEventListener('click', () => {
+      state.perks.push(perk);
+      modal.style.display = 'none';
+      sfx.upgrade();
+      updateUI();
+      saveGame();
+    });
+
+    choicesContainer.appendChild(btn);
+  });
+
+  modal.style.display = 'flex';
 }
 
 function drawIsometricTile(gx, gy) {
@@ -836,7 +941,6 @@ document.getElementById('btnPrestige').addEventListener('click', () => {
     Object.keys(state.dogs).forEach(b => state.dogs[b] = 0);
     state.dogs.aussie = 1;
     
-    // Keep Legendary & Mythic perks, filter out lower tiers on prestige if desired
     state.perks = state.perks.filter(p => p.rarity === 'Legendary' || p.rarity === 'Mythic');
 
     dogs.length = 0;
@@ -877,6 +981,24 @@ function updateUI() {
 
   document.getElementById('shinyCountDisplay').textContent = state.shinyDogs.length;
   document.getElementById('perkCountDisplay').textContent = state.perks.length;
+  
+  const perkListContainer = document.getElementById('perkListContainer');
+  if (perkListContainer) {
+    perkListContainer.innerHTML = '';
+    state.perks.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'shop-card';
+      div.style.padding = '8px 12px';
+      div.innerHTML = `
+        <div class="shop-info">
+          <h4 style="color: #ffeaa7; font-size: 0.85rem;">${p.name} <span style="font-size:0.7rem; color:#a29bfe;">[${p.rarity}]</span></h4>
+          <p style="font-size:0.7rem; margin:0;">${p.desc}</p>
+        </div>
+      `;
+      perkListContainer.appendChild(div);
+    });
+  }
+
   document.getElementById('bpsCount').textContent = `+${getBPS().toFixed(1)}/s`;
 
   document.getElementById('costDigPower').textContent = `${state.costs.digPower.toLocaleString()} 🦴`;
@@ -885,7 +1007,7 @@ function updateUI() {
 
   document.getElementById('statDigPower').textContent = state.digPower;
   document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
-  document.getElementById('statChance').textContent = `${Math.round(state.magicChance * 100)}%`;
+  document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
 
   document.getElementById('btnDigPower').disabled = state.bones < state.costs.digPower;
   document.getElementById('btnZoomies').disabled = state.bones < state.costs.zoomies;
