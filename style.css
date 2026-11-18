@@ -258,6 +258,13 @@ html, body {
   gap: 12px;
 }
 
+/* Vertical layout variant for cards like Clear Park and Danger Zone */
+.shop-card-vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .shop-info {
   flex: 1;
   min-width: 0;
