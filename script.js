@@ -366,7 +366,7 @@ const dogs = [];
 const droppedBones = [];
 const particles = [];
 
-// Dog Entity with Refined Collie/Husky Tails, Shiba Ears, Beagle Body Legs & Boundary Clamping
+// Dog Entity with Straight Black-and-White Collie Tail, Shiba Ears, Beagle Body Legs & Boundary Clamping
 class Dog {
   constructor(gx, gy, breed = 'aussie', isShiny = false, shinyColor = null) {
     this.gx = gx;
@@ -551,7 +551,7 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // Border Collie with long feathered tail matching reference photo[span_2](start_span)[span_2](end_span)
+      // Border Collie with straight black and white tail matching photo reference
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
@@ -559,8 +559,10 @@ class Dog {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
       ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      const wag = Math.sin(this.animPhase * 2) * 4;
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-24, -15 + wag, -25, -6); ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+      // Straight black/white tail
+      const wag = Math.sin(this.animPhase * 1.5) * 2;
+      ctx.fillStyle = collieColor; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.lineTo(-24, -12 + wag); ctx.lineTo(-24, -6 + wag); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-21, -11); ctx.lineTo(-25, -9 + wag); ctx.lineTo(-21, -7); ctx.closePath(); ctx.fill();
       ctx.fillStyle = collieColor;
       ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
@@ -588,7 +590,6 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'husky') {
-      // Husky with bushy plumed tail matching reference photo[span_3](start_span)[span_3](end_span)
       const col = this.isShiny ? this.shinyColor : '#636e72';
       ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4, 10); ctx.fillRect(6 + legSwing, -3, 4, 10);
       const wag = Math.sin(this.animPhase * 2) * 3;
@@ -601,14 +602,12 @@ class Dog {
       ctx.fillStyle = '#0984e3'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'shiba') {
-      // Shiba Inu with added pointed ears
       const col = this.isShiny ? this.shinyColor : '#d35400';
       ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 9); ctx.fillRect(6 + legSwing, -2, 4, 9);
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-14, -15, 5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -9, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, -6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(10, -16, 7, 0, Math.PI * 2); ctx.fill();
-      // Pointed Shiba ears
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(10, -28); ctx.lineTo(14, -18); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -15); ctx.lineTo(17, -13); ctx.lineTo(12, -10); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -13.5, 1.5, 0, Math.PI * 2); ctx.fill();
@@ -626,7 +625,6 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(19.5, -13.5, 1.6, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'beagle') {
-      // Beagle with body-colored legs instead of pink
       const col = this.isShiny ? this.shinyColor : '#e67e22';
       ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 8); ctx.fillRect(5 + legSwing, -2, 4, 8);
       ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 4, 4, 3); ctx.fillRect(5 + legSwing, 4, 4, 3);
