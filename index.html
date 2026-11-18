@@ -27,7 +27,7 @@
 
   <!-- Placement Helper Banner -->
   <div id="placementBanner" style="position: absolute; top: 90px; left: 50%; transform: translateX(-50%); background: rgba(108, 92, 231, 0.9); border: 2px solid #ffeaa7; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; z-index: 50; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-    🌲 Tap any park tile to place your tree!
+    Tap any park tile to place your decoration!
   </div>
 
   <!-- Bottom Right Mini Bar -->
@@ -270,6 +270,30 @@
             <button class="action-btn" id="btnBuyDecorTree">
               <span class="btn-name">Place Tree</span>
               <span class="btn-cost">500 ✨</span>
+            </button>
+          </div>
+
+          <div class="shop-card" style="border-color: #fd79a8;">
+            <div class="shop-info">
+              <h3 style="color: #fd79a8;">Flower Patch</h3>
+              <p>Vibrant ground cover bursting with color. (Max 5)</p>
+              <div class="shop-owned">Placed: <span id="countDecorFlowers">0</span> / 5</div>
+            </div>
+            <button class="action-btn" id="btnBuyDecorFlowers">
+              <span class="btn-name">Place Flowers</span>
+              <span class="btn-cost">250 ✨</span>
+            </button>
+          </div>
+
+          <div class="shop-card" style="border-color: #0984e3;">
+            <div class="shop-info">
+              <h3 style="color: #0984e3;">Water Fountain</h3>
+              <p>A peaceful, shimmering water feature. (Max 2)</p>
+              <div class="shop-owned">Placed: <span id="countDecorFountain">0</span> / 2</div>
+            </div>
+            <button class="action-btn" id="btnBuyDecorFountain">
+              <span class="btn-name">Place Fountain</span>
+              <span class="btn-cost">1,000 ✨</span>
             </button>
           </div>
 
