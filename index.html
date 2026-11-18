@@ -261,48 +261,63 @@
 
         <!-- Decor Tab -->
         <div class="tab-content" id="tab-decor">
-          <div class="shop-card" style="border-color: #f1c40f;">
+          <div class="shop-card">
             <div class="shop-info">
-              <h3 style="color: #f1c40f;">Park Tree</h3>
+              <h3>Park Tree</h3>
               <p>A lovely decorative tree to beautify your park. (Max 3)</p>
-              <div class="shop-owned">Placed: <span id="countDecorTree">0</span> / 3</div>
+              <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
             </div>
-            <button class="action-btn" id="btnBuyDecorTree">
-              <span class="btn-name">Place Tree</span>
-              <span class="btn-cost">500 ✨</span>
-            </button>
+            <div style="display: flex; gap: 6px;">
+              <button class="action-btn" id="btnBuyDecorTree" style="flex: 1;">
+                <span class="btn-name">Buy Tree</span>
+                <span class="btn-cost">500 ✨</span>
+              </button>
+              <button class="action-btn" id="btnPlaceDecorTree" style="flex: 1;">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
           </div>
 
-          <div class="shop-card" style="border-color: #fd79a8;">
+          <div class="shop-card">
             <div class="shop-info">
-              <h3 style="color: #fd79a8;">Flower Patch</h3>
+              <h3>Flower Patch</h3>
               <p>Vibrant ground cover bursting with color. (Max 5)</p>
-              <div class="shop-owned">Placed: <span id="countDecorFlowers">0</span> / 5</div>
+              <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
             </div>
-            <button class="action-btn" id="btnBuyDecorFlowers">
-              <span class="btn-name">Place Flowers</span>
-              <span class="btn-cost">250 ✨</span>
-            </button>
+            <div style="display: flex; gap: 6px;">
+              <button class="action-btn" id="btnBuyDecorFlowers" style="flex: 1;">
+                <span class="btn-name">Buy Flowers</span>
+                <span class="btn-cost">250 ✨</span>
+              </button>
+              <button class="action-btn" id="btnPlaceDecorFlowers" style="flex: 1;">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
           </div>
 
-          <div class="shop-card" style="border-color: #0984e3;">
+          <div class="shop-card">
             <div class="shop-info">
-              <h3 style="color: #0984e3;">Water Fountain</h3>
+              <h3>Water Fountain</h3>
               <p>A peaceful, shimmering water feature. (Max 2)</p>
-              <div class="shop-owned">Placed: <span id="countDecorFountain">0</span> / 2</div>
+              <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
             </div>
-            <button class="action-btn" id="btnBuyDecorFountain">
-              <span class="btn-name">Place Fountain</span>
-              <span class="btn-cost">1,000 ✨</span>
-            </button>
+            <div style="display: flex; gap: 6px;">
+              <button class="action-btn" id="btnBuyDecorFountain" style="flex: 1;">
+                <span class="btn-name">Buy Fountain</span>
+                <span class="btn-cost">1,000 ✨</span>
+              </button>
+              <button class="action-btn" id="btnPlaceDecorFountain" style="flex: 1;">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
           </div>
 
-          <div class="shop-card" style="border-color: #ff7675; flex-direction: column; align-items: flex-start; gap: 8px;">
+          <div class="shop-card">
             <div class="shop-info">
-              <h3 style="color: #ff7675;">Clear Park Layout</h3>
-              <p>Remove all placed decorations. Note: No magic bones are refunded, and you will need to rebuy decor items!</p>
+              <h3>Clear Park Layout</h3>
+              <p>Remove all placed decorations back to your inventory so you can rearrange them.</p>
             </div>
-            <button id="btnClearDecor" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); width: 100%; min-width: unset; padding: 8px;">
+            <button id="btnClearDecor" class="action-btn" style="width: 100%; min-width: unset; padding: 8px;">
               <span class="btn-name">Clear All Decor</span>
             </button>
           </div>
@@ -345,11 +360,11 @@
   <!-- Clear Decor Confirmation Modal -->
   <div id="clearDecorConfirmModal" class="modal" style="display: none;">
     <div class="modal-window offline-box" style="max-width: 360px;">
-      <h2 style="color: #ff7675;">Clear Park Decor?</h2>
-      <p>Are you sure you want to remove all placed decorations? <strong>You will have to rebuy decor items</strong> with magic bones if you want them back—no refunds will be given!</p>
+      <h2>Clear Park Decor?</h2>
+      <p>Are you sure you want to remove all placed decorations from your park? They will be returned to your inventory.</p>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button id="btnCancelClearDecor" class="action-btn" style="background: rgba(255,255,255,0.1); flex: 1;">Cancel</button>
-        <button id="btnConfirmClearDecor" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); flex: 1;">Yes, Clear</button>
+        <button id="btnConfirmClearDecor" class="action-btn" style="flex: 1;">Yes, Clear</button>
       </div>
     </div>
   </div>
