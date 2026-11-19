@@ -8,6 +8,10 @@ const LEVEL_BONUS_PER_LEVEL = 0.001; // +0.1% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
 const DIG_MULT_SQRT_SCALE = 0.025; // Gentle sqrt curve from dug bones
 
+const BASE_IDLE_MULTIPLIER = 0.10; // Starting 10% offline dig yield
+const DUCK_IDLE_STEP = 0.025;      // +2.5% offline dig yield per Rubber Duck
+const MAX_IDLE_MULTIPLIER = 0.75;  // Max 75% offline dig yield with Rubber Ducks
+
 const BONUS_PAYOUT_MAX = 0.25;  // Up to +0.25 Bone Yield
 const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
 const BONUS_XP_MAX = 0.15;      // Up to +0.15 Quick Learner
@@ -235,7 +239,7 @@ let state = {
   showNameTags: true,
   digPower: 1,
   speedMultiplier: 1,
-  idleMultiplier: 0.6,
+  idleMultiplier: BASE_IDLE_MULTIPLIER,
   magicChance: 0.12,
   
   kongTimer: 0,
@@ -379,6 +383,21 @@ function estimateOfflineDigs(seconds) {
   return Math.max(1, Math.floor(totalDigs));
 }
 
+/**
+ * Rolls 3 random treasures from PERK_POOL and randomly picks 1 of the 3.
+ */
+function rollOfflineTreasure() {
+  if (!Array.isArray(PERK_POOL) || PERK_POOL.length === 0) return null;
+  const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
+  const rolledThree = shuffled.slice(0, Math.min(3, shuffled.length));
+  const chosenPerk = rolledThree[Math.floor(Math.random() * rolledThree.length)];
+  if (!chosenPerk) return null;
+
+  const perkCopy = { ...chosenPerk };
+  state.perks.push(perkCopy);
+  return perkCopy;
+}
+
 function rebuildCanvasDogsFromRoster() {
   dogs.length = 0;
   state.roster.forEach(entry => {
@@ -417,7 +436,10 @@ function loadGame() {
       if (!state.perks) state.perks = [];
       if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
       if (!state.placedDecorations) state.placedDecorations = [];
-      if (!state.idleMultiplier) state.idleMultiplier = 0.6;
+      if (typeof state.idleMultiplier !== 'number' || Number.isNaN(state.idleMultiplier)) {
+        state.idleMultiplier = BASE_IDLE_MULTIPLIER;
+      }
+      state.idleMultiplier = Math.max(BASE_IDLE_MULTIPLIER, Math.min(MAX_IDLE_MULTIPLIER, state.idleMultiplier));
       state.isDraftingPerk = false;
       state.isPlacingDecor = false;
       state.activeDecorType = null;
@@ -503,10 +525,17 @@ function loadGame() {
     const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
     const avgPerDig = getAverageBonesPerDig();
     const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
+
+    // Very low chance to uncover a treasure while away (scales gently with estimatedDigs, capped at 3.5%)
+    const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
+    const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
+
     if (earned > 0) {
       state.bones += earned;
       state.lifetimeBones += earned;
-      showOfflineModal(earned, estimatedDigs);
+    }
+    if (earned > 0 || foundTreasure) {
+      showOfflineModal(earned, estimatedDigs, foundTreasure);
     }
   }
 
@@ -556,14 +585,25 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', saveGame);
 window.addEventListener('beforeunload', saveGame);
 
-function showOfflineModal(earned, estimatedDigs = 0) {
+function showOfflineModal(earned, estimatedDigs = 0, foundTreasure = null) {
   const modal = document.getElementById('offlineModal');
   const text = document.getElementById('offlineEarnings');
   if (text) {
+    text.innerHTML = '';
+
+    const bonesLine = document.createElement('div');
     if (estimatedDigs > 0) {
-      text.textContent = `~${estimatedDigs.toLocaleString()} digs estimated — they dug ${earned.toLocaleString()} Bones while you were away!`;
+      bonesLine.textContent = `~${estimatedDigs.toLocaleString()} digs estimated — they dug ${earned.toLocaleString()} Bones while you were away!`;
     } else {
-      text.textContent = `They dug ${earned.toLocaleString()} Bones while you were away!`;
+      bonesLine.textContent = `They dug ${earned.toLocaleString()} Bones while you were away!`;
+    }
+    text.appendChild(bonesLine);
+
+    if (foundTreasure) {
+      const treasureLine = document.createElement('div');
+      treasureLine.style.cssText = 'margin-top: 10px; font-size: 0.9rem; font-weight: 700; color: #ffeaa7;';
+      treasureLine.textContent = `Treasure Dug Up While Away: ${foundTreasure.name} [${foundTreasure.rarity}] — ${foundTreasure.desc}`;
+      text.appendChild(treasureLine);
     }
   }
   if (modal) {
@@ -632,6 +672,8 @@ tabBtns.forEach(btn => {
     document.getElementById(btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'tab-roster') {
       renderRosterTab();
+    } else if (btn.dataset.tab === 'tab-perks') {
+      updateUI();
     }
   });
 });
@@ -1010,7 +1052,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     showNameTags: true,
     digPower: 1,
     speedMultiplier: 1,
-    idleMultiplier: 0.6,
+    idleMultiplier: BASE_IDLE_MULTIPLIER,
     magicChance: 0.12,
     
     kongTimer: 0,
@@ -2584,7 +2626,7 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.toyIdle) {
     state.bones -= state.costs.toyIdle;
-    state.idleMultiplier = Math.min(0.95, state.idleMultiplier + 0.1);
+    state.idleMultiplier = Math.min(MAX_IDLE_MULTIPLIER, Math.round((state.idleMultiplier + DUCK_IDLE_STEP) * 1000) / 1000);
     state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.70);
     state.hasDuck = true;
     sfx.upgrade();
@@ -2658,6 +2700,24 @@ document.getElementById('btnTreatXp')?.addEventListener('click', () => {
   }
 });
 
+function formatStackedTreasureSummary(perk, count) {
+  if (count <= 1) return perk.desc;
+  const parts = [];
+  if (perk.mult) {
+    const totalMult = Math.pow(perk.mult, count);
+    parts.push(`${totalMult.toFixed(2).replace(/\.?0+$/, '')}x dig bones`);
+  }
+  if (perk.workMult) {
+    const totalWork = Math.pow(perk.workMult, count);
+    parts.push(`${totalWork.toFixed(2).replace(/\.?0+$/, '')}x scaling`);
+  }
+  if (perk.magicAdd) {
+    const totalMagicPct = Math.round(perk.magicAdd * count * 1000) / 10;
+    parts.push(`+${totalMagicPct}% ✨ Magic Bone chance`);
+  }
+  return parts.length > 0 ? `Stacked (${count}x): ${parts.join(' & ')}` : perk.desc;
+}
+
 function updateUI() {
   document.getElementById('boneCount').textContent = Math.floor(state.bones).toLocaleString();
   document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
@@ -2693,14 +2753,34 @@ function updateUI() {
   const perkListContainer = document.getElementById('perkListContainer');
   if (perkListContainer) {
     perkListContainer.innerHTML = '';
+
+    const groupedPerks = new Map();
     state.perks.forEach(p => {
+      const key = p.id || `${p.name}::${p.rarity}`;
+      if (!groupedPerks.has(key)) {
+        groupedPerks.set(key, { perk: p, count: 1 });
+      } else {
+        groupedPerks.get(key).count += 1;
+      }
+    });
+
+    groupedPerks.forEach(({ perk, count }) => {
       const div = document.createElement('div');
       div.className = 'shop-card';
       div.style.padding = '8px 12px';
+      const countBadge = count > 1
+        ? `<span style="font-size:0.75rem; font-weight:800; color:#ffeaa7; background:rgba(255,234,167,0.16); padding:2px 7px; border-radius:6px; margin-left:6px;">x${count}</span>`
+        : '';
+      const summaryDesc = formatStackedTreasureSummary(perk, count);
+
       div.innerHTML = `
         <div class="shop-info">
-          <h4 style="color: #ffeaa7; font-size: 0.85rem;">${p.name} <span style="font-size:0.7rem; color:#a29bfe;">[${p.rarity}]</span></h4>
-          <p style="font-size:0.7rem; margin:0;">${p.desc}</p>
+          <h4 style="color: #ffeaa7; font-size: 0.85rem; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+            <span>${perk.name}</span>
+            ${countBadge}
+            <span style="font-size:0.7rem; color:#a29bfe;">[${perk.rarity}]</span>
+          </h4>
+          <p style="font-size:0.7rem; margin:2px 0 0 0;">${summaryDesc}</p>
         </div>
       `;
       perkListContainer.appendChild(div);
@@ -2830,7 +2910,7 @@ function updateUI() {
 
   document.getElementById('btnToyBones').disabled = state.bones < state.costs.toyBones;
   document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
-  document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle;
+  document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle || state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
 
   document.getElementById('btnTreatKong').disabled = state.bones < state.costs.treatKong;
   document.getElementById('btnTreatBacon').disabled = state.bones < state.costs.treatBacon;
