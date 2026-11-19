@@ -1149,6 +1149,14 @@ function screenToGrid(sx, sy) {
   };
 }
 
+function clampTileIndex(val) {
+  return Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(val)));
+}
+
+function getCenteredTilePos(gx, gy) {
+  return gridToScreen(clampTileIndex(gx) + 0.5, clampTileIndex(gy) + 0.5);
+}
+
 let isRotating = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -1244,8 +1252,8 @@ canvas.addEventListener('pointerup', (e) => {
       ) {
         state.placedDecorations.push({
           type: state.activeDecorType,
-          gx: Math.floor(gridPos.gx),
-          gy: Math.floor(gridPos.gy)
+          gx: clampTileIndex(gridPos.gx),
+          gy: clampTileIndex(gridPos.gy)
         });
         state.isPlacingDecor = false;
         state.activeDecorType = null;
@@ -2252,7 +2260,7 @@ function drawTree() {
 }
 
 function drawCustomTree(gx, gy) {
-  const pos = gridToScreen(gx, gy);
+  const pos = getCenteredTilePos(gx, gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
@@ -2279,7 +2287,7 @@ function drawCustomTree(gx, gy) {
 }
 
 function drawFlowerPatch(gx, gy) {
-  const pos = gridToScreen(gx, gy);
+  const pos = getCenteredTilePos(gx, gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
@@ -2325,7 +2333,7 @@ function drawFlowerPatch(gx, gy) {
 let fountainAnimPhase = 0;
 
 function drawWaterFountain(gx, gy, dt) {
-  const pos = gridToScreen(gx, gy);
+  const pos = getCenteredTilePos(gx, gy);
   fountainAnimPhase += dt * 5;
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3041,19 +3049,20 @@ function loop(now) {
 
     if (state.placedDecorations) {
       state.placedDecorations.forEach(dec => {
+        const centeredY = getCenteredTilePos(dec.gx, dec.gy).y;
         if (dec.type === 'tree') {
           renderables.push({
-            sortY: gridToScreen(dec.gx, dec.gy).y,
+            sortY: centeredY,
             draw: () => drawCustomTree(dec.gx, dec.gy)
           });
         } else if (dec.type === 'flowers') {
           renderables.push({
-            sortY: gridToScreen(dec.gx, dec.gy).y,
+            sortY: centeredY,
             draw: () => drawFlowerPatch(dec.gx, dec.gy)
           });
         } else if (dec.type === 'fountain') {
           renderables.push({
-            sortY: gridToScreen(dec.gx, dec.gy).y,
+            sortY: centeredY,
             draw: () => drawWaterFountain(dec.gx, dec.gy, dt)
           });
         }
