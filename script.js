@@ -503,6 +503,9 @@ function renderRosterTab() {
     const card = document.createElement('div');
     card.className = 'roster-card';
 
+    const mainCol = document.createElement('div');
+    mainCol.className = 'roster-main';
+
     const topRow = document.createElement('div');
     topRow.className = 'roster-top';
 
@@ -542,26 +545,22 @@ function renderRosterTab() {
       <span class="roster-chip">Bonus <strong>+${levelBonusPct}%</strong></span>
     `;
 
-    card.appendChild(topRow);
-    card.appendChild(xpBarOuter);
-    card.appendChild(chipsRow);
+    mainCol.appendChild(topRow);
+    mainCol.appendChild(xpBarOuter);
+    mainCol.appendChild(chipsRow);
+    card.appendChild(mainCol);
 
     if (canRetire) {
-      const footerRow = document.createElement('div');
-      footerRow.className = 'roster-footer';
-
-      const refundTag = document.createElement('span');
-      refundTag.className = 'roster-refund-tag';
-      refundTag.textContent = `20% Return: +${refundPreview.toLocaleString()} 🦴`;
+      const rightAction = document.createElement('div');
+      rightAction.className = 'roster-right-action';
 
       const retireBtn = document.createElement('button');
       retireBtn.className = 'retire-pill-btn';
-      retireBtn.textContent = 'Retire';
+      retireBtn.textContent = `Retire +${refundPreview.toLocaleString()} 🦴`;
       retireBtn.addEventListener('click', () => retireDog(entry.id));
 
-      footerRow.appendChild(refundTag);
-      footerRow.appendChild(retireBtn);
-      card.appendChild(footerRow);
+      rightAction.appendChild(retireBtn);
+      card.appendChild(rightAction);
     }
 
     container.appendChild(card);
