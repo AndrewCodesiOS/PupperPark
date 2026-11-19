@@ -501,29 +501,17 @@ function renderRosterTab() {
     const breedName = BREED_LABELS[entry.breed] || entry.breed;
 
     const card = document.createElement('div');
-    card.className = 'shop-card';
-    card.style.flexDirection = 'column';
-    card.style.alignItems = 'stretch';
-    card.style.gap = '8px';
+    card.className = 'roster-card';
 
     const topRow = document.createElement('div');
-    topRow.style.display = 'flex';
-    topRow.style.justifyContent = 'space-between';
-    topRow.style.alignItems = 'center';
-    topRow.style.gap = '8px';
+    topRow.className = 'roster-top';
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
+    nameInput.className = 'roster-name-input';
     nameInput.value = entry.name;
     nameInput.maxLength = 24;
     nameInput.setAttribute('aria-label', `Name for ${breedName}`);
-    nameInput.style.flex = '1';
-    nameInput.style.padding = '6px 8px';
-    nameInput.style.borderRadius = '6px';
-    nameInput.style.border = '1px solid rgba(255,255,255,0.2)';
-    nameInput.style.background = 'rgba(0,0,0,0.25)';
-    nameInput.style.color = '#fff';
-    nameInput.style.fontWeight = '700';
 
     const commitName = () => {
       const cleaned = nameInput.value.trim();
@@ -535,66 +523,51 @@ function renderRosterTab() {
     nameInput.addEventListener('blur', commitName);
 
     const lvlBadge = document.createElement('span');
+    lvlBadge.className = `roster-lvl-badge${entry.isShiny ? ' shiny' : ''}`;
     lvlBadge.textContent = `Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}`;
-    lvlBadge.style.fontWeight = '800';
-    lvlBadge.style.fontSize = '0.85rem';
-    lvlBadge.style.color = entry.isShiny ? '#ffeaa7' : '#a29bfe';
-    lvlBadge.style.whiteSpace = 'nowrap';
 
     topRow.appendChild(nameInput);
     topRow.appendChild(lvlBadge);
 
     const xpBarOuter = document.createElement('div');
-    xpBarOuter.style.width = '100%';
-    xpBarOuter.style.height = '8px';
-    xpBarOuter.style.background = 'rgba(0,0,0,0.35)';
-    xpBarOuter.style.borderRadius = '999px';
-    xpBarOuter.style.overflow = 'hidden';
+    xpBarOuter.className = 'roster-xp-track';
 
     const xpBarInner = document.createElement('div');
+    xpBarInner.className = 'roster-xp-fill';
     xpBarInner.style.width = `${pct}%`;
-    xpBarInner.style.height = '100%';
-    xpBarInner.style.background = '#55efc4';
     xpBarOuter.appendChild(xpBarInner);
 
-    const metaRow = document.createElement('div');
-    metaRow.style.display = 'flex';
-    metaRow.style.justifyContent = 'space-between';
-    metaRow.style.fontSize = '0.75rem';
-    metaRow.style.color = '#dfe6e9';
-    metaRow.innerHTML = `
-      <span>Breed: <strong>${breedName}</strong></span>
-      <span>XP: <strong>${Math.floor(entry.xp)} / ${xpNeeded}</strong></span>
-      <span>Bonus: <strong>+${levelBonusPct}%</strong></span>
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'roster-chips';
+    chipsRow.innerHTML = `
+      <span class="roster-chip">${breedName}</span>
+      <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
+      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
+      <span class="roster-chip">Bonus <strong>+${levelBonusPct}%</strong></span>
     `;
-
-    const bottomRow = document.createElement('div');
-    bottomRow.style.display = 'flex';
-    bottomRow.style.justifyContent = 'space-between';
-    bottomRow.style.alignItems = 'center';
-    bottomRow.style.fontSize = '0.75rem';
-    bottomRow.style.color = '#b2bec3';
-
-    const dugStat = document.createElement('span');
-    dugStat.innerHTML = `Bones Dug: <strong style="color:#fff;">${Math.floor(entry.bonesEarned).toLocaleString()}</strong>`;
-
-    const retireBtn = document.createElement('button');
-    retireBtn.className = 'buy-btn';
-    retireBtn.disabled = !canRetire;
-    retireBtn.style.padding = '6px 10px';
-    retireBtn.style.fontSize = '0.75rem';
-    retireBtn.innerHTML = canRetire
-      ? `Retire (+${refundPreview.toLocaleString()} 🦴)`
-      : `Last Dog`;
-    retireBtn.addEventListener('click', () => retireDog(entry.id));
-
-    bottomRow.appendChild(dugStat);
-    bottomRow.appendChild(retireBtn);
 
     card.appendChild(topRow);
     card.appendChild(xpBarOuter);
-    card.appendChild(metaRow);
-    card.appendChild(bottomRow);
+    card.appendChild(chipsRow);
+
+    if (canRetire) {
+      const footerRow = document.createElement('div');
+      footerRow.className = 'roster-footer';
+
+      const refundTag = document.createElement('span');
+      refundTag.className = 'roster-refund-tag';
+      refundTag.textContent = `20% Return: +${refundPreview.toLocaleString()} 🦴`;
+
+      const retireBtn = document.createElement('button');
+      retireBtn.className = 'retire-pill-btn';
+      retireBtn.textContent = 'Retire';
+      retireBtn.addEventListener('click', () => retireDog(entry.id));
+
+      footerRow.appendChild(refundTag);
+      footerRow.appendChild(retireBtn);
+      card.appendChild(footerRow);
+    }
+
     container.appendChild(card);
   });
 }
