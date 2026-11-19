@@ -2,6 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const MAX_DOGS = 12;
+const MAX_OFFLINE_SECONDS = 604800; // 7 days
 const RETIRE_REFUND_RATE = 0.20;
 const LEVEL_BONUS_PER_LEVEL = 0.005; // Very small: +0.5% per level above Lv.1
 const BPS_GLOBAL_SCALE = 0.25; // Lowered from 0.45 for slower, steadier passive bone growth
@@ -232,14 +233,17 @@ function getPerkMultipliers() {
 }
 
 function getBPS() {
-  let rosterBreedSum = 0;
+  let rosterDugSum = 0;
   state.roster.forEach(entry => {
-    const base = BREED_CONFIG[entry.breed] ? BREED_CONFIG[entry.breed].baseBps : 1;
-    rosterBreedSum += base * getDogLevelBonusMult(entry);
+    const dug = entry.bonesEarned || 0;
+    if (dug <= 0) return; // Wait until this dog digs its first bone
+    const dugContribution = (Math.sqrt(dug) * 0.5) * getDogLevelBonusMult(entry);
+    rosterDugSum += dugContribution;
   });
+
   const { boneMult, workBonus } = getPerkMultipliers();
   const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
-  return rosterBreedSum * state.digPower * state.speedMultiplier * baconBonus * workBonus * BPS_GLOBAL_SCALE * boneMult;
+  return rosterDugSum * state.digPower * state.speedMultiplier * baconBonus * workBonus * BPS_GLOBAL_SCALE * boneMult;
 }
 
 function rebuildCanvasDogsFromRoster() {
@@ -337,8 +341,9 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 15 && elapsedSeconds < 604800) {
-    const earned = Math.floor(getBPS() * elapsedSeconds * state.idleMultiplier);
+  if (elapsedSeconds > 15) {
+    const effectiveSeconds = Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS);
+    const earned = Math.floor(getBPS() * effectiveSeconds * state.idleMultiplier);
     if (earned > 0) {
       state.bones += earned;
       state.lifetimeBones += earned;
