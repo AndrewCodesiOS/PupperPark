@@ -15,7 +15,7 @@
     <div class="currency-pill">
       <span class="bone-icon">🦴</span>
       <span id="boneCount">0</span>
-      <div class="rate-pill" id="bpsCount">+0.0/s</div>
+      <div class="rate-pill" id="bpsCount">1.0x/dig</div>
     </div>
     <div class="currency-pill">
       <span class="bone-icon">✨</span>
@@ -66,7 +66,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Australian Shepherd</h3>
-              <p>Loyal herder. Digs standard bones automatically.</p>
+              <p>Steady herder (1.2x walk). Digs bones & grows your dig multiplier.</p>
               <div class="shop-owned">Owned: <span id="countAussie">1</span></div>
             </div>
             <button class="action-btn" id="btnSummonAussie">
@@ -78,7 +78,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Border Collie</h3>
-              <p>Hyper-focused genius. Boosts digging speed & BPS.</p>
+              <p>Nimble digger (1.3x walk, faster dig timer) for quicker bone & XP drops.</p>
               <div class="shop-owned">Owned: <span id="countCollie">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonCollie">
@@ -90,7 +90,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Golden Retriever</h3>
-              <p>Always happy and fluffy. Generates steady bone yield.</p>
+              <p>Sunny retriever (1.1x walk). Awards 2x standard bone payouts per dig!</p>
               <div class="shop-owned">Owned: <span id="countGolden">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonGolden">
@@ -102,7 +102,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Siberian Husky</h3>
-              <p>Energetic arctic runner. Boosts park movement speed.</p>
+              <p>Brisk runner (1.3x walk). Covers ground quickly to dig & build multiplier.</p>
               <div class="shop-owned">Owned: <span id="countHusky">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonHusky">
@@ -114,7 +114,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Shiba Inu</h3>
-              <p>Curled tail spirit. Boosts chance of finding rare treasures!</p>
+              <p>Sharp scout (1.15x walk). 10x higher chance to uncover rare treasures on digs!</p>
               <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShiba">
@@ -126,7 +126,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>German Shepherd</h3>
-              <p>Noble watch-pup. Boosts overall pack efficiency.</p>
+              <p>Loyal patrol pup (1.2x walk). Digs bones steadily to boost pack scaling.</p>
               <div class="shop-owned">Owned: <span id="countShepherd">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShepherd">
@@ -138,7 +138,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Beagle</h3>
-              <p>Droopy-eared tracker. Sniffs out extra bone payouts.</p>
+              <p>Keen tracker (1.0x walk). Awards 2x standard bone payouts per dig!</p>
               <div class="shop-owned">Owned: <span id="countBeagle">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonBeagle">
@@ -150,7 +150,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Dalmatian</h3>
-              <p>Spotted elite sprinter. Accelerates park activities.</p>
+              <p>Fleet sprinter (1.4x walk). Fastest park walker for steady dig cycles.</p>
               <div class="shop-owned">Owned: <span id="countDalmatian">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonDalmatian">
@@ -165,7 +165,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Tennis Ball</h3>
-              <p>Boosts bone generation rates across the pack.</p>
+              <p>Adds +1 Dig Power for larger bone payouts on every dig.</p>
             </div>
             <button class="action-btn" id="btnToyBones">
               <span class="btn-name">Get Toy</span>
@@ -176,7 +176,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Frisbee</h3>
-              <p>Boosts park movement speed and zoomies.</p>
+              <p>Boosts the pack's dig bone multiplier (1.2x) without runaway speed.</p>
             </div>
             <button class="action-btn" id="btnToySpeed">
               <span class="btn-name">Get Toy</span>
@@ -187,7 +187,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Red Chew Bone</h3>
-              <p>Boosts digging strength and power.</p>
+              <p>Adds +2 Dig Power for even bigger bone rewards per dig.</p>
             </div>
             <button class="action-btn" id="btnToyDig">
               <span class="btn-name">Get Toy</span>
@@ -198,7 +198,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Rubber Duck</h3>
-              <p>Boosts bonus earnings while away from the park.</p>
+              <p>Boosts offline dig bone yield (+10% per toy, up to 95%) while away.</p>
             </div>
             <button class="action-btn" id="btnToyIdle">
               <span class="btn-name">Get Toy</span>
@@ -212,7 +212,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Peanut Butter Kong</h3>
-              <p>Sends the pack into a golden digging frenzy!</p>
+              <p>15s of 100% ✨ Magic Bones on digs & taps!</p>
             </div>
             <button class="action-btn" id="btnTreatKong">
               <span class="btn-name">Toss Treat</span>
@@ -223,7 +223,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Bacon Chew Stick</h3>
-              <p>Unleashes an unstoppable wave of zoomies.</p>
+              <p>20s of 3x bone payouts on digs!</p>
             </div>
             <button class="action-btn" id="btnTreatBacon">
               <span class="btn-name">Give Treat</span>
@@ -234,7 +234,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Jumbo Meaty Bone</h3>
-              <p>Your dogs will jump with joy for this treat that gives instant collection rewards.</p>
+              <p>Your dogs jump for joy and award an instant feast of bones!</p>
             </div>
             <button class="action-btn" id="btnTreatFeast">
               <span class="btn-name">Serve Feast</span>
@@ -245,7 +245,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Pup Cup</h3>
-              <p>Whipped cream treat making taps and pickups extra rewarding.</p>
+              <p>25s of 2x bones & ✨ magic bones on digs and taps!</p>
             </div>
             <button class="action-btn" id="btnTreatCup">
               <span class="btn-name">Feed Pup Cup</span>
@@ -259,7 +259,7 @@
           <div class="shop-card" style="border-color: #f1c40f;">
             <div class="shop-info">
               <h3 style="color: #f1c40f;">Active Treasures Collection</h3>
-              <p>Treasures discovered by your pack stay active here!</p>
+              <p>Treasures discovered by your pack boost dig payouts, magic chance, or offline yield!</p>
               <div class="shop-owned">Total Unlocked Treasures: <span id="perkCountDisplay">0</span></div>
             </div>
           </div>
@@ -334,7 +334,7 @@
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
             <div class="stat-box"><span>Dig Power:</span> <strong id="statDigPower">1</strong></div>
-            <div class="stat-box"><span>Speed Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
+            <div class="stat-box"><span>Dig Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
             <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">12%</strong></div>
             <div class="stat-box"><span>Lifetime Bones:</span> <strong id="statLifetimeBones">0</strong></div>
           </div>
