@@ -1293,34 +1293,93 @@ class Dog {
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
     if (this.breed === 'aussie') {
+      // Australian Shepherd: rich merle/tan coat, white chest ruff, bobbed wagging tail
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
+      const coatDark = this.isShiny ? this.shinyColor : '#4e433f';
+      const merlePatch = this.isShiny ? this.shinyColor : '#736560';
+      const whiteFur = '#f8f9fa';
+
+      // Back & front legs with white socks
       ctx.fillStyle = primaryColor;
-      ctx.fillRect(-11 - legSwing, -3, 4, 9);
-      ctx.fillRect(6 + legSwing, -3, 4, 9);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-11 - legSwing, 4, 4, 3);
-      ctx.fillRect(6 + legSwing, 4, 4, 3);
-      const wag = Math.sin(this.animPhase * 1.5) * 2;
-      ctx.fillStyle = '#4e433f';
-      ctx.beginPath(); ctx.arc(-15, -10 + wag, 4.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4e433f';
-      ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#736560';
-      ctx.beginPath(); ctx.ellipse(-3, -11, 9, 5, -0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f8f9fa';
-      ctx.beginPath(); ctx.arc(9, -8, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4e433f';
-      ctx.beginPath(); ctx.arc(11, -17, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-11 - legSwing, -3, 4.2, 9.5);
+      ctx.fillRect(6.5 + legSwing, -3, 4.2, 9.5);
+      ctx.fillStyle = whiteFur;
+      ctx.fillRect(-11 - legSwing, 4, 4.2, 3);
+      ctx.fillRect(6.5 + legSwing, 4, 4.2, 3);
+
+      // Cute bobbed tail wiggle
+      const wag = Math.sin(this.animPhase * 2.2) * 2.5;
+      ctx.fillStyle = coatDark;
+      ctx.beginPath();
+      ctx.arc(-15, -10.5 + wag, 4.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Torso with merle blotches & white chest ruff
+      ctx.fillStyle = coatDark;
+      ctx.beginPath();
+      ctx.ellipse(-2, -9.5, 14.5, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = merlePatch;
+      ctx.beginPath();
+      ctx.ellipse(-4, -11.5, 8.5, 4.8, -0.12, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.fillStyle = primaryColor;
-      ctx.beginPath(); ctx.arc(13, -15, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.ellipse(17, -15, 4.5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath(); ctx.arc(20.5, -16, 1.8, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e272e';
-      ctx.beginPath(); ctx.arc(14, -18.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(2, -7.5, 6, 4, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.arc(8.5, -8, 7.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head, folded ears, tan eyebrow spots & snout
+      ctx.fillStyle = coatDark;
+      ctx.beginPath();
+      ctx.arc(11, -17, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.arc(12.5, -15, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Folded triangular Aussie ears
       ctx.fillStyle = '#382f2c';
-      ctx.beginPath(); ctx.ellipse(7, -19, 3.5, 5.5, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(6.5, -20.5);
+      ctx.lineTo(5.5, -26.5);
+      ctx.lineTo(11, -22.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // White muzzle & dark nose
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.ellipse(17, -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath();
+      ctx.arc(21, -15.6, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tan brow accent & eye
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.arc(14.2, -19.2, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(14.5, -17.3, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(14.9, -17.8, 0.55, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'collie') {
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
