@@ -246,7 +246,6 @@ let state = {
   
   hasTennisBall: false,
   hasFrisbee: false,
-  hasRedBone: false,
   hasDuck: false,
 
   isDraftingPerk: false,
@@ -261,7 +260,6 @@ function initDefaultCosts() {
   });
   state.costs.toyBones = 25;
   state.costs.toySpeed = 40;
-  state.costs.toyDig = 100;
   state.costs.toyIdle = 200;
 
   state.costs.treatKong = 150;
@@ -275,7 +273,6 @@ initDefaultCosts();
 
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
-let redBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isMoved: false, timer: 9.0 };
 let duck = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isMoved: false, timer: 5.5, quackPhase: 0 };
 
 let pendingRetireDogId = null;
@@ -432,7 +429,6 @@ function loadGame() {
       });
       if (!state.costs.toyBones) state.costs.toyBones = 25;
       if (!state.costs.toySpeed) state.costs.toySpeed = 40;
-      if (!state.costs.toyDig) state.costs.toyDig = 100;
       if (!state.costs.toyIdle) state.costs.toyIdle = 200;
       if (!state.costs.treatKong) state.costs.treatKong = 150;
       if (!state.costs.treatBacon) state.costs.treatBacon = 300;
@@ -459,7 +455,6 @@ function loadGame() {
       state.roster.push(createRosterEntry(normalizeBreedKey(shiny.breed), true, shiny.color));
     });
   }
-
 
   if (state.roster.length > MAX_DOGS) {
     state.roster = state.roster.slice(0, MAX_DOGS);
@@ -1026,7 +1021,6 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     
     hasTennisBall: false,
     hasFrisbee: false,
-    hasRedBone: false,
     hasDuck: false,
 
     isDraftingPerk: false,
@@ -2482,32 +2476,6 @@ function drawFrisbee() {
   ctx.restore();
 }
 
-function drawRedBone() {
-  if (!state.hasRedBone) return;
-  const pos = gridToScreen(redBone.gx, redBone.gy);
-  ctx.save();
-  ctx.translate(pos.x, pos.y);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(0, 4, 10, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#ff7675';
-  ctx.strokeStyle = '#d63031';
-  ctx.lineWidth = 1.5;
-
-  ctx.fillRect(-8, -3, 16, 6);
-  [[ -8, -3.5 ], [ -8, 3.5 ], [ 8, -3.5 ], [ 8, 3.5 ]].forEach(([kx, ky]) => {
-    ctx.beginPath();
-    ctx.arc(kx, ky, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
-
-  ctx.restore();
-}
-
 function drawDuck() {
   if (!state.hasDuck) return;
   const pos = gridToScreen(duck.gx, duck.gy);
@@ -2606,19 +2574,6 @@ document.getElementById('btnToySpeed').addEventListener('click', () => {
     state.speedMultiplier *= 1.2;
     state.costs.toySpeed = Math.floor(state.costs.toySpeed * 1.65);
     state.hasFrisbee = true;
-    sfx.upgrade();
-    updateUI();
-    saveGame();
-  }
-});
-
-document.getElementById('btnToyDig').addEventListener('click', () => {
-  initAudio();
-  if (state.bones >= state.costs.toyDig) {
-    state.bones -= state.costs.toyDig;
-    state.digPower += 2;
-    state.costs.toyDig = Math.floor(state.costs.toyDig * 1.60);
-    state.hasRedBone = true;
     sfx.upgrade();
     updateUI();
     saveGame();
@@ -2851,7 +2806,6 @@ function updateUI() {
 
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
-  document.getElementById('costToyDig').textContent = `${state.costs.toyDig.toLocaleString()} 🦴`;
   document.getElementById('costToyIdle').textContent = `${state.costs.toyIdle.toLocaleString()} 🦴`;
 
   document.getElementById('costTreatKong').textContent = `${state.costs.treatKong.toLocaleString()} 🦴`;
@@ -2876,7 +2830,6 @@ function updateUI() {
 
   document.getElementById('btnToyBones').disabled = state.bones < state.costs.toyBones;
   document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
-  document.getElementById('btnToyDig').disabled = state.bones < state.costs.toyDig;
   document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle;
 
   document.getElementById('btnTreatKong').disabled = state.bones < state.costs.treatKong;
@@ -2968,31 +2921,6 @@ function loop(now) {
       }
     }
 
-    if (state.hasRedBone) {
-      if (redBone.isMoved) {
-        redBone.gx += (redBone.targetGx - redBone.gx) * (dt * 4);
-        redBone.gy += (redBone.targetGy - redBone.gy) * (dt * 4);
-        if (Math.hypot(redBone.targetGx - redBone.gx, redBone.targetGy - redBone.gy) < 0.05) {
-          redBone.isMoved = false;
-        }
-      } else {
-        redBone.timer -= dt;
-        if (redBone.timer <= 0 && dogs.length > 0) {
-          redBone.timer = 11.0 + Math.random() * 7.0;
-          const walker = dogs[Math.floor(Math.random() * dogs.length)];
-          walker.targetGx = redBone.gx;
-          walker.targetGy = redBone.gy;
-          walker.state = 'WALK';
-          walker.onReachToy = () => {
-            sfx.thud();
-            redBone.isMoved = true;
-            redBone.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, redBone.gx + (Math.random() - 0.5) * 2.5));
-            redBone.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, redBone.gy + (Math.random() - 0.5) * 2.5));
-          };
-        }
-      }
-    }
-
     if (state.hasDuck) {
       if (duck.isMoved) {
         duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
@@ -3056,9 +2984,6 @@ function loop(now) {
     }
     if (state.hasFrisbee) {
       renderables.push({ sortY: gridToScreen(frisbee.gx, frisbee.gy).y, draw: drawFrisbee });
-    }
-    if (state.hasRedBone) {
-      renderables.push({ sortY: gridToScreen(redBone.gx, redBone.gy).y, draw: drawRedBone });
     }
     if (state.hasDuck) {
       renderables.push({ sortY: gridToScreen(duck.gx, duck.gy).y, draw: drawDuck });
