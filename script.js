@@ -11,6 +11,7 @@ const DIG_MULT_SQRT_SCALE = 0.25; // Gentle sqrt curve from dug bones
 const BONUS_PAYOUT_MAX = 0.25;  // Up to +0.25 Bone Yield
 const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
 const BONUS_XP_MAX = 0.15;      // Up to +0.15 Quick Learner
+const XP_TREAT_MULT = 1.75;     // 1.75x XP earned while XP treat is active
 
 const BREED_LABELS = {
   aussie: 'Aussie',
@@ -193,6 +194,7 @@ function createRosterEntry(breed, isShiny = false, shinyColor = null, customName
     level: 1,
     xp: 0,
     bonesEarned: 0,
+    isFavorite: false,
     isShiny,
     shinyColor: shinyColor || null,
     bonusPayout: rolls.bonusPayout,
@@ -209,6 +211,10 @@ function getXpNeededForLevel(level) {
 function getDogLevelBonusMult(entry) {
   const lvl = entry && entry.level ? entry.level : 1;
   return 1 + Math.max(0, lvl - 1) * LEVEL_BONUS_PER_LEVEL;
+}
+
+function getActiveXpBoostMult() {
+  return state.xpTreatTimer > 0 ? XP_TREAT_MULT : 1;
 }
 
 let state = {
@@ -235,6 +241,7 @@ let state = {
   kongTimer: 0,
   baconTimer: 0,
   pupCupTimer: 0,
+  xpTreatTimer: 0,
   feastAnimTimer: 0,
   
   hasTennisBall: false,
@@ -248,18 +255,23 @@ let state = {
   lastSaveTime: Date.now()
 };
 
-Object.keys(BREED_CONFIG).forEach(b => {
-  state.costs[b] = BREED_CONFIG[b].cost;
-});
-state.costs.toyBones = 25;
-state.costs.toySpeed = 40;
-state.costs.toyDig = 100;
-state.costs.toyIdle = 200;
+function initDefaultCosts() {
+  Object.keys(BREED_CONFIG).forEach(b => {
+    state.costs[b] = BREED_CONFIG[b].cost;
+  });
+  state.costs.toyBones = 25;
+  state.costs.toySpeed = 40;
+  state.costs.toyDig = 100;
+  state.costs.toyIdle = 200;
 
-state.costs.treatKong = 150;
-state.costs.treatBacon = 300;
-state.costs.treatFeast = 500;
-state.costs.treatCup = 750;
+  state.costs.treatKong = 150;
+  state.costs.treatBacon = 300;
+  state.costs.treatFeast = 500;
+  state.costs.treatCup = 750;
+  state.costs.treatXp = 220;
+}
+
+initDefaultCosts();
 
 let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
@@ -401,6 +413,9 @@ function loadGame() {
       if (typeof state.showNameTags !== 'boolean') {
         state.showNameTags = true;
       }
+      if (typeof state.xpTreatTimer !== 'number' || Number.isNaN(state.xpTreatTimer)) {
+        state.xpTreatTimer = 0;
+      }
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
       if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
@@ -423,6 +438,7 @@ function loadGame() {
       if (!state.costs.treatBacon) state.costs.treatBacon = 300;
       if (!state.costs.treatFeast) state.costs.treatFeast = 500;
       if (!state.costs.treatCup) state.costs.treatCup = 750;
+      if (!state.costs.treatXp) state.costs.treatXp = 220;
     } catch (e) {
       console.error('Failed to load save data, resetting save', e);
       localStorage.removeItem('pupperpark_save');
@@ -460,6 +476,7 @@ function loadGame() {
     if (typeof entry.level !== 'number' || entry.level < 1) entry.level = 1;
     if (typeof entry.xp !== 'number' || entry.xp < 0) entry.xp = 0;
     if (typeof entry.bonesEarned !== 'number' || entry.bonesEarned < 0) entry.bonesEarned = 0;
+    if (typeof entry.isFavorite !== 'boolean') entry.isFavorite = false;
     if (
       typeof entry.bonusPayout !== 'number' ||
       typeof entry.bonusScaling !== 'number' ||
@@ -624,6 +641,20 @@ tabBtns.forEach(btn => {
   });
 });
 
+function toggleFavoriteDog(dogId) {
+  initAudio();
+  const target = state.roster.find(d => d.id === dogId);
+  if (!target) return;
+  target.isFavorite = !target.isFavorite;
+  if (target.isFavorite) {
+    sfx.gather();
+  } else {
+    sfx.collect();
+  }
+  renderRosterTab();
+  saveGame();
+}
+
 // Retire Dog Confirmation Modal Handlers (up to 50% refund)
 const retireConfirmModal = document.getElementById('retireConfirmModal');
 const retireConfirmText = document.getElementById('retireConfirmText');
@@ -718,6 +749,7 @@ function renderRosterTab() {
     const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
     const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
     const breedName = BREED_LABELS[entry.breed] || entry.breed;
+    const isFav = Boolean(entry.isFavorite);
 
     const gradeClass = stats.rollGrade === '★ Max Roll'
       ? 'grade-max'
@@ -728,7 +760,7 @@ function renderRosterTab() {
           : 'grade-standard';
 
     const card = document.createElement('div');
-    card.className = 'roster-card';
+    card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
 
     const mainCol = document.createElement('div');
     mainCol.className = 'roster-main';
@@ -765,6 +797,7 @@ function renderRosterTab() {
     const chipsRow = document.createElement('div');
     chipsRow.className = 'roster-chips';
     chipsRow.innerHTML = `
+      ${isFav ? '<span class="roster-chip roster-fav-chip">★ Favorite</span>' : ''}
       <span class="roster-chip">${breedName}</span>
       <span class="roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}">Lv. <strong>${entry.level}</strong>${entry.isShiny ? ' ✨' : ''}</span>
       <span class="roster-chip roster-roll-chip ${gradeClass}"><strong>${stats.rollGrade}</strong></span>
@@ -781,10 +814,33 @@ function renderRosterTab() {
     mainCol.appendChild(chipsRow);
     card.appendChild(mainCol);
 
-    if (canRetire) {
-      const rightAction = document.createElement('div');
-      rightAction.className = 'roster-right-action';
+    const rightAction = document.createElement('div');
+    rightAction.className = 'roster-right-action';
+    rightAction.style.display = 'flex';
+    rightAction.style.flexDirection = 'column';
+    rightAction.style.alignItems = 'center';
+    rightAction.style.gap = '6px';
 
+    const favBtn = document.createElement('button');
+    favBtn.type = 'button';
+    favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
+    favBtn.setAttribute('aria-pressed', String(isFav));
+    favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
+    favBtn.textContent = isFav ? '★' : '☆';
+    favBtn.style.cssText = `
+      background: ${isFav ? 'rgba(255, 234, 167, 0.2)' : 'rgba(255, 255, 255, 0.06)'};
+      border: 1px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.2)'};
+      color: ${isFav ? '#ffeaa7' : '#b2bec3'};
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.95rem;
+      line-height: 1.2;
+      cursor: pointer;
+    `;
+    favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
+    rightAction.appendChild(favBtn);
+
+    if (canRetire) {
       const retireBtn = document.createElement('button');
       retireBtn.type = 'button';
       retireBtn.className = 'retire-pill-btn retire-pill-two-line';
@@ -793,11 +849,10 @@ function renderRosterTab() {
         <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
       `;
       retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
-
       rightAction.appendChild(retireBtn);
-      card.appendChild(rightAction);
     }
 
+    card.appendChild(rightAction);
     container.appendChild(card);
   });
 }
@@ -953,6 +1008,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     kongTimer: 0,
     baconTimer: 0,
     pupCupTimer: 0,
+    xpTreatTimer: 0,
     feastAnimTimer: 0,
     
     hasTennisBall: false,
@@ -966,18 +1022,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     lastSaveTime: Date.now()
   };
 
-  Object.keys(BREED_CONFIG).forEach(b => {
-    state.costs[b] = BREED_CONFIG[b].cost;
-  });
-  state.costs.toyBones = 25;
-  state.costs.toySpeed = 40;
-  state.costs.toyDig = 100;
-  state.costs.toyIdle = 200;
-
-  state.costs.treatKong = 150;
-  state.costs.treatBacon = 300;
-  state.costs.treatFeast = 500;
-  state.costs.treatCup = 750;
+  initDefaultCosts();
 
   rebuildCanvasDogsFromRoster();
   droppedBones.length = 0;
@@ -1316,7 +1361,11 @@ class Dog {
     if (entry) {
       entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
       const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
-      const xpGain = Math.max(1, Math.round(baseXp * stats.quickLearner * (this.isMagicDig ? 2 : 1)));
+      const xpTreatMult = getActiveXpBoostMult();
+      const xpGain = Math.max(
+        1,
+        Math.round(baseXp * stats.quickLearner * xpTreatMult * (this.isMagicDig ? 2 : 1))
+      );
       entry.xp = (entry.xp || 0) + xpGain;
 
       let leveledUp = false;
@@ -1390,13 +1439,11 @@ class Dog {
     const legSwing = this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0);
 
     if (this.breed === 'aussie') {
-      // Australian Shepherd: rich merle/tan coat, white chest ruff, bobbed wagging tail
       const primaryColor = this.isShiny ? this.shinyColor : '#c87d4b';
       const coatDark = this.isShiny ? this.shinyColor : '#4e433f';
       const merlePatch = this.isShiny ? this.shinyColor : '#736560';
       const whiteFur = '#f8f9fa';
 
-      // Back & front legs with white socks
       ctx.fillStyle = primaryColor;
       ctx.fillRect(-11 - legSwing, -3, 4.2, 9.5);
       ctx.fillRect(6.5 + legSwing, -3, 4.2, 9.5);
@@ -1404,14 +1451,12 @@ class Dog {
       ctx.fillRect(-11 - legSwing, 4, 4.2, 3);
       ctx.fillRect(6.5 + legSwing, 4, 4.2, 3);
 
-      // Cute bobbed tail wiggle
       const wag = Math.sin(this.animPhase * 2.2) * 2.5;
       ctx.fillStyle = coatDark;
       ctx.beginPath();
       ctx.arc(-15, -10.5 + wag, 4.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Torso with merle blotches & white chest ruff
       ctx.fillStyle = coatDark;
       ctx.beginPath();
       ctx.ellipse(-2, -9.5, 14.5, 9, 0, 0, Math.PI * 2);
@@ -1432,7 +1477,6 @@ class Dog {
       ctx.arc(8.5, -8, 7.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head, folded ears, tan eyebrow spots & snout
       ctx.fillStyle = coatDark;
       ctx.beginPath();
       ctx.arc(11, -17, 8, 0, Math.PI * 2);
@@ -1443,7 +1487,6 @@ class Dog {
       ctx.arc(12.5, -15, 4.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Folded triangular Aussie ears
       ctx.fillStyle = '#382f2c';
       ctx.beginPath();
       ctx.moveTo(6.5, -20.5);
@@ -1452,7 +1495,6 @@ class Dog {
       ctx.closePath();
       ctx.fill();
 
-      // White muzzle & dark nose
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
       ctx.ellipse(17, -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
@@ -1463,7 +1505,6 @@ class Dog {
       ctx.arc(21, -15.6, 1.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Tan brow accent & eye
       ctx.fillStyle = primaryColor;
       ctx.beginPath();
       ctx.arc(14.2, -19.2, 1.4, 0, Math.PI * 2);
@@ -1479,12 +1520,10 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'collie') {
-      // Border / Rough Collie: flowing coat, fluffy white mane ruff, tipped ears, feathered tail
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       const featherShade = this.isShiny ? this.shinyColor : '#1e272e';
       const whiteFur = '#f8f9fa';
 
-      // Back & front legs with white socks
       ctx.fillStyle = collieColor;
       ctx.fillRect(-12 - legSwing, -3, 3.8, 10);
       ctx.fillRect(7 - legSwing * 0.5, -3, 3.8, 10);
@@ -1492,7 +1531,6 @@ class Dog {
       ctx.fillRect(-12 - legSwing, 4, 3.8, 3);
       ctx.fillRect(7 - legSwing * 0.5, 4, 3.8, 3);
 
-      // Graceful feathered tail with wagging sweep
       const wag = Math.sin(this.animPhase * 2.1) * 3.4;
       ctx.save();
       ctx.strokeStyle = collieColor;
@@ -1511,7 +1549,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Sleek torso + fluffy white mane ruff
       ctx.fillStyle = collieColor;
       ctx.beginPath();
       ctx.ellipse(-1.5, -10, 15.5, 8.2, -0.08, 0, Math.PI * 2);
@@ -1527,7 +1564,6 @@ class Dog {
       ctx.ellipse(6.5, -10.5, 5.5, 8, 0.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head & classic tipped ear
       ctx.fillStyle = collieColor;
       ctx.beginPath();
       ctx.arc(11, -17.5, 7.5, 0, Math.PI * 2);
@@ -1549,7 +1585,6 @@ class Dog {
       ctx.closePath();
       ctx.fill();
 
-      // Slender collie muzzle & dark nose
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
       ctx.moveTo(12, -16.5);
@@ -1563,7 +1598,6 @@ class Dog {
       ctx.arc(22.2, -14.3, 1.65, 0, Math.PI * 2);
       ctx.fill();
 
-      // Expressive eye with catchlight
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
       ctx.arc(14.5, -18.2, 1.5, 0, Math.PI * 2);
@@ -1574,17 +1608,14 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'golden') {
-      // Golden Retriever: warm golden coat, cream highlights, floppy ear, feathered tail
       const col = this.isShiny ? this.shinyColor : '#f39c12';
       const richShade = this.isShiny ? this.shinyColor : '#d35400';
       const creamHighlight = '#ffeaa7';
 
-      // Front & back legs with warm shading
       ctx.fillStyle = col;
       ctx.fillRect(-11.5 - legSwing, -3, 4.6, 10);
       ctx.fillRect(6.5 + legSwing, -3, 4.6, 10);
 
-      // Feathered wagging tail
       const wag = Math.sin(this.animPhase * 2.1) * 3.5;
       ctx.save();
       ctx.strokeStyle = col;
@@ -1603,7 +1634,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Plush torso & soft cream chest highlight
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.ellipse(-1, -9.5, 15.5, 9.2, 0, 0, Math.PI * 2);
@@ -1614,7 +1644,6 @@ class Dog {
       ctx.ellipse(6.5, -8.5, 5.5, 6.5, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head, soft muzzle & floppy ear
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(11, -16.5, 7.8, 0, Math.PI * 2);
@@ -1630,7 +1659,6 @@ class Dog {
       ctx.ellipse(8.2, -13.5, 3.3, 6.5, 0.28, 0, Math.PI * 2);
       ctx.fill();
 
-      // Nose & warm friendly eye
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
       ctx.arc(21.2, -14.5, 1.8, 0, Math.PI * 2);
@@ -1646,12 +1674,10 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'husky') {
-      // Siberian Husky: dense plush coat, mask markings, fluffy curved tail, icy eyes
       const col = this.isShiny ? this.shinyColor : '#636e72';
       const darkTrim = this.isShiny ? this.shinyColor : '#2d3436';
       const bellyWhite = '#f8f9fa';
 
-      // Back & front legs with white paws
       ctx.fillStyle = col;
       ctx.fillRect(-11 - legSwing, -3, 4.2, 10);
       ctx.fillRect(6 + legSwing, -3, 4.2, 10);
@@ -1659,7 +1685,6 @@ class Dog {
       ctx.fillRect(-11 - legSwing, 4, 4.2, 3);
       ctx.fillRect(6 + legSwing, 4, 4.2, 3);
 
-      // Fluffy plume tail with wagging arc
       const wag = Math.sin(this.animPhase * 2.1) * 3.5;
       ctx.save();
       ctx.strokeStyle = col;
@@ -1678,7 +1703,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Torso & white chest/underbelly
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.ellipse(-1, -10, 14.5, 8.5, 0, 0, Math.PI * 2);
@@ -1689,13 +1713,11 @@ class Dog {
       ctx.ellipse(3, -6.5, 10, 4.5, -0.08, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head, pointed ears with inner fur, and facial mask
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(10.5, -17, 7.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Left/far ear + right/near ear
       ctx.fillStyle = darkTrim;
       ctx.beginPath();
       ctx.moveTo(6.5, -21);
@@ -1712,7 +1734,6 @@ class Dog {
       ctx.closePath();
       ctx.fill();
 
-      // White husky mask & snout
       ctx.fillStyle = bellyWhite;
       ctx.beginPath();
       ctx.ellipse(14.5, -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
@@ -1721,7 +1742,6 @@ class Dog {
       ctx.arc(10.5, -16, 4.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Nose & signature bright blue eye
       ctx.fillStyle = '#1e272e';
       ctx.beginPath();
       ctx.ellipse(20.2, -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
@@ -1737,12 +1757,10 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'shiba') {
-      // Shiba Inu: plush fox-red/sesame coat, cream urajiro markings, curled tail, alert ears
       const col = this.isShiny ? this.shinyColor : '#d35400';
       const warmShade = this.isShiny ? this.shinyColor : '#a84300';
       const creamFur = '#fffaf0';
 
-      // Back & front legs with cream paws
       ctx.fillStyle = col;
       ctx.fillRect(-10.5 - legSwing, -2.5, 4, 9.5);
       ctx.fillRect(6 + legSwing, -2.5, 4, 9.5);
@@ -1750,7 +1768,6 @@ class Dog {
       ctx.fillRect(-10.5 - legSwing, 4, 4, 3);
       ctx.fillRect(6 + legSwing, 4, 4, 3);
 
-      // Curled Shiba tail with wagging bounce
       const wag = Math.sin(this.animPhase * 2.4) * 2.2;
       ctx.save();
       ctx.strokeStyle = col;
@@ -1763,7 +1780,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Compact sturdy torso + cream belly/chest
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.ellipse(-0.5, -9, 14.5, 8.4, 0, 0, Math.PI * 2);
@@ -1779,7 +1795,6 @@ class Dog {
       ctx.ellipse(2, -5.8, 10.5, 4.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Plush Shiba head, pointed ears & cream cheek/muzzle
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(10.5, -16.5, 7.6, 0, Math.PI * 2);
@@ -1805,7 +1820,6 @@ class Dog {
       ctx.ellipse(15, -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
       ctx.fill();
 
-      // Dark nose & happy squinting/sparkling Shiba eye
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
       ctx.arc(19.6, -14.4, 1.6, 0, Math.PI * 2);
@@ -1821,12 +1835,10 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'shepherd') {
-      // German Shepherd: rich saddle coat, dark muzzle/ears, swept bushy tail
       const saddleCol = this.isShiny ? this.shinyColor : '#d35400';
       const darkCol = this.isShiny ? this.shinyColor : '#2c3e50';
       const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
 
-      // Hind & front legs with dark saddle upper & tan lower
       ctx.fillStyle = darkCol;
       ctx.fillRect(-12 - legSwing, -3, 4.2, 6);
       ctx.fillRect(7 + legSwing, -3, 4.2, 6);
@@ -1834,7 +1846,6 @@ class Dog {
       ctx.fillRect(-12 - legSwing, 2, 4.2, 5);
       ctx.fillRect(7 + legSwing, 2, 4.2, 5);
 
-      // Low-slung bushy shepherd tail
       const wag = Math.sin(this.animPhase * 2) * 3.2;
       ctx.save();
       ctx.strokeStyle = darkCol;
@@ -1846,7 +1857,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Sloped athletic torso with dark saddle blanket
       ctx.fillStyle = saddleCol;
       ctx.beginPath();
       ctx.ellipse(-1, -10, 15.5, 8.8, -0.12, 0, Math.PI * 2);
@@ -1857,13 +1867,11 @@ class Dog {
       ctx.ellipse(-2, -12.5, 12.5, 5.2, -0.08, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head, large upright ears, and dark snout
       ctx.fillStyle = saddleCol;
       ctx.beginPath();
       ctx.arc(11, -17.5, 7.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Large upright shepherd ears
       ctx.fillStyle = darkCol;
       ctx.beginPath();
       ctx.moveTo(6.5, -21);
@@ -1880,7 +1888,6 @@ class Dog {
       ctx.closePath();
       ctx.fill();
 
-      // Tapered snout & dark muzzle
       ctx.fillStyle = darkCol;
       ctx.beginPath();
       ctx.moveTo(12, -18.5);
@@ -1890,7 +1897,6 @@ class Dog {
       ctx.closePath();
       ctx.fill();
 
-      // Nose & warm focused eye
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
       ctx.arc(21.3, -14.8, 1.7, 0, Math.PI * 2);
@@ -1906,13 +1912,11 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'beagle') {
-      // Beagle: tricolor hound coat, long velvety floppy ears, white-tipped tail
       const col = this.isShiny ? this.shinyColor : '#e67e22';
       const earBrown = this.isShiny ? this.shinyColor : '#6d4c41';
       const saddleDark = this.isShiny ? this.shinyColor : '#3e2723';
       const whiteFur = '#f8f9fa';
 
-      // Short sturdy legs with white paws
       ctx.fillStyle = col;
       ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, 8.5);
       ctx.fillRect(5.5 + legSwing, -2.5, 4.2, 8.5);
@@ -1920,7 +1924,6 @@ class Dog {
       ctx.fillRect(-10.5 - legSwing, 3.5, 4.2, 3);
       ctx.fillRect(5.5 + legSwing, 3.5, 4.2, 3);
 
-      // Upright wagging tail with white tip
       const wag = Math.sin(this.animPhase * 2.3) * 3.8;
       ctx.save();
       ctx.strokeStyle = col;
@@ -1939,7 +1942,6 @@ class Dog {
       ctx.stroke();
       ctx.restore();
 
-      // Torso with dark saddle & white underbelly
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.ellipse(-0.5, -8.5, 14.5, 8.2, 0, 0, Math.PI * 2);
@@ -1955,7 +1957,6 @@ class Dog {
       ctx.ellipse(4.5, -6.2, 7.5, 4.5, 0.08, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head, white snout & long droopy hound ear
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(10.5, -15.5, 7.4, 0, Math.PI * 2);
@@ -1971,7 +1972,6 @@ class Dog {
       ctx.ellipse(7.5, -11.8, 3.6, 7.5, 0.25, 0, Math.PI * 2);
       ctx.fill();
 
-      // Nose & soulful hound eye
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
       ctx.arc(19.6, -13.2, 1.65, 0, Math.PI * 2);
@@ -1987,7 +1987,6 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'labrador') {
-      // Labrador Retriever: warm golden/fox-red coat (or shiny color), thick otter tail, floppy ears
       const col = this.isShiny ? this.shinyColor : '#e5a93c';
       const earCol = this.isShiny ? this.shinyColor : '#c78924';
       ctx.fillStyle = col;
@@ -2650,13 +2649,13 @@ document.getElementById('btnTreatBacon').addEventListener('click', () => {
   }
 });
 
+// Modest Jumbo Meaty Bone reward: +15% digPower (at least +1) instead of a large bone burst
 document.getElementById('btnTreatFeast').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.treatFeast) {
     state.bones -= state.costs.treatFeast;
-    const feastPayout = Math.max(10, Math.floor(getAverageBonesPerDig() * Math.max(1, state.roster.length) * 2));
-    state.bones += feastPayout;
-    state.lifetimeBones += feastPayout;
+    const modestDigGain = Math.max(1, Math.round(state.digPower * 0.15 * 10) / 10);
+    state.digPower = Math.round((state.digPower + modestDigGain) * 10) / 10;
     state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
     state.feastAnimTimer = 1.5;
     sfx.treat();
@@ -2671,6 +2670,20 @@ document.getElementById('btnTreatCup').addEventListener('click', () => {
     state.bones -= state.costs.treatCup;
     state.pupCupTimer = 25;
     state.costs.treatCup = Math.floor(state.costs.treatCup * 1.6);
+    sfx.treat();
+    updateUI();
+    saveGame();
+  }
+});
+
+// XP-boosting treat handler (optional button #btnTreatXp)
+document.getElementById('btnTreatXp')?.addEventListener('click', () => {
+  initAudio();
+  const xpCost = state.costs.treatXp || 220;
+  if (state.bones >= xpCost) {
+    state.bones -= xpCost;
+    state.xpTreatTimer = 20;
+    state.costs.treatXp = Math.floor(xpCost * 1.6);
     sfx.treat();
     updateUI();
     saveGame();
@@ -2833,7 +2846,14 @@ function updateUI() {
   document.getElementById('costTreatFeast').textContent = `${state.costs.treatFeast.toLocaleString()} 🦴`;
   document.getElementById('costTreatCup').textContent = `${state.costs.treatCup.toLocaleString()} 🦴`;
 
-  document.getElementById('statDigPower').textContent = state.digPower;
+  const xpCost = state.costs.treatXp || 220;
+  const costTreatXpEl = document.getElementById('costTreatXp');
+  if (costTreatXpEl) {
+    const activeSuffix = state.xpTreatTimer > 0 ? ` (${Math.ceil(state.xpTreatTimer)}s)` : '';
+    costTreatXpEl.textContent = `${xpCost.toLocaleString()} 🦴${activeSuffix}`;
+  }
+
+  document.getElementById('statDigPower').textContent = Number(state.digPower.toFixed(1));
   document.getElementById('statSpeed').textContent = `${getDigMultiplier().toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
   const lifetimeEl = document.getElementById('statLifetimeBones');
@@ -2850,6 +2870,11 @@ function updateUI() {
   document.getElementById('btnTreatBacon').disabled = state.bones < state.costs.treatBacon;
   document.getElementById('btnTreatFeast').disabled = state.bones < state.costs.treatFeast;
   document.getElementById('btnTreatCup').disabled = state.bones < state.costs.treatCup;
+
+  const btnTreatXpEl = document.getElementById('btnTreatXp');
+  if (btnTreatXpEl) {
+    btnTreatXpEl.disabled = state.bones < xpCost;
+  }
 }
 
 loadGame();
@@ -2864,6 +2889,19 @@ function loop(now) {
     if (state.kongTimer > 0) state.kongTimer = Math.max(0, state.kongTimer - dt);
     if (state.baconTimer > 0) state.baconTimer = Math.max(0, state.baconTimer - dt);
     if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
+    if (state.xpTreatTimer > 0) {
+      const prevCeil = Math.ceil(state.xpTreatTimer);
+      state.xpTreatTimer = Math.max(0, state.xpTreatTimer - dt);
+      if (Math.ceil(state.xpTreatTimer) !== prevCeil) {
+        const costTreatXpEl = document.getElementById('costTreatXp');
+        if (costTreatXpEl) {
+          const xpCost = state.costs.treatXp || 220;
+          costTreatXpEl.textContent = state.xpTreatTimer > 0
+            ? `${xpCost.toLocaleString()} 🦴 (${Math.ceil(state.xpTreatTimer)}s)`
+            : `${xpCost.toLocaleString()} 🦴`;
+        }
+      }
+    }
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
     if (state.hasTennisBall) {
@@ -2966,8 +3004,6 @@ function loop(now) {
         }
       }
     }
-
-    // Bones are awarded when digs complete and bones are collected—no side-clock tick here.
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
