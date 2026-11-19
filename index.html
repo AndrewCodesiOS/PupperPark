@@ -371,6 +371,29 @@
     </div>
   </div>
 
+  <!-- Reroll Dog Traits Modal -->
+  <div id="rerollModal" class="modal" style="display: none;">
+    <div class="modal-window reroll-modal-window">
+      <div class="reroll-modal-header">
+        <h2>🎲 Trait &amp; Stat Reroll</h2>
+        <button type="button" id="btnCloseRerollModal" class="close-btn" aria-label="Close reroll modal">✕</button>
+      </div>
+
+      <div id="rerollDogSummary" class="reroll-dog-summary"></div>
+      <div id="rerollCurrentStats" class="reroll-stats-grid"></div>
+      <p id="rerollRulesText" class="reroll-rules-text"></p>
+
+      <div id="rerollResultBanner" class="reroll-result-banner" style="display: none;"></div>
+
+      <div class="reroll-actions">
+        <button type="button" id="btnConfirmReroll" class="action-btn reroll-purchase-btn">
+          <span class="btn-name">Reroll Stats</span>
+          <span class="btn-cost" id="rerollCostLabel">5,000 ✨</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Treasure Draft Modal -->
   <div id="perkModal" class="modal" style="display: none;">
     <div class="modal-window perk-modal-window">
