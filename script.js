@@ -8,6 +8,10 @@ const LEVEL_BONUS_PER_LEVEL = 0.005; // +0.5% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
 const DIG_MULT_SQRT_SCALE = 0.25; // Gentle sqrt curve from dug bones
 
+const BONUS_PAYOUT_MAX = 0.25;  // Up to +0.25 Bone Yield
+const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
+const BONUS_XP_MAX = 0.15;      // Up to +0.15 Quick Learner
+
 const BREED_LABELS = {
   aussie: 'Aussie',
   beagle: 'Beagle',
@@ -96,9 +100,9 @@ const sfx = {
 
 /**
  * Ranked by earnings contribution & utility over time (Dalmatian replaced by Labrador):
- * - payoutMult: standard bone dig payout multiplier
- * - scalingMult: multiplier on this dog's sqrt(bonesEarned) contribution
- * - xpMult: XP earned per dig toward leveling up
+ * - payoutMult: base Bone Yield multiplier
+ * - scalingMult: base Pack Growth multiplier on this dog's sqrt(bonesEarned) contribution
+ * - xpMult: base Quick Learner multiplier on XP earned per dig toward leveling up
  * - magicBonus: extra magic bone probability on digs
  * - walkMult: visual walk speed multiplier
  * - digSec: base dig duration in seconds
@@ -132,8 +136,56 @@ function generateDefaultName(breed, indexNum) {
   return DEFAULT_PUP_NAMES[(indexNum - 1) % DEFAULT_PUP_NAMES.length].trim();
 }
 
+function rollDogBonusStats() {
+  const payoutSteps = Math.floor(Math.random() * 6); // 0..5 -> +0.00 to +0.25
+  const scalingSteps = Math.floor(Math.random() * 9); // 0..8 -> +0.00 to +0.16
+  const xpSteps = Math.floor(Math.random() * 6); // 0..5 -> +0.00 to +0.15
+
+  const bonusPayout = Math.round(payoutSteps * 0.05 * 100) / 100;
+  const bonusScaling = Math.round(scalingSteps * 0.02 * 100) / 100;
+  const bonusXp = Math.round(xpSteps * 0.03 * 100) / 100;
+
+  const rollRatio = (
+    (bonusPayout / BONUS_PAYOUT_MAX) +
+    (bonusScaling / BONUS_SCALING_MAX) +
+    (bonusXp / BONUS_XP_MAX)
+  ) / 3;
+
+  let rollGrade = 'Standard';
+  if (rollRatio >= 0.95) {
+    rollGrade = '★ Max Roll';
+  } else if (rollRatio >= 0.65) {
+    rollGrade = 'Prime';
+  } else if (rollRatio >= 0.35) {
+    rollGrade = 'Sharp';
+  }
+
+  return { bonusPayout, bonusScaling, bonusXp, rollGrade };
+}
+
+function getEffectiveBreedStats(entry, fallbackBreed = 'aussie') {
+  const breedKey = normalizeBreedKey((entry && entry.breed) || fallbackBreed);
+  const cfg = BREED_CONFIG[breedKey] || BREED_CONFIG.aussie;
+  const bonusPayout = entry && typeof entry.bonusPayout === 'number' ? entry.bonusPayout : 0;
+  const bonusScaling = entry && typeof entry.bonusScaling === 'number' ? entry.bonusScaling : 0;
+  const bonusXp = entry && typeof entry.bonusXp === 'number' ? entry.bonusXp : 0;
+
+  return {
+    ...cfg,
+    breedKey,
+    boneYield: (cfg.payoutMult || 1.0) + bonusPayout,
+    packGrowth: (cfg.scalingMult || 1.0) + bonusScaling,
+    quickLearner: (cfg.xpMult || 1.0) + bonusXp,
+    bonusPayout,
+    bonusScaling,
+    bonusXp,
+    rollGrade: (entry && entry.rollGrade) || 'Standard'
+  };
+}
+
 function createRosterEntry(breed, isShiny = false, shinyColor = null, customName = null) {
   const nextIndex = (state.roster ? state.roster.length : 0) + 1;
+  const rolls = rollDogBonusStats();
   return {
     id: `dog_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     breed,
@@ -142,7 +194,11 @@ function createRosterEntry(breed, isShiny = false, shinyColor = null, customName
     xp: 0,
     bonesEarned: 0,
     isShiny,
-    shinyColor: shinyColor || null
+    shinyColor: shinyColor || null,
+    bonusPayout: rolls.bonusPayout,
+    bonusScaling: rolls.bonusScaling,
+    bonusXp: rolls.bonusXp,
+    rollGrade: rolls.rollGrade
   };
 }
 
@@ -245,13 +301,13 @@ function getPerkMultipliers() {
 
 /**
  * Computes the dog's personal dug-bone scaling factor (0 until the dog digs its first bone),
- * using a gentle Math.sqrt curve multiplied by the breed's scalingMult and level bonus.
+ * using a gentle Math.sqrt curve multiplied by effective Pack Growth and level bonus.
  */
 function getDogDugScaling(entry) {
   const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
   if (dug <= 0) return 0; // Waits until this dog digs its first bone
-  const cfg = (entry && BREED_CONFIG[entry.breed]) || BREED_CONFIG.aussie;
-  return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * (cfg.scalingMult || 1.0) * getDogLevelBonusMult(entry);
+  const stats = getEffectiveBreedStats(entry);
+  return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * stats.packGrowth * getDogLevelBonusMult(entry);
 }
 
 /**
@@ -284,9 +340,9 @@ function getAverageBonesPerDig() {
 
   let total = 0;
   state.roster.forEach(entry => {
-    const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
+    const stats = getEffectiveBreedStats(entry);
     const perDogMult = (DIG_MULT_BASE + getDogDugScaling(entry)) * state.speedMultiplier * baconBonus * workBonus * boneMult;
-    const raw = state.digPower * (cfg.payoutMult || 1.0) * cupMult * perDogMult;
+    const raw = state.digPower * stats.boneYield * cupMult * perDogMult;
     total += Math.max(1, Math.round(raw * 10) / 10);
   });
 
@@ -404,6 +460,18 @@ function loadGame() {
     if (typeof entry.level !== 'number' || entry.level < 1) entry.level = 1;
     if (typeof entry.xp !== 'number' || entry.xp < 0) entry.xp = 0;
     if (typeof entry.bonesEarned !== 'number' || entry.bonesEarned < 0) entry.bonesEarned = 0;
+    if (
+      typeof entry.bonusPayout !== 'number' ||
+      typeof entry.bonusScaling !== 'number' ||
+      typeof entry.bonusXp !== 'number' ||
+      !entry.rollGrade
+    ) {
+      const rolled = rollDogBonusStats();
+      entry.bonusPayout = rolled.bonusPayout;
+      entry.bonusScaling = rolled.bonusScaling;
+      entry.bonusXp = rolled.bonusXp;
+      entry.rollGrade = rolled.rollGrade;
+    }
   });
 
   if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
@@ -631,12 +699,33 @@ function renderRosterTab() {
   container.innerHTML = '';
 
   state.roster.forEach(entry => {
-    const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
+    if (
+      typeof entry.bonusPayout !== 'number' ||
+      typeof entry.bonusScaling !== 'number' ||
+      typeof entry.bonusXp !== 'number' ||
+      !entry.rollGrade
+    ) {
+      const rolled = rollDogBonusStats();
+      entry.bonusPayout = rolled.bonusPayout;
+      entry.bonusScaling = rolled.bonusScaling;
+      entry.bonusXp = rolled.bonusXp;
+      entry.rollGrade = rolled.rollGrade;
+    }
+
+    const stats = getEffectiveBreedStats(entry);
     const xpNeeded = getXpNeededForLevel(entry.level);
     const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
     const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
     const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
     const breedName = BREED_LABELS[entry.breed] || entry.breed;
+
+    const gradeClass = stats.rollGrade === '★ Max Roll'
+      ? 'grade-max'
+      : stats.rollGrade === 'Prime'
+        ? 'grade-prime'
+        : stats.rollGrade === 'Sharp'
+          ? 'grade-sharp'
+          : 'grade-standard';
 
     const card = document.createElement('div');
     card.className = 'roster-card';
@@ -676,12 +765,14 @@ function renderRosterTab() {
     const chipsRow = document.createElement('div');
     chipsRow.className = 'roster-chips';
     chipsRow.innerHTML = `
-      <span class="roster-chip">${breedName} #${cfg.rank}</span>
+      <span class="roster-chip">${breedName} #${stats.rank}</span>
       <span class="roster-lvl-badge${entry.isShiny ? ' shiny' : ''}">Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}</span>
+      <span class="roster-roll-badge ${gradeClass}">${stats.rollGrade}</span>
       <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
-      <span class="roster-chip">Payout <strong>${cfg.payoutMult.toFixed(1)}x</strong></span>
-      <span class="roster-chip">Scale <strong>${cfg.scalingMult.toFixed(2)}x</strong></span>
-      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong> (${cfg.xpMult.toFixed(2)}x)</span>
+      <span class="roster-chip">Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong>${stats.bonusPayout > 0 ? ` <em>(+${stats.bonusPayout.toFixed(2)})</em>` : ''}</span>
+      <span class="roster-chip">Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong>${stats.bonusScaling > 0 ? ` <em>(+${stats.bonusScaling.toFixed(2)})</em>` : ''}</span>
+      <span class="roster-chip">Quick Learner <strong>${stats.quickLearner.toFixed(2)}x</strong>${stats.bonusXp > 0 ? ` <em>(+${stats.bonusXp.toFixed(2)})</em>` : ''}</span>
+      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
       <span class="roster-chip">Lvl +<strong>${levelBonusPct}%</strong></span>
     `;
 
@@ -695,8 +786,12 @@ function renderRosterTab() {
       rightAction.className = 'roster-right-action';
 
       const retireBtn = document.createElement('button');
-      retireBtn.className = 'retire-pill-btn';
-      retireBtn.textContent = `Retire +${refundPreview.toLocaleString()} 🦴`;
+      retireBtn.type = 'button';
+      retireBtn.className = 'retire-pill-btn retire-pill-two-line';
+      retireBtn.innerHTML = `
+        <span class="retire-line-top">Retire</span>
+        <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
+      `;
       retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
 
       rightAction.appendChild(retireBtn);
@@ -1206,12 +1301,12 @@ class Dog {
 
   finishDig() {
     const entry = this.getRosterEntry();
-    const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
+    const stats = getEffectiveBreedStats(entry, this.breed);
     const cupMult = state.pupCupTimer > 0 ? 2 : 1;
 
     // Scale standard bones per dig using the dog's dug-bone scaling + pack dig multiplier
     const dogDigMult = getDigMultiplier(entry);
-    const rawAmount = state.digPower * (cfg.payoutMult || 1.0) * cupMult * dogDigMult;
+    const rawAmount = state.digPower * stats.boneYield * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
     const boneValue = this.isMagicDig ? cupMult : amount;
     const pos = gridToScreen(this.gx, this.gy);
@@ -1219,7 +1314,7 @@ class Dog {
     if (entry) {
       entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
       const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
-      const xpGain = Math.max(1, Math.round(baseXp * (cfg.xpMult || 1.0) * (this.isMagicDig ? 2 : 1)));
+      const xpGain = Math.max(1, Math.round(baseXp * stats.quickLearner * (this.isMagicDig ? 2 : 1)));
       entry.xp = (entry.xp || 0) + xpGain;
 
       let leveledUp = false;
