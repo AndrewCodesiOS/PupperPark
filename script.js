@@ -460,7 +460,7 @@ function loadGame() {
     });
   }
 
-  // Enforce max 12 dogs if an older save had more
+
   if (state.roster.length > MAX_DOGS) {
     state.roster = state.roster.slice(0, MAX_DOGS);
   }
@@ -761,9 +761,16 @@ function renderRosterTab() {
 
     const card = document.createElement('div');
     card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
+    card.style.position = 'relative';
+    card.style.display = 'flex';
+    card.style.alignItems = 'stretch';
+    card.style.justifyContent = 'space-between';
+    card.style.gap = '12px';
 
     const mainCol = document.createElement('div');
     mainCol.className = 'roster-main';
+    mainCol.style.flex = '1';
+    mainCol.style.minWidth = '0';
 
     const topRow = document.createElement('div');
     topRow.className = 'roster-top';
@@ -818,8 +825,9 @@ function renderRosterTab() {
     rightAction.className = 'roster-right-action';
     rightAction.style.display = 'flex';
     rightAction.style.flexDirection = 'column';
-    rightAction.style.alignItems = 'center';
-    rightAction.style.gap = '6px';
+    rightAction.style.justifyContent = 'space-between';
+    rightAction.style.alignItems = 'flex-end';
+    rightAction.style.gap = '12px';
 
     const favBtn = document.createElement('button');
     favBtn.type = 'button';
@@ -828,14 +836,19 @@ function renderRosterTab() {
     favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
     favBtn.textContent = isFav ? '★' : '☆';
     favBtn.style.cssText = `
-      background: ${isFav ? 'rgba(255, 234, 167, 0.2)' : 'rgba(255, 255, 255, 0.06)'};
-      border: 1px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.2)'};
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${isFav ? 'rgba(255, 234, 167, 0.22)' : 'rgba(255, 255, 255, 0.06)'};
+      border: 1.5px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.22)'};
       color: ${isFav ? '#ffeaa7' : '#b2bec3'};
-      border-radius: 999px;
-      padding: 2px 10px;
-      font-size: 0.95rem;
-      line-height: 1.2;
+      border-radius: 12px;
+      font-size: 1.45rem;
+      line-height: 1;
       cursor: pointer;
+      flex-shrink: 0;
     `;
     favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
     rightAction.appendChild(favBtn);
