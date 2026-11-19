@@ -522,12 +522,7 @@ function renderRosterTab() {
     nameInput.addEventListener('change', commitName);
     nameInput.addEventListener('blur', commitName);
 
-    const lvlBadge = document.createElement('span');
-    lvlBadge.className = `roster-lvl-badge${entry.isShiny ? ' shiny' : ''}`;
-    lvlBadge.textContent = `Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}`;
-
     topRow.appendChild(nameInput);
-    topRow.appendChild(lvlBadge);
 
     const xpBarOuter = document.createElement('div');
     xpBarOuter.className = 'roster-xp-track';
@@ -541,6 +536,7 @@ function renderRosterTab() {
     chipsRow.className = 'roster-chips';
     chipsRow.innerHTML = `
       <span class="roster-chip">${breedName}</span>
+      <span class="roster-lvl-badge${entry.isShiny ? ' shiny' : ''}">Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}</span>
       <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
       <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
       <span class="roster-chip">Bonus <strong>+${levelBonusPct}%</strong></span>
@@ -1066,13 +1062,13 @@ class Dog {
     const cupMult = state.pupCupTimer > 0 ? 2 : 1;
     const rawAmount = state.digPower * multiplier * cupMult * levelMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
+    const boneValue = this.isMagicDig ? cupMult : amount;
     const pos = gridToScreen(this.gx, this.gy);
 
     if (entry) {
-      if (!this.isMagicDig) {
-        entry.bonesEarned = (entry.bonesEarned || 0) + amount;
-      }
-      const xpGain = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
+      entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
+      const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
+      const xpGain = this.isMagicDig ? baseXp * 2 : baseXp;
       entry.xp = (entry.xp || 0) + xpGain;
 
       let leveledUp = false;
@@ -1094,7 +1090,7 @@ class Dog {
       groundY: pos.y + 4,
       age: 0,
       isMagic: this.isMagicDig,
-      value: this.isMagicDig ? cupMult : amount
+      value: boneValue
     });
   }
 
@@ -2278,6 +2274,7 @@ function loop(now) {
         if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
           if (b.isMagic) {
             state.magicBones += b.value;
+            state.lifetimeBones += b.value;
             sfx.magicCollect();
           } else {
             state.bones += b.value;
