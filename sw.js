@@ -1,5 +1,5 @@
 // Bump CACHE_NAME (e.g., pupperpark-v2 -> pupperpark-v3) whenever you update game files
-const CACHE_NAME = 'pupperpark-v2';
+const CACHE_NAME = 'pupperpark-v2.1';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -40,7 +40,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          if (networkResponse && networkResponse.ok) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put('./index.html', responseClone);
@@ -57,19 +57,21 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
 
-      return fetch(event.request).then((networkResponse) => {
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          networkResponse.type === 'basic'
-        ) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return networkResponse;
-      });
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.ok &&
+            networkResponse.type === 'basic'
+          ) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => new Response('', { status: 503, statusText: 'Offline' }));
     })
   );
 });
