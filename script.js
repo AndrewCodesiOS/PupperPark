@@ -212,7 +212,7 @@ function getDogLevelBonusMult(entry) {
 }
 
 let state = {
-  bones: 0,
+  bones: 1000000,
   lifetimeBones: 0,
   magicBones: 0,
   dogs: {
@@ -1244,8 +1244,10 @@ class Dog {
       const dy = this.targetGy - this.gy;
       const dist = Math.hypot(dx, dy);
 
-      const screenDeltaX = (dx - dy);
-      if (Math.abs(screenDeltaX) > 0.01) {
+      const currentScreenPos = gridToScreen(this.gx, this.gy);
+      const targetScreenPos = gridToScreen(this.targetGx, this.targetGy);
+      const screenDeltaX = targetScreenPos.x - currentScreenPos.x;
+      if (Math.abs(screenDeltaX) > 0.5) {
         this.facingRight = screenDeltaX >= 0;
       }
 
