@@ -32,7 +32,7 @@
 
   <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
-    <div class="mini-stat">🐕 <span id="miniDogs">1</span></div>
+    <div class="mini-stat">🐕 <span id="miniDogs">1/12</span></div>
     <button id="btnOpenMenu" class="menu-toggle-btn">▲ Open Menu</button>
   </div>
 
@@ -43,6 +43,7 @@
       <div class="modal-header">
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="tab-dogs">Dogs (8)</button>
+          <button class="tab-btn" data-tab="tab-roster">Roster</button>
           <button class="tab-btn" data-tab="tab-toys">Toys</button>
           <button class="tab-btn" data-tab="tab-treats">Treats</button>
           <button class="tab-btn" data-tab="tab-perks">Treasures</button>
@@ -151,6 +152,12 @@
               <span class="btn-cost" id="costDalmatian">150,000 🦴</span>
             </button>
           </div>
+        </div>
+
+        <!-- Roster Tab -->
+        <div class="tab-content" id="tab-roster">
+          <div id="retireNotice" style="display:none; margin-bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(255,234,167,0.15); color:#ffeaa7; font-size:0.85rem; font-weight:700;"></div>
+          <div id="rosterListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
 
         <!-- Toys Tab -->
