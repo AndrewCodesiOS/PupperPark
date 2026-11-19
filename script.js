@@ -3,9 +3,10 @@ const ctx = canvas.getContext('2d');
 
 const MAX_DOGS = 12;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
-const RETIRE_REFUND_RATE = 0.20;
-const LEVEL_BONUS_PER_LEVEL = 0.005; // Very small: +0.5% per level above Lv.1
-const BPS_GLOBAL_SCALE = 0.25; // Lowered from 0.45 for slower, steadier passive bone growth
+const RETIRE_REFUND_RATE = 0.50; // Up to 50% of retired dog's dug bones
+const LEVEL_BONUS_PER_LEVEL = 0.005; // +0.5% per level above Lv.1
+const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
+const DIG_MULT_SQRT_SCALE = 0.25; // Gentle sqrt curve from dug bones
 
 const BREED_LABELS = {
   aussie: 'Aussie',
@@ -19,7 +20,7 @@ const BREED_LABELS = {
 };
 
 const DEFAULT_PUP_NAMES = [
-  'Biscuit', 'Scout', 'Mochi', ' Clover', 'Waffles', 'Pip',
+  'Biscuit', 'Scout', 'Mochi', 'Clover', 'Waffles', 'Pip',
   'Maple', 'Ziggy', 'Otis', 'Penny', 'Bramble', 'Toby',
   'Sunny', 'Nori', 'Rosie', 'Finn'
 ];
@@ -94,27 +95,27 @@ const sfx = {
 };
 
 const BREED_CONFIG = {
-  aussie:    { baseBps: 1.0,    cost: 15,     costMult: 1.45 },
-  collie:    { baseBps: 4.0,    cost: 250,    costMult: 1.50 },
-  golden:    { baseBps: 10.0,   cost: 600,    costMult: 1.52 },
-  husky:     { baseBps: 25.0,   cost: 1500,   costMult: 1.55 },
-  shiba:     { baseBps: 160.0,  cost: 10000,  costMult: 1.60 },
-  shepherd:  { baseBps: 400.0,  cost: 25000,  costMult: 1.62 },
-  beagle:    { baseBps: 1000.0, cost: 60000,  costMult: 1.65 },
-  dalmatian: { baseBps: 2500.0, cost: 150000, costMult: 1.68 }
+  aussie:    { cost: 15,     costMult: 1.45, walkMult: 1.20, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
+  collie:    { cost: 250,    costMult: 1.50, walkMult: 1.30, digSec: 0.70, payoutMult: 1, treasureChance: 0.00008 },
+  golden:    { cost: 600,    costMult: 1.52, walkMult: 1.10, digSec: 1.10, payoutMult: 2, treasureChance: 0.00008 },
+  husky:     { cost: 1500,   costMult: 1.55, walkMult: 1.30, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
+  shiba:     { cost: 10000,  costMult: 1.60, walkMult: 1.15, digSec: 1.10, payoutMult: 1, treasureChance: 0.00080 },
+  shepherd:  { cost: 25000,  costMult: 1.62, walkMult: 1.20, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
+  beagle:    { cost: 60000,  costMult: 1.65, walkMult: 1.00, digSec: 1.10, payoutMult: 2, treasureChance: 0.00008 },
+  dalmatian: { cost: 150000, costMult: 1.68, walkMult: 1.40, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 }
 };
 
 const PERK_POOL = [
-  { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts Bone Generation', mult: 1.10 },
-  { id: 'bp_2', name: 'Lost Compass', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.15 },
-  { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts Bone Generation', mult: 1.20 },
-  { id: 'sp_1', name: 'Sturdy Trowel', rarity: 'Common', desc: 'Boosts Digging Speed', workMult: 1.10 },
-  { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.30 },
-  { id: 'bp_5', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts Bone Generation', mult: 1.40 },
-  { id: 'mp_1', name: 'Mystic Chew Toy', rarity: 'Rare', desc: 'Boosts Magic Bone Chance', magicAdd: 0.04 },
-  { id: 'bp_6', name: 'Diamond Bowl', rarity: 'Legendary', desc: 'Massively boosts Bone Generation', mult: 1.80 },
-  { id: 'mp_2', name: 'The Golden Good-Boy Stash', rarity: 'Legendary', desc: 'Significantly boosts Magic Bone Chance', magicAdd: 0.10 },
-  { id: 'myth_1', name: 'The Infinite Toy Chest', rarity: 'Mythic', desc: 'Divine relic! Triples bone generation & speed', mult: 3.0, workMult: 1.5 }
+  { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts bone payouts per dig (1.10x)', mult: 1.10 },
+  { id: 'bp_2', name: 'Lost Compass', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.15x)', mult: 1.15 },
+  { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.20x)', mult: 1.20 },
+  { id: 'sp_1', name: 'Sturdy Trowel', rarity: 'Common', desc: 'Boosts dig payout scaling (1.10x)', workMult: 1.10 },
+  { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.30x)', mult: 1.30 },
+  { id: 'bp_5', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.40x)', mult: 1.40 },
+  { id: 'mp_1', name: 'Mystic Chew Toy', rarity: 'Rare', desc: 'Boosts ✨ Magic Bone chance (+4%)', magicAdd: 0.04 },
+  { id: 'bp_6', name: 'Diamond Bowl', rarity: 'Legendary', desc: 'Massively boosts bone payouts per dig (1.80x)', mult: 1.80 },
+  { id: 'mp_2', name: 'The Golden Good-Boy Stash', rarity: 'Legendary', desc: 'Significantly boosts ✨ Magic Bone chance (+10%)', magicAdd: 0.10 },
+  { id: 'myth_1', name: 'The Infinite Toy Chest', rarity: 'Mythic', desc: 'Divine relic! Triples dig bones (3.0x) & boosts scaling (1.5x)', mult: 3.0, workMult: 1.5 }
 ];
 
 function generateDefaultName(breed, indexNum) {
@@ -232,18 +233,70 @@ function getPerkMultipliers() {
   return { boneMult, workBonus, magicBonus };
 }
 
-function getBPS() {
-  let rosterDugSum = 0;
-  state.roster.forEach(entry => {
-    const dug = entry.bonesEarned || 0;
-    if (dug <= 0) return; // Wait until this dog digs its first bone
-    const dugContribution = (Math.sqrt(dug) * 0.5) * getDogLevelBonusMult(entry);
-    rosterDugSum += dugContribution;
-  });
+/**
+ * Computes the dog's personal dug-bone scaling factor (0 until the dog digs its first bone),
+ * using a gentle Math.sqrt curve so more dug bones smoothly raise its contribution.
+ */
+function getDogDugScaling(entry) {
+  const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
+  if (dug <= 0) return 0; // Waits until this dog digs its first bone
+  return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * getDogLevelBonusMult(entry);
+}
+
+/**
+ * Overall dig payout multiplier for the pack, combining dug-bone scaling,
+ * Frisbee speedMultiplier, Bacon treat, and Treasure perks.
+ */
+function getDigMultiplier(entry = null) {
+  let dugSum = 0;
+  if (entry) {
+    dugSum = getDogDugScaling(entry);
+  } else {
+    state.roster.forEach(r => {
+      dugSum += getDogDugScaling(r);
+    });
+  }
 
   const { boneMult, workBonus } = getPerkMultipliers();
   const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
-  return rosterDugSum * state.digPower * state.speedMultiplier * baconBonus * workBonus * BPS_GLOBAL_SCALE * boneMult;
+  return (DIG_MULT_BASE + dugSum) * state.speedMultiplier * baconBonus * workBonus * boneMult;
+}
+
+/**
+ * Estimates average bones awarded per standard dog dig across the current roster.
+ */
+function getAverageBonesPerDig() {
+  if (!state.roster || state.roster.length === 0) return state.digPower;
+  const cupMult = state.pupCupTimer > 0 ? 2 : 1;
+
+  let total = 0;
+  state.roster.forEach(entry => {
+    const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
+    const perDogMult = (DIG_MULT_BASE + getDogDugScaling(entry)) * state.speedMultiplier * (state.baconTimer > 0 ? 3.0 : 1.0) * getPerkMultipliers().boneMult * getPerkMultipliers().workBonus;
+    const raw = state.digPower * cfg.payoutMult * cupMult * perDogMult;
+    total += Math.max(1, Math.round(raw * 10) / 10);
+  });
+
+  return total / state.roster.length;
+}
+
+/**
+ * Estimates total digs performed over `seconds` across the current roster.
+ */
+function estimateOfflineDigs(seconds) {
+  if (!state.roster || state.roster.length === 0 || seconds <= 0) return 0;
+  const { workBonus } = getPerkMultipliers();
+  const cadenceFactor = Math.min(2.0, Math.sqrt(Math.max(1, workBonus)));
+
+  let totalDigs = 0;
+  state.roster.forEach(entry => {
+    const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
+    // Average ~1.2s idle + ~1.4s walk + breed digSec per full dig cycle
+    const avgCycleSec = Math.max(0.8, (2.6 + cfg.digSec) / cadenceFactor);
+    totalDigs += seconds / avgCycleSec;
+  });
+
+  return Math.max(1, Math.floor(totalDigs));
 }
 
 function rebuildCanvasDogsFromRoster() {
@@ -343,11 +396,13 @@ function loadGame() {
 
   if (elapsedSeconds > 15) {
     const effectiveSeconds = Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS);
-    const earned = Math.floor(getBPS() * effectiveSeconds * state.idleMultiplier);
+    const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
+    const avgPerDig = getAverageBonesPerDig();
+    const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
     if (earned > 0) {
       state.bones += earned;
       state.lifetimeBones += earned;
-      showOfflineModal(earned);
+      showOfflineModal(earned, estimatedDigs);
     }
   }
 
@@ -397,11 +452,15 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', saveGame);
 window.addEventListener('beforeunload', saveGame);
 
-function showOfflineModal(earned) {
+function showOfflineModal(earned, estimatedDigs = 0) {
   const modal = document.getElementById('offlineModal');
   const text = document.getElementById('offlineEarnings');
   if (text) {
-    text.textContent = `Earned ${earned.toLocaleString()} Bones!`;
+    if (estimatedDigs > 0) {
+      text.textContent = `~${estimatedDigs.toLocaleString()} digs estimated — they dug ${earned.toLocaleString()} Bones while you were away!`;
+    } else {
+      text.textContent = `They dug ${earned.toLocaleString()} Bones while you were away!`;
+    }
   }
   if (modal) {
     modal.style.display = 'flex';
@@ -473,7 +532,7 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Retire Dog Confirmation Modal Handlers
+// Retire Dog Confirmation Modal Handlers (up to 50% refund)
 const retireConfirmModal = document.getElementById('retireConfirmModal');
 const retireConfirmText = document.getElementById('retireConfirmText');
 
@@ -484,9 +543,10 @@ function openRetireConfirm(dogId) {
   if (!target) return;
 
   pendingRetireDogId = dogId;
+  const refundPct = Math.round(RETIRE_REFUND_RATE * 100);
   const refundPreview = Math.floor((target.bonesEarned || 0) * RETIRE_REFUND_RATE);
   if (retireConfirmText) {
-    retireConfirmText.textContent = `Retire ${target.name} and receive +${refundPreview.toLocaleString()} Bones (20% of their ${Math.floor(target.bonesEarned || 0).toLocaleString()} lifetime bones dug)?`;
+    retireConfirmText.textContent = `Retire ${target.name} and receive +${refundPreview.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(target.bonesEarned || 0).toLocaleString()} lifetime bones dug)?`;
   }
   if (retireConfirmModal) {
     retireConfirmModal.style.display = 'flex';
@@ -516,6 +576,7 @@ function retireDog(dogId) {
   if (idx === -1) return;
 
   const [retiredDog] = state.roster.splice(idx, 1);
+  const refundPct = Math.round(RETIRE_REFUND_RATE * 100);
   const refund = Math.floor((retiredDog.bonesEarned || 0) * RETIRE_REFUND_RATE);
 
   if (refund > 0) {
@@ -529,7 +590,7 @@ function retireDog(dogId) {
 
   const noticeEl = document.getElementById('retireNotice');
   if (noticeEl) {
-    noticeEl.textContent = `${retiredDog.name} retired! You received ${refund.toLocaleString()} Bones (20% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`;
+    noticeEl.textContent = `${retiredDog.name} retired! You received ${refund.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`;
     noticeEl.style.display = 'block';
   }
 
@@ -1042,19 +1103,17 @@ class Dog {
   }
 
   update(dt) {
-    const speedMults = {
-      aussie: 1.2, collie: 1.3, golden: 1.1, husky: 1.3,
-      shiba: 1.15, shepherd: 1.2, beagle: 1.0, dalmatian: 1.4
-    };
-    const breedSpeed = speedMults[this.breed] || 1.1;
-    const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
-    const speed = breedSpeed * Math.min(state.speedMultiplier * baconBonus, 4.0);
-    
+    const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
     const { workBonus } = getPerkMultipliers();
-    this.animPhase += dt * (this.state === 'WALK' ? 10 : 5 * workBonus * baconBonus);
+
+    // Keep visual movement & animation speeds gentle and capped so dogs stay smooth
+    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25);
+    const walkSpeed = cfg.walkMult * visualPace;
+
+    this.animPhase += dt * (this.state === 'WALK' ? 9 * Math.min(1.25, visualPace) : 5 * Math.min(1.25, visualPace));
 
     if (this.state === 'IDLE') {
-      this.timer -= dt * state.speedMultiplier * baconBonus * workBonus;
+      this.timer -= dt * visualPace;
       if (this.timer <= 0) {
         this.pickNewTarget();
       }
@@ -1078,19 +1137,19 @@ class Dog {
         }
 
         this.state = 'DIG';
-        this.timer = (((this.breed === 'collie' ? 0.7 : 1.1) / state.speedMultiplier) / workBonus) / baconBonus;
+        this.timer = cfg.digSec / visualPace;
         
         const { magicBonus } = getPerkMultipliers();
         const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus);
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
-        const treasureChance = (this.breed === 'shiba') ? 0.0008 : 0.00008;
+        const treasureChance = cfg.treasureChance;
         if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
         }
       } else {
-        this.gx += (dx / dist) * speed * dt;
-        this.gy += (dy / dist) * speed * dt;
+        this.gx += (dx / dist) * walkSpeed * dt;
+        this.gy += (dy / dist) * walkSpeed * dt;
         this.gx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gx));
         this.gy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gy));
       }
@@ -1120,10 +1179,12 @@ class Dog {
 
   finishDig() {
     const entry = this.getRosterEntry();
-    const levelMult = getDogLevelBonusMult(entry);
-    const multiplier = (this.breed === 'beagle' || this.breed === 'golden') ? 2 : 1;
+    const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
     const cupMult = state.pupCupTimer > 0 ? 2 : 1;
-    const rawAmount = state.digPower * multiplier * cupMult * levelMult;
+
+    // Scale standard bones per dig using the dog's dug-bone scaling + pack dig multiplier
+    const dogDigMult = getDigMultiplier(entry);
+    const rawAmount = state.digPower * cfg.payoutMult * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
     const boneValue = this.isMagicDig ? cupMult : amount;
     const pos = gridToScreen(this.gx, this.gy);
@@ -1940,7 +2001,7 @@ document.getElementById('btnTreatFeast').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.treatFeast) {
     state.bones -= state.costs.treatFeast;
-    const feastPayout = Math.floor(getBPS() * 30);
+    const feastPayout = Math.max(10, Math.floor(getAverageBonesPerDig() * Math.max(1, state.roster.length) * 2));
     state.bones += feastPayout;
     state.lifetimeBones += feastPayout;
     state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
@@ -2106,7 +2167,7 @@ function updateUI() {
     }
   }
 
-  document.getElementById('bpsCount').textContent = `+${getBPS().toFixed(1)}/s`;
+  document.getElementById('bpsCount').textContent = `${getDigMultiplier().toFixed(1)}x/dig`;
 
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
@@ -2119,7 +2180,7 @@ function updateUI() {
   document.getElementById('costTreatCup').textContent = `${state.costs.treatCup.toLocaleString()} 🦴`;
 
   document.getElementById('statDigPower').textContent = state.digPower;
-  document.getElementById('statSpeed').textContent = `${state.speedMultiplier.toFixed(1)}x`;
+  document.getElementById('statSpeed').textContent = `${getDigMultiplier().toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
   const lifetimeEl = document.getElementById('statLifetimeBones');
   if (lifetimeEl) {
@@ -2252,14 +2313,7 @@ function loop(now) {
       }
     }
 
-    const bps = getBPS();
-    if (bps > 0) {
-      const earnedTick = bps * dt;
-      state.bones += earnedTick;
-      state.lifetimeBones += earnedTick;
-      requestSave();
-      updateUI();
-    }
+    // Bones are awarded when digs complete and bones are collected—no side-clock tick here.
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
