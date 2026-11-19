@@ -1382,28 +1382,99 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'collie') {
+      // Border / Rough Collie: flowing coat, fluffy white mane ruff, tipped ears, feathered tail
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
+      const featherShade = this.isShiny ? this.shinyColor : '#1e272e';
+      const whiteFur = '#f8f9fa';
+
+      // Back & front legs with white socks
       ctx.fillStyle = collieColor;
-      ctx.fillRect(-12 - legSwing, -3, 3.5, 10);
-      ctx.fillRect(7 + legSwing, -3, 3.5, 10);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-12 - legSwing, 4, 3.5, 3);
-      ctx.fillRect(7 + legSwing, 4, 3.5, 3);
-      const wag = Math.sin(this.animPhase * 2) * 3;
-      ctx.fillStyle = collieColor; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = collieColor; ctx.stroke();
+      ctx.fillRect(-12 - legSwing, -3, 3.8, 10);
+      ctx.fillRect(7 - legSwing * 0.5, -3, 3.8, 10);
+      ctx.fillStyle = whiteFur;
+      ctx.fillRect(-12 - legSwing, 4, 3.8, 3);
+      ctx.fillRect(7 - legSwing * 0.5, 4, 3.8, 3);
+
+      // Graceful feathered tail with wagging sweep
+      const wag = Math.sin(this.animPhase * 2.1) * 3.4;
+      ctx.save();
+      ctx.strokeStyle = collieColor;
+      ctx.lineWidth = 5.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-14.5, -9.5);
+      ctx.quadraticCurveTo(-22.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.stroke();
+
+      ctx.strokeStyle = whiteFur;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(-20, -12.5 + wag * 0.3);
+      ctx.quadraticCurveTo(-23.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.stroke();
+      ctx.restore();
+
+      // Sleek torso + fluffy white mane ruff
       ctx.fillStyle = collieColor;
-      ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8, -0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.ellipse(5, -11, 5, 7, 0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(-1.5, -10, 15.5, 8.2, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = featherShade;
+      ctx.beginPath();
+      ctx.ellipse(-5, -11.5, 8, 4.5, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.ellipse(6.5, -10.5, 5.5, 8, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head & classic tipped ear
       ctx.fillStyle = collieColor;
-      ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(20, -14); ctx.lineTo(13, -11); ctx.fill();
-      ctx.fillStyle = '#1e272e';
-      ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(11, -17.5, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = collieColor;
+      ctx.beginPath();
+      ctx.moveTo(7.5, -21);
+      ctx.lineTo(6.5, -27.5);
+      ctx.lineTo(12, -21.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.moveTo(6.5, -27.5);
+      ctx.lineTo(5.2, -25.5);
+      ctx.lineTo(8.5, -25.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Slender collie muzzle & dark nose
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.moveTo(12, -16.5);
+      ctx.lineTo(22.5, -14.2);
+      ctx.lineTo(13, -11.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#11161d';
+      ctx.beginPath();
+      ctx.arc(22.2, -14.3, 1.65, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Expressive eye with catchlight
       ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath(); ctx.arc(20.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(14, -18.5, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(14.5, -18.2, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'golden') {
       const col = this.isShiny ? this.shinyColor : '#f39c12';
