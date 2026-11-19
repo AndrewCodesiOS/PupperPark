@@ -17,6 +17,10 @@ const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
 const BONUS_XP_MAX = 0.15;      // Up to +0.15 Quick Learner
 const XP_TREAT_MULT = 1.75;     // 1.75x XP earned while XP treat is active
 
+const REROLL_BASE_COST = 5000;
+const REROLL_COST_MULTIPLIER = 1.5;
+const REROLL_SHINY_ODDS = 1 / 16000;
+
 const BREED_LABELS = {
   aussie: 'Aussie',
   beagle: 'Beagle',
@@ -168,6 +172,33 @@ function rollDogBonusStats() {
   return { bonusPayout, bonusScaling, bonusXp, rollGrade };
 }
 
+function getRollRating(entryOrRoll) {
+  if (!entryOrRoll) return 0;
+  const payout = typeof entryOrRoll.bonusPayout === 'number' ? entryOrRoll.bonusPayout : 0;
+  const scaling = typeof entryOrRoll.bonusScaling === 'number' ? entryOrRoll.bonusScaling : 0;
+  const xp = typeof entryOrRoll.bonusXp === 'number' ? entryOrRoll.bonusXp : 0;
+
+  return (
+    (payout / BONUS_PAYOUT_MAX) +
+    (scaling / BONUS_SCALING_MAX) +
+    (xp / BONUS_XP_MAX)
+  ) / 3;
+}
+
+function getRerollCost() {
+  const count = typeof state.rerollCount === 'number' && !Number.isNaN(state.rerollCount)
+    ? Math.max(0, Math.floor(state.rerollCount))
+    : 0;
+  const baseCost = typeof state.rerollBaseCost === 'number' && !Number.isNaN(state.rerollBaseCost)
+    ? state.rerollBaseCost
+    : REROLL_BASE_COST;
+  const mult = typeof state.rerollCostMultiplier === 'number' && !Number.isNaN(state.rerollCostMultiplier)
+    ? state.rerollCostMultiplier
+    : REROLL_COST_MULTIPLIER;
+
+  return Math.max(1, Math.floor(baseCost * Math.pow(mult, count)));
+}
+
 function getEffectiveBreedStats(entry, fallbackBreed = 'aussie') {
   const breedKey = normalizeBreedKey((entry && entry.breed) || fallbackBreed);
   const cfg = BREED_CONFIG[breedKey] || BREED_CONFIG.aussie;
@@ -255,6 +286,10 @@ let state = {
 
   isDraftingPerk: false,
 
+  rerollCount: 0,
+  rerollBaseCost: REROLL_BASE_COST,
+  rerollCostMultiplier: REROLL_COST_MULTIPLIER,
+
   costs: {},
   lastSaveTime: Date.now()
 };
@@ -281,6 +316,7 @@ let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false,
 let duck = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isMoved: false, timer: 5.5, quackPhase: 0 };
 
 let pendingRetireDogId = null;
+let pendingRerollDogId = null;
 
 function syncBreedCountsFromRoster() {
   Object.keys(state.dogs).forEach(b => {
@@ -435,6 +471,19 @@ function loadGame() {
       }
       if (typeof state.xpTreatTimer !== 'number' || Number.isNaN(state.xpTreatTimer)) {
         state.xpTreatTimer = 0;
+      }
+      if (typeof state.rerollCount !== 'number' || Number.isNaN(state.rerollCount) || state.rerollCount < 0) {
+        state.rerollCount = 0;
+      }
+      if (typeof state.rerollBaseCost !== 'number' || Number.isNaN(state.rerollBaseCost) || state.rerollBaseCost <= 0) {
+        state.rerollBaseCost = REROLL_BASE_COST;
+      }
+      if (
+        typeof state.rerollCostMultiplier !== 'number' ||
+        Number.isNaN(state.rerollCostMultiplier) ||
+        state.rerollCostMultiplier < 1
+      ) {
+        state.rerollCostMultiplier = REROLL_COST_MULTIPLIER;
       }
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
@@ -698,6 +747,183 @@ function toggleFavoriteDog(dogId) {
   saveGame();
 }
 
+// Reroll Dog Traits & Stats Modal Handlers
+const rerollModal = document.getElementById('rerollModal');
+const rerollDogSummary = document.getElementById('rerollDogSummary');
+const rerollCurrentStats = document.getElementById('rerollCurrentStats');
+const rerollRulesText = document.getElementById('rerollRulesText');
+const rerollResultBanner = document.getElementById('rerollResultBanner');
+const rerollCostLabel = document.getElementById('rerollCostLabel');
+const btnConfirmReroll = document.getElementById('btnConfirmReroll');
+const btnCloseRerollModal = document.getElementById('btnCloseRerollModal');
+
+function renderRerollModalContent(dogId, resultInfo = null) {
+  const entry = state.roster.find(d => d.id === dogId);
+  if (!entry) return;
+
+  const stats = getEffectiveBreedStats(entry);
+  const breedName = BREED_LABELS[entry.breed] || entry.breed;
+  const cost = getRerollCost();
+  const canAfford = (state.magicBones || 0) >= cost;
+
+  if (rerollDogSummary) {
+    rerollDogSummary.innerHTML = `
+      <strong>${entry.name}</strong>
+      <span class="reroll-meta-pill">${breedName} • Lv. ${entry.level}</span>
+      <span class="reroll-meta-pill ${entry.isShiny ? 'is-shiny' : ''}">${entry.isShiny ? '✨ Shiny' : 'Standard Coat'}</span>
+    `;
+  }
+
+  if (rerollCurrentStats) {
+    rerollCurrentStats.innerHTML = `
+      <div class="reroll-stat-line"><span>Roll Grade:</span><strong>${stats.rollGrade}</strong></div>
+      <div class="reroll-stat-line"><span>Bone Yield Bonus:</span><strong>+${stats.bonusPayout.toFixed(2)} (${stats.boneYield.toFixed(2)}x)</strong></div>
+      <div class="reroll-stat-line"><span>Pack Growth Bonus:</span><strong>+${stats.bonusScaling.toFixed(2)} (${stats.packGrowth.toFixed(2)}x)</strong></div>
+      <div class="reroll-stat-line"><span>Quick Learner Bonus:</span><strong>+${stats.bonusXp.toFixed(2)} (${stats.quickLearner.toFixed(2)}x)</strong></div>
+    `;
+  }
+
+  if (rerollRulesText) {
+    rerollRulesText.textContent =
+      'Rolls new stat boost values for this pup. If your current roll is higher rated than the new roll, your previous higher stats are kept. Also includes a 1 in 16,000 chance to turn a non-shiny pup ✨ Shiny! Level, XP, and dug bones stay untouched.';
+  }
+
+  if (rerollResultBanner) {
+    if (!resultInfo) {
+      rerollResultBanner.style.display = 'none';
+      rerollResultBanner.className = 'reroll-result-banner';
+      rerollResultBanner.innerHTML = '';
+    } else {
+      rerollResultBanner.style.display = 'block';
+      rerollResultBanner.className = `reroll-result-banner ${resultInfo.keptPrevious ? 'kept' : 'upgraded'}${resultInfo.becameShiny ? ' shiny-hit' : ''}`;
+
+      const statMsg = resultInfo.keptPrevious
+        ? `Rolled ${resultInfo.rolledGrade} (+${resultInfo.rolledPayout.toFixed(2)} Yield / +${resultInfo.rolledScaling.toFixed(2)} Growth / +${resultInfo.rolledXp.toFixed(2)} XP) — previous higher-rated stats (${stats.rollGrade}) were kept!`
+        : `New roll applied! Now ${stats.rollGrade} (+${stats.bonusPayout.toFixed(2)} Yield / +${stats.bonusScaling.toFixed(2)} Growth / +${stats.bonusXp.toFixed(2)} XP).`;
+
+      const shinyMsg = resultInfo.becameShiny
+        ? `<div class="reroll-shiny-callout">✨ JACKPOT! 1 in 16,000 Shiny roll hit — ${entry.name} is now Shiny!</div>`
+        : '';
+
+      rerollResultBanner.innerHTML = `<div>${statMsg}</div>${shinyMsg}`;
+    }
+  }
+
+  if (rerollCostLabel) {
+    rerollCostLabel.textContent = `${cost.toLocaleString()} ✨`;
+  }
+
+  if (btnConfirmReroll) {
+    btnConfirmReroll.disabled = !canAfford;
+  }
+}
+
+function openRerollModal(dogId) {
+  initAudio();
+  const entry = state.roster.find(d => d.id === dogId);
+  if (!entry) return;
+  pendingRerollDogId = dogId;
+  renderRerollModalContent(dogId, null);
+  if (rerollModal) {
+    rerollModal.style.display = 'flex';
+  }
+}
+
+function closeRerollModal() {
+  pendingRerollDogId = null;
+  if (rerollModal) {
+    rerollModal.style.display = 'none';
+  }
+}
+
+function executeDogReroll(dogId) {
+  initAudio();
+  const entry = state.roster.find(d => d.id === dogId);
+  if (!entry) return;
+
+  const cost = getRerollCost();
+  if ((state.magicBones || 0) < cost) return;
+
+  state.magicBones -= cost;
+  state.rerollCount = (typeof state.rerollCount === 'number' ? state.rerollCount : 0) + 1;
+
+  if (
+    typeof entry.bonusPayout !== 'number' ||
+    typeof entry.bonusScaling !== 'number' ||
+    typeof entry.bonusXp !== 'number' ||
+    !entry.rollGrade
+  ) {
+    const initialRoll = rollDogBonusStats();
+    entry.bonusPayout = initialRoll.bonusPayout;
+    entry.bonusScaling = initialRoll.bonusScaling;
+    entry.bonusXp = initialRoll.bonusXp;
+    entry.rollGrade = initialRoll.rollGrade;
+  }
+
+  const oldRating = getRollRating(entry);
+  const candidate = rollDogBonusStats();
+  const newRating = getRollRating(candidate);
+
+  let keptPrevious = true;
+  if (newRating > oldRating) {
+    entry.bonusPayout = candidate.bonusPayout;
+    entry.bonusScaling = candidate.bonusScaling;
+    entry.bonusXp = candidate.bonusXp;
+    entry.rollGrade = candidate.rollGrade;
+    keptPrevious = false;
+  }
+
+  let becameShiny = false;
+  if (!entry.isShiny && Math.random() < REROLL_SHINY_ODDS) {
+    const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
+    entry.isShiny = true;
+    if (!entry.shinyColor) {
+      entry.shinyColor = shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
+    }
+    becameShiny = true;
+
+    const canvasDog = dogs.find(d => d.rosterId === entry.id);
+    if (canvasDog) {
+      canvasDog.isShiny = true;
+      canvasDog.shinyColor = entry.shinyColor;
+    }
+
+    syncBreedCountsFromRoster();
+    sfx.shiny();
+  } else {
+    sfx.upgrade();
+  }
+
+  updateUI();
+  renderRosterTab();
+  saveGame();
+  renderRerollModalContent(dogId, {
+    keptPrevious,
+    becameShiny,
+    rolledGrade: candidate.rollGrade,
+    rolledPayout: candidate.bonusPayout,
+    rolledScaling: candidate.bonusScaling,
+    rolledXp: candidate.bonusXp
+  });
+}
+
+btnConfirmReroll?.addEventListener('click', () => {
+  if (pendingRerollDogId) {
+    executeDogReroll(pendingRerollDogId);
+  }
+});
+
+btnCloseRerollModal?.addEventListener('click', () => {
+  initAudio();
+  closeRerollModal();
+});
+
+rerollModal?.addEventListener('click', (e) => {
+  if (e.target === rerollModal) {
+    closeRerollModal();
+  }
+});
+
 // Retire Dog Confirmation Modal Handlers (up to 50% refund)
 const retireConfirmModal = document.getElementById('retireConfirmModal');
 const retireConfirmText = document.getElementById('retireConfirmText');
@@ -901,6 +1127,15 @@ function renderRosterTab() {
     favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
     rightAction.appendChild(favBtn);
 
+    const rerollBtn = document.createElement('button');
+    rerollBtn.type = 'button';
+    rerollBtn.className = 'reroll-dice-btn';
+    rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
+    rerollBtn.title = 'Reroll Stats (✨)';
+    rerollBtn.textContent = '🎲';
+    rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
+    rightAction.appendChild(rerollBtn);
+
     if (canRetire) {
       const retireBtn = document.createElement('button');
       retireBtn.type = 'button';
@@ -1044,6 +1279,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   initAudio();
   localStorage.removeItem('pupperpark_save');
   pendingRetireDogId = null;
+  pendingRerollDogId = null;
   cameraAngle = 0;
 
   state = {
@@ -1080,6 +1316,10 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
 
     isDraftingPerk: false,
 
+    rerollCount: 0,
+    rerollBaseCost: REROLL_BASE_COST,
+    rerollCostMultiplier: REROLL_COST_MULTIPLIER,
+
     costs: {},
     lastSaveTime: Date.now()
   };
@@ -1095,6 +1335,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
 
   resetConfirmModal.style.display = 'none';
   if (retireConfirmModal) retireConfirmModal.style.display = 'none';
+  if (rerollModal) rerollModal.style.display = 'none';
   document.getElementById('placementBanner').style.display = 'none';
   closeMenu();
   updateUI();
@@ -2978,6 +3219,16 @@ function updateUI() {
   const btnTreatXpEl = document.getElementById('btnTreatXp');
   if (btnTreatXpEl) {
     btnTreatXpEl.disabled = state.bones < xpCost;
+  }
+
+  if (pendingRerollDogId && rerollModal && rerollModal.style.display === 'flex') {
+    const nextCost = getRerollCost();
+    if (rerollCostLabel) {
+      rerollCostLabel.textContent = `${nextCost.toLocaleString()} ✨`;
+    }
+    if (btnConfirmReroll) {
+      btnConfirmReroll.disabled = (state.magicBones || 0) < nextCost;
+    }
   }
 }
 
