@@ -342,6 +342,17 @@
 
         <!-- Settings Tab -->
         <div class="tab-content" id="tab-settings">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Dog Name Tags</h3>
+              <p>Display each dog's name floating above them in the park.</p>
+            </div>
+            <button id="btnToggleNameTags" class="action-btn">
+              <span class="btn-name">Name Tags</span>
+              <span id="nameTagSettingLabel" class="btn-cost">ON</span>
+            </button>
+          </div>
+
           <div class="shop-card" style="border-color: #ff7675; flex-direction: column; align-items: flex-start; gap: 10px;">
             <div class="shop-info">
               <h3 style="color: #ff7675;">Danger Zone</h3>
@@ -362,6 +373,18 @@
       <h2 style="color: #f1c40f; margin-bottom: 4px;">Rare Treasure Found!</h2>
       <p style="color: #dcdde1; font-size: 0.85rem; margin-bottom: 12px;">Your pack uncovered a hidden treasure chest! Choose 1 of 3 treasures to claim:</p>
       <div id="perkChoices"></div>
+    </div>
+  </div>
+
+  <!-- Retire Dog Confirmation Modal -->
+  <div id="retireConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2 style="color: #ffeaa7;">Retire Pup?</h2>
+      <p id="retireConfirmText">Are you sure you want to retire this pup?</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="btnCancelRetire" class="action-btn" style="background: rgba(255,255,255,0.1); flex: 1;">Cancel</button>
+        <button id="btnConfirmRetire" class="action-btn" style="background: linear-gradient(135deg, #e17055 0%, #fdcb6e 100%); flex: 1;">Retire</button>
+      </div>
     </div>
   </div>
 
