@@ -237,6 +237,7 @@ let state = {
   isPlacingDecor: false,
   activeDecorType: null,
   showNameTags: true,
+  cameraAngle: 0,
   digPower: 1,
   speedMultiplier: 1,
   idleMultiplier: BASE_IDLE_MULTIPLIER,
@@ -429,6 +430,9 @@ function loadGame() {
       if (typeof state.showNameTags !== 'boolean') {
         state.showNameTags = true;
       }
+      if (typeof state.cameraAngle !== 'number' || Number.isNaN(state.cameraAngle)) {
+        state.cameraAngle = 0;
+      }
       if (typeof state.xpTreatTimer !== 'number' || Number.isNaN(state.xpTreatTimer)) {
         state.xpTreatTimer = 0;
       }
@@ -508,6 +512,10 @@ function loadGame() {
     }
   });
 
+  cameraAngle = typeof state.cameraAngle === 'number' && !Number.isNaN(state.cameraAngle)
+    ? state.cameraAngle
+    : 0;
+
   if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
     state.lifetimeBones = state.bones || 0;
   }
@@ -549,6 +557,7 @@ let pendingSaveTimeout = null;
 let lastWrittenSaveAt = 0;
 
 function saveGame() {
+  state.cameraAngle = cameraAngle;
   state.lastSaveTime = Date.now();
   lastWrittenSaveAt = state.lastSaveTime;
   if (pendingSaveTimeout) {
@@ -563,6 +572,7 @@ function saveGame() {
 }
 
 function requestSave() {
+  state.cameraAngle = cameraAngle;
   const elapsed = Date.now() - lastWrittenSaveAt;
   if (elapsed >= SAVE_COOLDOWN_MS) {
     saveGame();
@@ -1034,6 +1044,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   initAudio();
   localStorage.removeItem('pupperpark_save');
   pendingRetireDogId = null;
+  cameraAngle = 0;
 
   state = {
     bones: 0,
@@ -1051,6 +1062,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     isPlacingDecor: false,
     activeDecorType: null,
     showNameTags: true,
+    cameraAngle: 0,
     digPower: 1,
     speedMultiplier: 1,
     idleMultiplier: BASE_IDLE_MULTIPLIER,
@@ -1098,13 +1110,28 @@ let originX = 0;
 let originY = 0;
 let cameraAngle = 0;
 
+function getViewportSize() {
+  const vv = window.visualViewport;
+  const rawW = vv && typeof vv.width === 'number' && vv.width > 0 ? vv.width : window.innerWidth;
+  const rawH = vv && typeof vv.height === 'number' && vv.height > 0 ? vv.height : window.innerHeight;
+  return {
+    width: Math.max(240, Math.round(rawW || 360)),
+    height: Math.max(240, Math.round(rawH || 640))
+  };
+}
+
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const { width, height } = getViewportSize();
+  canvas.width = width;
+  canvas.height = height;
   originX = canvas.width / 2;
   originY = canvas.height / 2;
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
 resize();
 
 function gridToScreen(gx, gy) {
@@ -1160,15 +1187,18 @@ function getCenteredTilePos(gx, gy) {
 let isRotating = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
+let dragTotalDist = 0;
 let holdTimer = null;
 let holdStartTime = 0;
 let holdPosition = { x: 0, y: 0 };
 const HOLD_DURATION = 4000;
 
 canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   isRotating = true;
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
+  dragTotalDist = 0;
   try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
 
   holdStartTime = performance.now();
@@ -1207,6 +1237,7 @@ canvas.addEventListener('pointerdown', (e) => {
 
 canvas.addEventListener('pointermove', (e) => {
   const moveDist = Math.hypot(e.clientX - lastMouseX, e.clientY - lastMouseY);
+  dragTotalDist += moveDist;
   
   if (moveDist > 15) {
     if (holdTimer) {
@@ -1219,7 +1250,11 @@ canvas.addEventListener('pointermove', (e) => {
   const deltaX = e.clientX - lastMouseX;
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
-  cameraAngle += deltaX * 0.008;
+  if (Math.abs(deltaX) > 0) {
+    cameraAngle += deltaX * 0.008;
+    state.cameraAngle = cameraAngle;
+    requestSave();
+  }
 });
 
 canvas.addEventListener('pointerup', (e) => {
@@ -1236,9 +1271,13 @@ canvas.addEventListener('pointerup', (e) => {
 
   isRotating = false;
   try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+
+  if (dragTotalDist > 1) {
+    state.cameraAngle = cameraAngle;
+    saveGame();
+  }
   
-  const totalDrag = Math.abs(e.clientX - lastMouseX);
-  if (totalDrag < 5) {
+  if (dragTotalDist < 5) {
     initAudio();
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
@@ -1284,6 +1323,16 @@ canvas.addEventListener('pointerup', (e) => {
       });
     }
   }
+});
+
+canvas.addEventListener('pointercancel', (e) => {
+  if (holdTimer) {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+  }
+  isRotating = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+  requestSave();
 });
 
 const mushrooms = [
