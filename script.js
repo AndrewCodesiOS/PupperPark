@@ -6,7 +6,7 @@ const MAX_OFFLINE_SECONDS = 604800; // 7 days
 const RETIRE_REFUND_RATE = 0.50; // Up to 50% of retired dog's dug bones
 const LEVEL_BONUS_PER_LEVEL = 0.001; // +0.1% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
-const DIG_MULT_SQRT_SCALE = 0.025; // Gentle sqrt curve from dug bones
+const DIG_MULT_SQRT_SCALE = 0.0025; // Gentle sqrt curve from dug bones
 
 const BASE_IDLE_MULTIPLIER = 0.10; // Starting 10% offline dig yield
 const DUCK_IDLE_STEP = 0.025;      // +2.5% offline dig yield per Rubber Duck
