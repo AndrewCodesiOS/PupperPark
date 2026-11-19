@@ -1,6 +1,8 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+const MAX_DOGS = 12;
+
 let audioCtx = null;
 
 function initAudio() {
@@ -243,12 +245,46 @@ function loadGame() {
   }
 }
 
+const SAVE_COOLDOWN_MS = 1200;
+let pendingSaveTimeout = null;
+let lastWrittenSaveAt = 0;
+
 function saveGame() {
   state.lastSaveTime = Date.now();
-  localStorage.setItem('pupperpark_save', JSON.stringify(state));
+  lastWrittenSaveAt = state.lastSaveTime;
+  if (pendingSaveTimeout) {
+    clearTimeout(pendingSaveTimeout);
+    pendingSaveTimeout = null;
+  }
+  try {
+    localStorage.setItem('pupperpark_save', JSON.stringify(state));
+  } catch (e) {
+    // Ignore storage quota/restriction errors
+  }
+}
+
+function requestSave() {
+  const elapsed = Date.now() - lastWrittenSaveAt;
+  if (elapsed >= SAVE_COOLDOWN_MS) {
+    saveGame();
+  } else if (!pendingSaveTimeout) {
+    pendingSaveTimeout = setTimeout(() => {
+      pendingSaveTimeout = null;
+      saveGame();
+    }, SAVE_COOLDOWN_MS - elapsed);
+  }
 }
 
 setInterval(saveGame, 10000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    saveGame();
+  }
+});
+
+window.addEventListener('pagehide', saveGame);
+window.addEventListener('beforeunload', saveGame);
 
 function showOfflineModal(earned) {
   const modal = document.getElementById('offlineModal');
@@ -354,6 +390,7 @@ document.getElementById('btnBuyDecorFountain').addEventListener('click', () => {
     state.magicBones -= 1000;
     state.decorInventory.fountain = currentFountainOwned + 1;
     sfx.upgrade();
+    updateUI();
     saveGame();
   }
 });
@@ -1455,6 +1492,7 @@ function drawDuck() {
 
 function recruitDog(breed) {
   initAudio();
+  if (getTotalDogs() >= MAX_DOGS) return;
   const cost = state.costs[breed];
   if (state.bones >= cost) {
     state.bones -= cost;
@@ -1596,7 +1634,8 @@ function updateUI() {
   document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
   
   const total = getTotalDogs();
-  document.getElementById('miniDogs').textContent = total;
+  const atDogCap = total >= MAX_DOGS;
+  document.getElementById('miniDogs').textContent = `${total}/${MAX_DOGS}`;
 
   Object.keys(state.dogs).forEach(breed => {
     const el = document.getElementById(`count${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
@@ -1606,11 +1645,11 @@ function updateUI() {
     }
     const costEl = document.getElementById(`cost${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
     if (costEl) {
-      costEl.textContent = `${state.costs[breed].toLocaleString()} 🦴`;
+      costEl.textContent = atDogCap ? `Park Full (${MAX_DOGS}/${MAX_DOGS})` : `${state.costs[breed].toLocaleString()} 🦴`;
     }
     const btnEl = document.getElementById(`btnSummon${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
     if (btnEl) {
-      btnEl.disabled = state.bones < state.costs[breed];
+      btnEl.disabled = atDogCap || state.bones < state.costs[breed];
     }
   });
 
@@ -1878,6 +1917,7 @@ function loop(now) {
       const earnedTick = bps * dt;
       state.bones += earnedTick;
       state.lifetimeBones += earnedTick;
+      requestSave();
       updateUI();
     }
 
@@ -1998,6 +2038,7 @@ function loop(now) {
             sfx.collect();
           }
           droppedBones.splice(i, 1);
+          requestSave();
           updateUI();
           continue;
         }
