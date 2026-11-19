@@ -379,8 +379,32 @@ html, body {
 }
 
 .fav-star-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #b2bec3;
+  border-radius: 12px;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
   margin-bottom: auto;
   flex-shrink: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.fav-star-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 234, 167, 0.65);
+}
+
+.fav-star-btn.active {
+  background: rgba(255, 234, 167, 0.22);
+  border-color: #ffeaa7;
+  color: #ffeaa7;
 }
 
 .retire-pill-btn {
