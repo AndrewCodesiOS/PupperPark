@@ -212,7 +212,7 @@ function getDogLevelBonusMult(entry) {
 }
 
 let state = {
-  bones: 1000000,
+  bones: 0,
   lifetimeBones: 0,
   magicBones: 0,
   dogs: {
