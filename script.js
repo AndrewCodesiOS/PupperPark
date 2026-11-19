@@ -592,11 +592,7 @@ function showOfflineModal(earned, estimatedDigs = 0, foundTreasure = null) {
     text.innerHTML = '';
 
     const bonesLine = document.createElement('div');
-    if (estimatedDigs > 0) {
-      bonesLine.textContent = `~${estimatedDigs.toLocaleString()} digs estimated — they dug ${earned.toLocaleString()} Bones while you were away!`;
-    } else {
-      bonesLine.textContent = `They dug ${earned.toLocaleString()} Bones while you were away!`;
-    }
+    bonesLine.textContent = `They dug ${earned.toLocaleString()} Bones while you were away!`;
     text.appendChild(bonesLine);
 
     if (foundTreasure) {
