@@ -4,9 +4,9 @@ const ctx = canvas.getContext('2d');
 const MAX_DOGS = 12;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
 const RETIRE_REFUND_RATE = 0.50; // Up to 50% of retired dog's dug bones
-const LEVEL_BONUS_PER_LEVEL = 0.005; // +0.5% per level above Lv.1
+const LEVEL_BONUS_PER_LEVEL = 0.001; // +0.1% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
-const DIG_MULT_SQRT_SCALE = 0.25; // Gentle sqrt curve from dug bones
+const DIG_MULT_SQRT_SCALE = 0.025; // Gentle sqrt curve from dug bones
 
 const BONUS_PAYOUT_MAX = 0.25;  // Up to +0.25 Bone Yield
 const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
