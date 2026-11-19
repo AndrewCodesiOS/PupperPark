@@ -1359,16 +1359,95 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'husky') {
+      // Siberian Husky: dense plush coat, mask markings, fluffy curved tail, icy eyes
       const col = this.isShiny ? this.shinyColor : '#636e72';
-      ctx.fillStyle = col; ctx.fillRect(-11 - legSwing, -3, 4, 10); ctx.fillRect(6 + legSwing, -3, 4, 10);
-      const wag = Math.sin(this.animPhase * 2) * 3;
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-24, -17 + wag, -27, -10); ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -10, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(10, -17, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(10, -27); ctx.lineTo(13, -18); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -16); ctx.lineTo(18, -14); ctx.lineTo(12, -11); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0984e3'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
+      const darkTrim = this.isShiny ? this.shinyColor : '#2d3436';
+      const bellyWhite = '#f8f9fa';
+
+      // Back & front legs with white paws
+      ctx.fillStyle = col;
+      ctx.fillRect(-11 - legSwing, -3, 4.2, 10);
+      ctx.fillRect(6 + legSwing, -3, 4.2, 10);
+      ctx.fillStyle = bellyWhite;
+      ctx.fillRect(-11 - legSwing, 4, 4.2, 3);
+      ctx.fillRect(6 + legSwing, 4, 4.2, 3);
+
+      // Fluffy plume tail with wagging arc
+      const wag = Math.sin(this.animPhase * 2.1) * 3.5;
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 6.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-14, -9);
+      ctx.quadraticCurveTo(-23, -15 + wag, -25, -10 + wag * 0.6);
+      ctx.stroke();
+
+      ctx.strokeStyle = bellyWhite;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-18, -12 + wag * 0.3);
+      ctx.quadraticCurveTo(-23, -15 + wag, -25, -10 + wag * 0.6);
+      ctx.stroke();
+      ctx.restore();
+
+      // Torso & white chest/underbelly
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(-1, -10, 14.5, 8.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = bellyWhite;
+      ctx.beginPath();
+      ctx.ellipse(3, -6.5, 10, 4.5, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head, pointed ears with inner fur, and facial mask
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(10.5, -17, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Left/far ear + right/near ear
+      ctx.fillStyle = darkTrim;
+      ctx.beginPath();
+      ctx.moveTo(6.5, -21);
+      ctx.lineTo(9.5, -28.5);
+      ctx.lineTo(13, -20);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = bellyWhite;
+      ctx.beginPath();
+      ctx.moveTo(8, -21.5);
+      ctx.lineTo(9.8, -26);
+      ctx.lineTo(11.5, -20.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // White husky mask & snout
+      ctx.fillStyle = bellyWhite;
+      ctx.beginPath();
+      ctx.ellipse(14.5, -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(10.5, -16, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Nose & signature bright blue eye
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath();
+      ctx.ellipse(20.2, -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#00a8ff';
+      ctx.beginPath();
+      ctx.arc(14.8, -17.5, 1.65, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(15.2, -18, 0.55, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'shiba') {
       const col = this.isShiny ? this.shinyColor : '#d35400';
@@ -1382,16 +1461,89 @@ class Dog {
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -13.5, 1.5, 0, Math.PI * 2); ctx.fill();
 
     } else if (this.breed === 'shepherd') {
-      const col = this.isShiny ? this.shinyColor : '#d35400';
-      ctx.fillStyle = '#2c3e50'; ctx.fillRect(-12 - legSwing, -3, 4, 10); ctx.fillRect(7 + legSwing, -3, 4, 10);
-      const wag = Math.sin(this.animPhase * 2) * 3;
-      ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-22, -14 + wag, -24, -5); ctx.lineWidth = 3; ctx.strokeStyle = '#2c3e50'; ctx.stroke();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-1, -10, 15, 8.5, -0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(-1, -12, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.moveTo(7, -21); ctx.lineTo(11, -28); ctx.lineTo(14, -18); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(19, -13); ctx.lineTo(13, -10); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(19.5, -13.5, 1.6, 0, Math.PI * 2); ctx.fill();
+      // German Shepherd: rich saddle coat, dark muzzle/ears, swept bushy tail
+      const saddleCol = this.isShiny ? this.shinyColor : '#d35400';
+      const darkCol = this.isShiny ? this.shinyColor : '#2c3e50';
+      const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
+
+      // Hind & front legs with dark saddle upper & tan lower
+      ctx.fillStyle = darkCol;
+      ctx.fillRect(-12 - legSwing, -3, 4.2, 6);
+      ctx.fillRect(7 + legSwing, -3, 4.2, 6);
+      ctx.fillStyle = tanAccent;
+      ctx.fillRect(-12 - legSwing, 2, 4.2, 5);
+      ctx.fillRect(7 + legSwing, 2, 4.2, 5);
+
+      // Low-slung bushy shepherd tail
+      const wag = Math.sin(this.animPhase * 2) * 3.2;
+      ctx.save();
+      ctx.strokeStyle = darkCol;
+      ctx.lineWidth = 5.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-14.5, -9.5);
+      ctx.quadraticCurveTo(-22, -11 + wag, -25, -5 + wag * 0.5);
+      ctx.stroke();
+      ctx.restore();
+
+      // Sloped athletic torso with dark saddle blanket
+      ctx.fillStyle = saddleCol;
+      ctx.beginPath();
+      ctx.ellipse(-1, -10, 15.5, 8.8, -0.12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = darkCol;
+      ctx.beginPath();
+      ctx.ellipse(-2, -12.5, 12.5, 5.2, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head, large upright ears, and dark snout
+      ctx.fillStyle = saddleCol;
+      ctx.beginPath();
+      ctx.arc(11, -17.5, 7.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Large upright shepherd ears
+      ctx.fillStyle = darkCol;
+      ctx.beginPath();
+      ctx.moveTo(6.5, -21);
+      ctx.lineTo(8.5, -30.5);
+      ctx.lineTo(13, -20.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = tanAccent;
+      ctx.beginPath();
+      ctx.moveTo(8, -21.5);
+      ctx.lineTo(9.2, -27.5);
+      ctx.lineTo(11.5, -21);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tapered snout & dark muzzle
+      ctx.fillStyle = darkCol;
+      ctx.beginPath();
+      ctx.moveTo(12, -18.5);
+      ctx.lineTo(21.5, -15.5);
+      ctx.lineTo(20.5, -12.5);
+      ctx.lineTo(12, -13);
+      ctx.closePath();
+      ctx.fill();
+
+      // Nose & warm focused eye
+      ctx.fillStyle = '#11161d';
+      ctx.beginPath();
+      ctx.arc(21.3, -14.8, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f9ca24';
+      ctx.beginPath();
+      ctx.arc(14.5, -18, 1.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1e272e';
+      ctx.beginPath();
+      ctx.arc(14.7, -18, 0.8, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'beagle') {
       const col = this.isShiny ? this.shinyColor : '#e67e22';
