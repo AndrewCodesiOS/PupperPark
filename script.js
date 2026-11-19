@@ -10,13 +10,13 @@ const DIG_MULT_SQRT_SCALE = 0.25; // Gentle sqrt curve from dug bones
 
 const BREED_LABELS = {
   aussie: 'Aussie',
-  collie: 'Collie',
-  golden: 'Golden',
-  husky: 'Husky',
-  shiba: 'Shiba',
-  shepherd: 'Shepherd',
   beagle: 'Beagle',
-  dalmatian: 'Dalmatian'
+  collie: 'Collie',
+  husky: 'Husky',
+  golden: 'Golden',
+  shepherd: 'Shepherd',
+  shiba: 'Shiba',
+  labrador: 'Labrador'
 };
 
 const DEFAULT_PUP_NAMES = [
@@ -94,15 +94,25 @@ const sfx = {
   }
 };
 
+/**
+ * Ranked by earnings contribution & utility over time (Dalmatian replaced by Labrador):
+ * - payoutMult: standard bone dig payout multiplier
+ * - scalingMult: multiplier on this dog's sqrt(bonesEarned) contribution
+ * - xpMult: XP earned per dig toward leveling up
+ * - magicBonus: extra magic bone probability on digs
+ * - walkMult: visual walk speed multiplier
+ * - digSec: base dig duration in seconds
+ * - treasureChance: per-dig chance to trigger a treasure draft
+ */
 const BREED_CONFIG = {
-  aussie:    { cost: 15,     costMult: 1.45, walkMult: 1.20, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
-  collie:    { cost: 250,    costMult: 1.50, walkMult: 1.30, digSec: 0.70, payoutMult: 1, treasureChance: 0.00008 },
-  golden:    { cost: 600,    costMult: 1.52, walkMult: 1.10, digSec: 1.10, payoutMult: 2, treasureChance: 0.00008 },
-  husky:     { cost: 1500,   costMult: 1.55, walkMult: 1.30, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
-  shiba:     { cost: 10000,  costMult: 1.60, walkMult: 1.15, digSec: 1.10, payoutMult: 1, treasureChance: 0.00080 },
-  shepherd:  { cost: 25000,  costMult: 1.62, walkMult: 1.20, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 },
-  beagle:    { cost: 60000,  costMult: 1.65, walkMult: 1.00, digSec: 1.10, payoutMult: 2, treasureChance: 0.00008 },
-  dalmatian: { cost: 150000, costMult: 1.68, walkMult: 1.40, digSec: 1.10, payoutMult: 1, treasureChance: 0.00008 }
+  aussie:   { rank: 1, cost: 15,     costMult: 1.42, walkMult: 1.20, digSec: 1.10, payoutMult: 1.00, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
+  beagle:   { rank: 2, cost: 180,    costMult: 1.46, walkMult: 1.05, digSec: 1.05, payoutMult: 1.60, scalingMult: 1.15, xpMult: 1.05, magicBonus: 0.000, treasureChance: 0.00008 },
+  collie:   { rank: 3, cost: 550,    costMult: 1.50, walkMult: 1.30, digSec: 0.70, payoutMult: 1.10, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.000, treasureChance: 0.00008 },
+  husky:    { rank: 4, cost: 1600,   costMult: 1.54, walkMult: 1.35, digSec: 0.95, payoutMult: 1.20, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.000, treasureChance: 0.00008 },
+  golden:   { rank: 5, cost: 4800,   costMult: 1.58, walkMult: 1.10, digSec: 1.00, payoutMult: 2.00, scalingMult: 1.20, xpMult: 1.05, magicBonus: 0.005, treasureChance: 0.00008 },
+  shepherd: { rank: 6, cost: 14000,  costMult: 1.62, walkMult: 1.20, digSec: 0.95, payoutMult: 1.35, scalingMult: 1.25, xpMult: 1.10, magicBonus: 0.005, treasureChance: 0.00008 },
+  shiba:    { rank: 7, cost: 42000,  costMult: 1.66, walkMult: 1.15, digSec: 1.00, payoutMult: 1.25, scalingMult: 1.20, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00064 },
+  labrador: { rank: 8, cost: 110000, costMult: 1.70, walkMult: 1.25, digSec: 0.85, payoutMult: 2.20, scalingMult: 1.35, xpMult: 1.20, magicBonus: 0.010, treasureChance: 0.00012 }
 };
 
 const PERK_POOL = [
@@ -150,8 +160,8 @@ let state = {
   lifetimeBones: 0,
   magicBones: 0,
   dogs: {
-    aussie: 1, collie: 0, golden: 0, husky: 0,
-    shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
+    aussie: 1, beagle: 0, collie: 0, husky: 0,
+    golden: 0, shepherd: 0, shiba: 0, labrador: 0
   },
   shinyDogs: [],
   roster: [],
@@ -235,17 +245,18 @@ function getPerkMultipliers() {
 
 /**
  * Computes the dog's personal dug-bone scaling factor (0 until the dog digs its first bone),
- * using a gentle Math.sqrt curve so more dug bones smoothly raise its contribution.
+ * using a gentle Math.sqrt curve multiplied by the breed's scalingMult and level bonus.
  */
 function getDogDugScaling(entry) {
   const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
   if (dug <= 0) return 0; // Waits until this dog digs its first bone
-  return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * getDogLevelBonusMult(entry);
+  const cfg = (entry && BREED_CONFIG[entry.breed]) || BREED_CONFIG.aussie;
+  return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * (cfg.scalingMult || 1.0) * getDogLevelBonusMult(entry);
 }
 
 /**
- * Overall dig payout multiplier for the pack, combining dug-bone scaling,
- * Frisbee speedMultiplier, Bacon treat, and Treasure perks.
+ * Overall dig payout multiplier for the pack (or for a specific dog entry),
+ * combining dug-bone scaling, Frisbee speedMultiplier, Bacon treat, and Treasure perks.
  */
 function getDigMultiplier(entry = null) {
   let dugSum = 0;
@@ -268,12 +279,14 @@ function getDigMultiplier(entry = null) {
 function getAverageBonesPerDig() {
   if (!state.roster || state.roster.length === 0) return state.digPower;
   const cupMult = state.pupCupTimer > 0 ? 2 : 1;
+  const { boneMult, workBonus } = getPerkMultipliers();
+  const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
 
   let total = 0;
   state.roster.forEach(entry => {
     const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
-    const perDogMult = (DIG_MULT_BASE + getDogDugScaling(entry)) * state.speedMultiplier * (state.baconTimer > 0 ? 3.0 : 1.0) * getPerkMultipliers().boneMult * getPerkMultipliers().workBonus;
-    const raw = state.digPower * cfg.payoutMult * cupMult * perDogMult;
+    const perDogMult = (DIG_MULT_BASE + getDogDugScaling(entry)) * state.speedMultiplier * baconBonus * workBonus * boneMult;
+    const raw = state.digPower * (cfg.payoutMult || 1.0) * cupMult * perDogMult;
     total += Math.max(1, Math.round(raw * 10) / 10);
   });
 
@@ -281,7 +294,8 @@ function getAverageBonesPerDig() {
 }
 
 /**
- * Estimates total digs performed over `seconds` across the current roster.
+ * Estimates total digs performed over `seconds` across the current roster
+ * using each dog's walk speed, dig duration, and work bonus.
  */
 function estimateOfflineDigs(seconds) {
   if (!state.roster || state.roster.length === 0 || seconds <= 0) return 0;
@@ -291,8 +305,9 @@ function estimateOfflineDigs(seconds) {
   let totalDigs = 0;
   state.roster.forEach(entry => {
     const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
-    // Average ~1.2s idle + ~1.4s walk + breed digSec per full dig cycle
-    const avgCycleSec = Math.max(0.8, (2.6 + cfg.digSec) / cadenceFactor);
+    const estWalkSec = 1.6 / Math.max(0.5, cfg.walkMult || 1.0);
+    const estIdleSec = 1.0;
+    const avgCycleSec = Math.max(0.8, (estIdleSec + estWalkSec + (cfg.digSec || 1.0)) / cadenceFactor);
     totalDigs += seconds / avgCycleSec;
   });
 
@@ -311,6 +326,11 @@ function rebuildCanvasDogsFromRoster() {
       entry.shinyColor || null
     ));
   });
+}
+
+function normalizeBreedKey(breed) {
+  if (breed === 'dalmatian') return 'labrador';
+  return BREED_CONFIG[breed] ? breed : 'aussie';
 }
 
 function loadGame() {
@@ -333,6 +353,8 @@ function loadGame() {
       state.isDraftingPerk = false;
       state.isPlacingDecor = false;
       state.activeDecorType = null;
+      if (!state.dogs) state.dogs = {};
+      if (!state.costs) state.costs = {};
       Object.keys(BREED_CONFIG).forEach(b => {
         if (state.dogs[b] === undefined) state.dogs[b] = 0;
         if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
@@ -354,14 +376,15 @@ function loadGame() {
   // Migrate legacy dogs/shinyDogs into roster if roster is empty
   if (!Array.isArray(state.roster) || state.roster.length === 0) {
     state.roster = [];
-    Object.keys(state.dogs).forEach(breed => {
-      const count = state.dogs[breed] || 0;
+    Object.keys(state.dogs || {}).forEach(rawBreed => {
+      const breed = normalizeBreedKey(rawBreed);
+      const count = state.dogs[rawBreed] || 0;
       for (let i = 0; i < count; i++) {
         state.roster.push(createRosterEntry(breed, false, null));
       }
     });
     (state.shinyDogs || []).forEach(shiny => {
-      state.roster.push(createRosterEntry(shiny.breed, true, shiny.color));
+      state.roster.push(createRosterEntry(normalizeBreedKey(shiny.breed), true, shiny.color));
     });
   }
 
@@ -375,6 +398,7 @@ function loadGame() {
   }
 
   state.roster.forEach((entry, idx) => {
+    entry.breed = normalizeBreedKey(entry.breed);
     if (!entry.id) entry.id = `dog_${idx}_${Math.random().toString(36).slice(2, 6)}`;
     if (!entry.name) entry.name = generateDefaultName(entry.breed, idx + 1);
     if (typeof entry.level !== 'number' || entry.level < 1) entry.level = 1;
@@ -607,6 +631,7 @@ function renderRosterTab() {
   container.innerHTML = '';
 
   state.roster.forEach(entry => {
+    const cfg = BREED_CONFIG[entry.breed] || BREED_CONFIG.aussie;
     const xpNeeded = getXpNeededForLevel(entry.level);
     const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
     const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
@@ -651,11 +676,13 @@ function renderRosterTab() {
     const chipsRow = document.createElement('div');
     chipsRow.className = 'roster-chips';
     chipsRow.innerHTML = `
-      <span class="roster-chip">${breedName}</span>
+      <span class="roster-chip">${breedName} #${cfg.rank}</span>
       <span class="roster-lvl-badge${entry.isShiny ? ' shiny' : ''}">Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}</span>
       <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
-      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
-      <span class="roster-chip">Bonus <strong>+${levelBonusPct}%</strong></span>
+      <span class="roster-chip">Payout <strong>${cfg.payoutMult.toFixed(1)}x</strong></span>
+      <span class="roster-chip">Scale <strong>${cfg.scalingMult.toFixed(2)}x</strong></span>
+      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong> (${cfg.xpMult.toFixed(2)}x)</span>
+      <span class="roster-chip">Lvl +<strong>${levelBonusPct}%</strong></span>
     `;
 
     mainCol.appendChild(topRow);
@@ -812,8 +839,8 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     lifetimeBones: 0,
     magicBones: 0,
     dogs: {
-      aussie: 1, collie: 0, golden: 0, husky: 0,
-      shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
+      aussie: 1, beagle: 0, collie: 0, husky: 0,
+      golden: 0, shepherd: 0, shiba: 0, labrador: 0
     },
     shinyDogs: [],
     roster: [createRosterEntry('aussie', false, null, 'Biscuit')],
@@ -1083,7 +1110,7 @@ class Dog {
     this.facingRight = Math.random() > 0.5;
     this.animPhase = Math.random() * Math.PI * 2;
     this.rosterId = rosterId;
-    this.breed = breed;
+    this.breed = normalizeBreedKey(breed);
     this.isShiny = isShiny;
     
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
@@ -1108,7 +1135,7 @@ class Dog {
 
     // Keep visual movement & animation speeds gentle and capped so dogs stay smooth
     const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25);
-    const walkSpeed = cfg.walkMult * visualPace;
+    const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
     this.animPhase += dt * (this.state === 'WALK' ? 9 * Math.min(1.25, visualPace) : 5 * Math.min(1.25, visualPace));
 
@@ -1137,13 +1164,13 @@ class Dog {
         }
 
         this.state = 'DIG';
-        this.timer = cfg.digSec / visualPace;
+        this.timer = (cfg.digSec || 1.0) / visualPace;
         
         const { magicBonus } = getPerkMultipliers();
-        const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus);
+        const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus + (cfg.magicBonus || 0));
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
-        const treasureChance = cfg.treasureChance;
+        const treasureChance = cfg.treasureChance || 0.00008;
         if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
         }
@@ -1184,7 +1211,7 @@ class Dog {
 
     // Scale standard bones per dig using the dog's dug-bone scaling + pack dig multiplier
     const dogDigMult = getDigMultiplier(entry);
-    const rawAmount = state.digPower * cfg.payoutMult * cupMult * dogDigMult;
+    const rawAmount = state.digPower * (cfg.payoutMult || 1.0) * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
     const boneValue = this.isMagicDig ? cupMult : amount;
     const pos = gridToScreen(this.gx, this.gy);
@@ -1192,7 +1219,7 @@ class Dog {
     if (entry) {
       entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
       const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
-      const xpGain = this.isMagicDig ? baseXp * 2 : baseXp;
+      const xpGain = Math.max(1, Math.round(baseXp * (cfg.xpMult || 1.0) * (this.isMagicDig ? 2 : 1)));
       entry.xp = (entry.xp || 0) + xpGain;
 
       let leveledUp = false;
@@ -1379,18 +1406,33 @@ class Dog {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -14); ctx.lineTo(17, -12); ctx.lineTo(12, -9); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -12.5, 1.5, 0, Math.PI * 2); ctx.fill();
 
-    } else if (this.breed === 'dalmatian') {
-      ctx.fillStyle = '#fff'; ctx.fillRect(-11 - legSwing, -3, 4, 9); ctx.fillRect(6 + legSwing, -3, 4, 9);
-      const wag = Math.sin(this.animPhase * 2) * 3;
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-15, -9); ctx.quadraticCurveTo(-23, -13 + wag, -26, -8); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(-2, -9, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (this.breed === 'labrador') {
+      // Labrador Retriever: warm golden/fox-red coat (or shiny color), thick otter tail, floppy ears
+      const col = this.isShiny ? this.shinyColor : '#e5a93c';
+      const earCol = this.isShiny ? this.shinyColor : '#c78924';
+      ctx.fillStyle = col;
+      ctx.fillRect(-11 - legSwing, -3, 4.5, 9.5);
+      ctx.fillRect(6 + legSwing, -3, 4.5, 9.5);
+      const wag = Math.sin(this.animPhase * 2.2) * 3.5;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(-14, -9);
+      ctx.quadraticCurveTo(-22, -13 + wag, -25, -9 + wag * 0.5);
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = col;
+      ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.ellipse(-1, -9, 14.5, 8.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(11, -16.5, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = earCol;
+      ctx.beginPath(); ctx.ellipse(8.5, -13.5, 3.2, 6.2, 0.28, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.ellipse(17, -14, 5.2, 3.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#1e1e1e';
-      ctx.fillRect(-6, -11, 3.5, 3.5); ctx.fillRect(2, -7, 3, 3); ctx.fillRect(7, -18, 2.5, 2.5);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(11, -17, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.ellipse(8, -21, 3, 5, -0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(21.2, -15, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -18.5, 1.5, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
@@ -1886,19 +1928,20 @@ function drawDuck() {
 function recruitDog(breed) {
   initAudio();
   if (getTotalDogs() >= MAX_DOGS) return;
-  const cost = state.costs[breed];
+  const normBreed = normalizeBreedKey(breed);
+  const cost = state.costs[normBreed];
   if (state.bones >= cost) {
     state.bones -= cost;
-    state.costs[breed] = Math.floor(cost * BREED_CONFIG[breed].costMult);
+    state.costs[normBreed] = Math.floor(cost * BREED_CONFIG[normBreed].costMult);
     
     const isShiny = Math.random() < (1 / 8000);
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     const chosenColor = isShiny ? shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)] : null;
 
-    const entry = createRosterEntry(breed, isShiny, chosenColor);
+    const entry = createRosterEntry(normBreed, isShiny, chosenColor);
     state.roster.push(entry);
     syncBreedCountsFromRoster();
-    dogs.push(new Dog(1.5, 1.5, entry.id, breed, isShiny, chosenColor));
+    dogs.push(new Dog(1.5, 1.5, entry.id, normBreed, isShiny, chosenColor));
 
     if (isShiny) {
       sfx.shiny();
@@ -1913,13 +1956,13 @@ function recruitDog(breed) {
 }
 
 document.getElementById('btnSummonAussie').addEventListener('click', () => recruitDog('aussie'));
-document.getElementById('btnSummonCollie').addEventListener('click', () => recruitDog('collie'));
-document.getElementById('btnSummonGolden').addEventListener('click', () => recruitDog('golden'));
-document.getElementById('btnSummonHusky').addEventListener('click', () => recruitDog('husky'));
-document.getElementById('btnSummonShiba').addEventListener('click', () => recruitDog('shiba'));
-document.getElementById('btnSummonShepherd').addEventListener('click', () => recruitDog('shepherd'));
 document.getElementById('btnSummonBeagle').addEventListener('click', () => recruitDog('beagle'));
-document.getElementById('btnSummonDalmatian').addEventListener('click', () => recruitDog('dalmatian'));
+document.getElementById('btnSummonCollie').addEventListener('click', () => recruitDog('collie'));
+document.getElementById('btnSummonHusky').addEventListener('click', () => recruitDog('husky'));
+document.getElementById('btnSummonGolden').addEventListener('click', () => recruitDog('golden'));
+document.getElementById('btnSummonShepherd').addEventListener('click', () => recruitDog('shepherd'));
+document.getElementById('btnSummonShiba').addEventListener('click', () => recruitDog('shiba'));
+document.getElementById('btnSummonLabrador').addEventListener('click', () => recruitDog('labrador'));
 
 document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
@@ -2037,17 +2080,18 @@ function updateUI() {
     nameTagLabel.textContent = state.showNameTags ? 'ON' : 'OFF';
   }
 
-  Object.keys(state.dogs).forEach(breed => {
-    const el = document.getElementById(`count${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
+  Object.keys(BREED_CONFIG).forEach(breed => {
+    const capBreed = breed.charAt(0).toUpperCase() + breed.slice(1);
+    const el = document.getElementById(`count${capBreed}`);
     if (el) {
       const breedTotal = state.roster.filter(d => d.breed === breed).length;
       el.textContent = breedTotal;
     }
-    const costEl = document.getElementById(`cost${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
+    const costEl = document.getElementById(`cost${capBreed}`);
     if (costEl) {
       costEl.textContent = atDogCap ? `Park Full (${MAX_DOGS}/${MAX_DOGS})` : `${state.costs[breed].toLocaleString()} 🦴`;
     }
-    const btnEl = document.getElementById(`btnSummon${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
+    const btnEl = document.getElementById(`btnSummon${capBreed}`);
     if (btnEl) {
       btnEl.disabled = atDogCap || state.bones < state.costs[breed];
     }
