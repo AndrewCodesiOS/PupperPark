@@ -117,9 +117,7 @@ const PERK_POOL = [
 ];
 
 function generateDefaultName(breed, indexNum) {
-  const baseName = DEFAULT_PUP_NAMES[(indexNum - 1) % DEFAULT_PUP_NAMES.length].trim();
-  const breedLabel = BREED_LABELS[breed] || 'Pup';
-  return `${baseName} (${breedLabel})`;
+  return DEFAULT_PUP_NAMES[(indexNum - 1) % DEFAULT_PUP_NAMES.length].trim();
 }
 
 function createRosterEntry(breed, isShiny = false, shinyColor = null, customName = null) {
@@ -316,7 +314,7 @@ function loadGame() {
   }
 
   if (state.roster.length === 0) {
-    state.roster.push(createRosterEntry('aussie', false, null, 'Biscuit (Aussie)'));
+    state.roster.push(createRosterEntry('aussie', false, null, 'Biscuit'));
   }
 
   state.roster.forEach((entry, idx) => {
@@ -752,7 +750,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
       shiba: 0, shepherd: 0, beagle: 0, dalmatian: 0
     },
     shinyDogs: [],
-    roster: [createRosterEntry('aussie', false, null, 'Biscuit (Aussie)')],
+    roster: [createRosterEntry('aussie', false, null, 'Biscuit')],
     perks: [],
     decorInventory: { tree: 0, flowers: 0, fountain: 0 },
     placedDecorations: [],
