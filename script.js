@@ -20,9 +20,9 @@ const BREED_LABELS = {
 };
 
 const DEFAULT_PUP_NAMES = [
-  'Biscuit', 'Scout', 'Mochi', 'Clover', 'Waffles', 'Pip',
+  'Biscuit', 'Scout', 'Max', 'Rover', 'Waffles', 'Buddy',
   'Maple', 'Ziggy', 'Otis', 'Penny', 'Bramble', 'Toby',
-  'Sunny', 'Nori', 'Rosie', 'Finn'
+  'Sunny', 'Nora', 'Rosie', 'Finn'
 ];
 
 let audioCtx = null;
@@ -119,7 +119,7 @@ const PERK_POOL = [
   { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts bone payouts per dig (1.10x)', mult: 1.10 },
   { id: 'bp_2', name: 'Lost Compass', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.15x)', mult: 1.15 },
   { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.20x)', mult: 1.20 },
-  { id: 'sp_1', name: 'Sturdy Trowel', rarity: 'Common', desc: 'Boosts dig payout scaling (1.10x)', workMult: 1.10 },
+  { id: 'sp_1', name: 'Sturdy Shovel', rarity: 'Common', desc: 'Boosts dig payout scaling (1.10x)', workMult: 1.10 },
   { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.30x)', mult: 1.30 },
   { id: 'bp_5', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.40x)', mult: 1.40 },
   { id: 'mp_1', name: 'Mystic Chew Toy', rarity: 'Rare', desc: 'Boosts ✨ Magic Bone chance (+4%)', magicAdd: 0.04 },
@@ -156,7 +156,7 @@ function getDogLevelBonusMult(entry) {
 }
 
 let state = {
-  bones: 0,
+  bones: 1000000,
   lifetimeBones: 0,
   magicBones: 0,
   dogs: {
