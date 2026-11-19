@@ -860,11 +860,15 @@ function renderRosterTab() {
 
     const rightAction = document.createElement('div');
     rightAction.className = 'roster-right-action';
-    rightAction.style.display = 'flex';
-    rightAction.style.flexDirection = 'column';
-    rightAction.style.justifyContent = 'space-between';
-    rightAction.style.alignItems = 'flex-end';
-    rightAction.style.gap = '12px';
+    rightAction.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-end;
+      align-self: stretch;
+      gap: 10px;
+      flex-shrink: 0;
+    `;
 
     const favBtn = document.createElement('button');
     favBtn.type = 'button';
@@ -886,6 +890,7 @@ function renderRosterTab() {
       line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
+      margin-bottom: auto;
     `;
     favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
     rightAction.appendChild(favBtn);
