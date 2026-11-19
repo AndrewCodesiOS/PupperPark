@@ -408,6 +408,29 @@ html, body {
   color: #ffeaa7;
 }
 
+.reroll-dice-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(162, 155, 254, 0.14);
+  border: 1.5px solid rgba(162, 155, 254, 0.45);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+}
+
+.reroll-dice-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(162, 155, 254, 0.26);
+  border-color: #ffeaa7;
+}
+
 .retire-pill-btn {
   background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
   border: none;
@@ -669,6 +692,133 @@ html, body {
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 20px;
+}
+
+/* Reroll Modal Styles */
+.reroll-modal-window {
+  width: 92%;
+  max-width: 420px;
+  padding: 22px;
+  border-radius: 20px;
+  border: 2px solid #a29bfe;
+  background: linear-gradient(180deg, #221b44 0%, #15112e 100%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reroll-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reroll-modal-header h2 {
+  color: #ffeaa7;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.reroll-dog-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.reroll-meta-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dcdde1;
+}
+
+.reroll-meta-pill.is-shiny {
+  background: rgba(255, 234, 167, 0.2);
+  color: #ffeaa7;
+  border: 1px solid rgba(255, 234, 167, 0.5);
+}
+
+.reroll-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.reroll-stat-line {
+  background: rgba(13, 11, 26, 0.55);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.74rem;
+  color: #b2bec3;
+}
+
+.reroll-stat-line strong {
+  color: #ffeaa7;
+  font-size: 0.85rem;
+}
+
+.reroll-rules-text {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #dcdde1;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.reroll-result-banner {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.reroll-result-banner.upgraded {
+  background: rgba(0, 184, 148, 0.18);
+  border: 1px solid rgba(85, 239, 196, 0.6);
+  color: #55efc4;
+}
+
+.reroll-result-banner.kept {
+  background: rgba(255, 234, 167, 0.14);
+  border: 1px solid rgba(255, 234, 167, 0.45);
+  color: #ffeaa7;
+}
+
+.reroll-result-banner.shiny-hit {
+  border-color: #ffeaa7;
+  box-shadow: 0 0 18px rgba(255, 234, 167, 0.35);
+}
+
+.reroll-shiny-callout {
+  margin-top: 6px;
+  color: #ffeaa7;
+  font-size: 0.86rem;
+}
+
+.reroll-actions {
+  display: flex;
+  justify-content: stretch;
+  margin-top: 2px;
+}
+
+.reroll-purchase-btn {
+  width: 100%;
+  padding: 10px 14px;
 }
 
 /* Readable Perk Draft Modal Styles */
