@@ -4,6 +4,7 @@ const ctx = canvas.getContext('2d');
 const MAX_DOGS = 12;
 const RETIRE_REFUND_RATE = 0.20;
 const LEVEL_BONUS_PER_LEVEL = 0.005; // Very small: +0.5% per level above Lv.1
+const BPS_GLOBAL_SCALE = 0.25; // Lowered from 0.45 for slower, steadier passive bone growth
 
 const BREED_LABELS = {
   aussie: 'Aussie',
@@ -159,6 +160,7 @@ let state = {
   placedDecorations: [],
   isPlacingDecor: false,
   activeDecorType: null,
+  showNameTags: true,
   digPower: 1,
   speedMultiplier: 1,
   idleMultiplier: 0.6,
@@ -197,6 +199,8 @@ let tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: fa
 let frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
 let redBone = { gx: 5.0, gy: 2.0, targetGx: 5.0, targetGy: 2.0, isMoved: false, timer: 9.0 };
 let duck = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isMoved: false, timer: 5.5, quackPhase: 0 };
+
+let pendingRetireDogId = null;
 
 function syncBreedCountsFromRoster() {
   Object.keys(state.dogs).forEach(b => {
@@ -237,7 +241,7 @@ function getBPS() {
   });
   const { boneMult, workBonus } = getPerkMultipliers();
   const baconBonus = state.baconTimer > 0 ? 3.0 : 1.0;
-  return rosterBreedSum * state.digPower * state.speedMultiplier * baconBonus * workBonus * 0.45 * boneMult;
+  return rosterBreedSum * state.digPower * state.speedMultiplier * baconBonus * workBonus * BPS_GLOBAL_SCALE * boneMult;
 }
 
 function rebuildCanvasDogsFromRoster() {
@@ -262,6 +266,9 @@ function loadGame() {
       state = { ...state, ...parsed };
       if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
         state.lifetimeBones = state.bones || 0;
+      }
+      if (typeof state.showNameTags !== 'boolean') {
+        state.showNameTags = true;
       }
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
@@ -463,6 +470,41 @@ tabBtns.forEach(btn => {
   });
 });
 
+// Retire Dog Confirmation Modal Handlers
+const retireConfirmModal = document.getElementById('retireConfirmModal');
+const retireConfirmText = document.getElementById('retireConfirmText');
+
+function openRetireConfirm(dogId) {
+  initAudio();
+  if (state.roster.length <= 1) return;
+  const target = state.roster.find(d => d.id === dogId);
+  if (!target) return;
+
+  pendingRetireDogId = dogId;
+  const refundPreview = Math.floor((target.bonesEarned || 0) * RETIRE_REFUND_RATE);
+  if (retireConfirmText) {
+    retireConfirmText.textContent = `Retire ${target.name} and receive +${refundPreview.toLocaleString()} Bones (20% of their ${Math.floor(target.bonesEarned || 0).toLocaleString()} lifetime bones dug)?`;
+  }
+  if (retireConfirmModal) {
+    retireConfirmModal.style.display = 'flex';
+  }
+}
+
+document.getElementById('btnCancelRetire')?.addEventListener('click', () => {
+  initAudio();
+  pendingRetireDogId = null;
+  if (retireConfirmModal) retireConfirmModal.style.display = 'none';
+});
+
+document.getElementById('btnConfirmRetire')?.addEventListener('click', () => {
+  const idToRetire = pendingRetireDogId;
+  pendingRetireDogId = null;
+  if (retireConfirmModal) retireConfirmModal.style.display = 'none';
+  if (idToRetire) {
+    retireDog(idToRetire);
+  }
+});
+
 function retireDog(dogId) {
   initAudio();
   if (state.roster.length <= 1) return;
@@ -564,7 +606,7 @@ function renderRosterTab() {
       const retireBtn = document.createElement('button');
       retireBtn.className = 'retire-pill-btn';
       retireBtn.textContent = `Retire +${refundPreview.toLocaleString()} 🦴`;
-      retireBtn.addEventListener('click', () => retireDog(entry.id));
+      retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
 
       rightAction.appendChild(retireBtn);
       card.appendChild(rightAction);
@@ -675,6 +717,15 @@ document.getElementById('btnConfirmClearDecor').addEventListener('click', () => 
   saveGame();
 });
 
+// Settings: Name Tags Toggle Handler
+document.getElementById('btnToggleNameTags')?.addEventListener('click', () => {
+  initAudio();
+  state.showNameTags = !state.showNameTags;
+  sfx.gather();
+  updateUI();
+  saveGame();
+});
+
 // Settings: Reset Progress Modal Handlers
 const resetConfirmModal = document.getElementById('resetConfirmModal');
 document.getElementById('btnResetProgress').addEventListener('click', () => {
@@ -690,6 +741,7 @@ document.getElementById('btnCancelReset').addEventListener('click', () => {
 document.getElementById('btnConfirmReset').addEventListener('click', () => {
   initAudio();
   localStorage.removeItem('pupperpark_save');
+  pendingRetireDogId = null;
 
   state = {
     bones: 0,
@@ -706,6 +758,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     placedDecorations: [],
     isPlacingDecor: false,
     activeDecorType: null,
+    showNameTags: true,
     digPower: 1,
     speedMultiplier: 1,
     idleMultiplier: 0.6,
@@ -748,6 +801,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   if (noticeEl) noticeEl.style.display = 'none';
 
   resetConfirmModal.style.display = 'none';
+  if (retireConfirmModal) retireConfirmModal.style.display = 'none';
   document.getElementById('placementBanner').style.display = 'none';
   closeMenu();
   updateUI();
@@ -1027,7 +1081,7 @@ class Dog {
         const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus);
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
         
-        const treasureChance = (this.breed === 'shiba') ? 0.003 : 0.0003;
+        const treasureChance = (this.breed === 'shiba') ? 0.0008 : 0.00008;
         if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
         }
@@ -1130,6 +1184,7 @@ class Dog {
     ctx.ellipse(0, 6, 17, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.save();
     if (!this.facingRight) {
       ctx.scale(-1, 1);
     }
@@ -1272,6 +1327,34 @@ class Dog {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(11, -16); ctx.lineTo(18, -14); ctx.lineTo(13, -11); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(18.5, -14.5, 1.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(13, -18, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+
+    if (state.showNameTags) {
+      const entry = this.getRosterEntry();
+      const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
+      const tagY = -36 - bounce;
+
+      ctx.font = '700 11px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+      const textWidth = ctx.measureText(label).width;
+      const padX = 7;
+      const boxW = textWidth + padX * 2;
+      const boxH = 18;
+
+      ctx.fillStyle = 'rgba(13, 11, 26, 0.78)';
+      ctx.beginPath();
+      ctx.roundRect(-boxW / 2, tagY - boxH / 2, boxW, boxH, 7);
+      ctx.fill();
+
+      ctx.strokeStyle = this.isShiny ? 'rgba(255, 234, 167, 0.85)' : 'rgba(162, 155, 254, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = this.isShiny ? '#ffeaa7' : '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, 0, tagY + 0.5);
     }
 
     ctx.restore();
@@ -1884,6 +1967,11 @@ function updateUI() {
   const total = getTotalDogs();
   const atDogCap = total >= MAX_DOGS;
   document.getElementById('miniDogs').textContent = `${total}/${MAX_DOGS}`;
+
+  const nameTagLabel = document.getElementById('nameTagSettingLabel');
+  if (nameTagLabel) {
+    nameTagLabel.textContent = state.showNameTags ? 'ON' : 'OFF';
+  }
 
   Object.keys(state.dogs).forEach(breed => {
     const el = document.getElementById(`count${breed.charAt(0).toUpperCase() + breed.slice(1)}`);
