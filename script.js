@@ -520,7 +520,7 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 15) {
+  if (elapsedSeconds > 15 && typeof state.lastSaveTime === 'number' && !Number.isNaN(state.lastSaveTime)) {
     const effectiveSeconds = Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS);
     const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
     const avgPerDig = getAverageBonesPerDig();
@@ -535,7 +535,7 @@ function loadGame() {
       state.lifetimeBones += earned;
     }
     if (earned > 0 || foundTreasure) {
-      showOfflineModal(earned, estimatedDigs, foundTreasure);
+      showOfflineModal(earned, 0, foundTreasure);
     }
   }
 
