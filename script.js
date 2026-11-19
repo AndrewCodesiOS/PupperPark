@@ -260,7 +260,7 @@ function loadGame() {
     try {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
-      if (typeof state.lifetimeBones !== 'number') {
+      if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
         state.lifetimeBones = state.bones || 0;
       }
       if (!state.shinyDogs) state.shinyDogs = [];
@@ -319,6 +319,13 @@ function loadGame() {
     if (typeof entry.xp !== 'number' || entry.xp < 0) entry.xp = 0;
     if (typeof entry.bonesEarned !== 'number' || entry.bonesEarned < 0) entry.bonesEarned = 0;
   });
+
+  if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
+    state.lifetimeBones = state.bones || 0;
+  }
+  if (state.lifetimeBones < state.bones) {
+    state.lifetimeBones = state.bones;
+  }
 
   syncBreedCountsFromRoster();
 
