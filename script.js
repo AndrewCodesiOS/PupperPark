@@ -1476,99 +1476,76 @@ class Dog {
       ctx.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
       ctx.fill();
 
-    } else if (this.breed === 'collie') {
-      // Border / Rough Collie: flowing coat, fluffy white mane ruff, tipped ears, feathered tail
-      const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
-      const featherShade = this.isShiny ? this.shinyColor : '#1e272e';
-      const whiteFur = '#f8f9fa';
+    } else if (this.breed === 'golden') {
+      // Golden Retriever: warm golden coat, cream highlights, floppy ear, feathered tail
+      const col = this.isShiny ? this.shinyColor : '#f39c12';
+      const richShade = this.isShiny ? this.shinyColor : '#d35400';
+      const creamHighlight = '#ffeaa7';
 
-      // Back & front legs with white socks
-      ctx.fillStyle = collieColor;
-      ctx.fillRect(-12 - legSwing, -3, 3.8, 10);
-      ctx.fillRect(7 - legSwing * 0.5, -3, 3.8, 10);
-      ctx.fillStyle = whiteFur;
-      ctx.fillRect(-12 - legSwing, 4, 3.8, 3);
-      ctx.fillRect(7 - legSwing * 0.5, 4, 3.8, 3);
+      // Front & back legs with warm shading
+      ctx.fillStyle = col;
+      ctx.fillRect(-11.5 - legSwing, -3, 4.6, 10);
+      ctx.fillRect(6.5 + legSwing, -3, 4.6, 10);
 
-      // Graceful feathered tail with wagging sweep
-      const wag = Math.sin(this.animPhase * 2.1) * 3.4;
+      // Feathered wagging tail
+      const wag = Math.sin(this.animPhase * 2.1) * 3.5;
       ctx.save();
-      ctx.strokeStyle = collieColor;
-      ctx.lineWidth = 5.5;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 6.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-14.5, -9.5);
-      ctx.quadraticCurveTo(-22.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.moveTo(-14.5, -9);
+      ctx.quadraticCurveTo(-23, -15 + wag, -26.5, -10.5 + wag * 0.6);
       ctx.stroke();
 
-      ctx.strokeStyle = whiteFur;
+      ctx.strokeStyle = creamHighlight;
       ctx.lineWidth = 2.6;
       ctx.beginPath();
-      ctx.moveTo(-20, -12.5 + wag * 0.3);
-      ctx.quadraticCurveTo(-23.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.moveTo(-19.5, -12.5 + wag * 0.3);
+      ctx.quadraticCurveTo(-23.5, -15 + wag, -26.5, -10.5 + wag * 0.6);
       ctx.stroke();
       ctx.restore();
 
-      // Sleek torso + fluffy white mane ruff
-      ctx.fillStyle = collieColor;
+      // Plush torso & soft cream chest highlight
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(-1.5, -10, 15.5, 8.2, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(-1, -9.5, 15.5, 9.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = featherShade;
+      ctx.fillStyle = creamHighlight;
       ctx.beginPath();
-      ctx.ellipse(-5, -11.5, 8, 4.5, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(6.5, -8.5, 5.5, 6.5, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = whiteFur;
+      // Head, soft muzzle & floppy ear
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(6.5, -10.5, 5.5, 8, 0.2, 0, Math.PI * 2);
+      ctx.arc(11, -16.5, 7.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Head & classic tipped ear
-      ctx.fillStyle = collieColor;
+      ctx.fillStyle = creamHighlight;
       ctx.beginPath();
-      ctx.arc(11, -17.5, 7.5, 0, Math.PI * 2);
+      ctx.ellipse(16.5, -14, 5, 3.6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = collieColor;
+      ctx.fillStyle = richShade;
       ctx.beginPath();
-      ctx.moveTo(7.5, -21);
-      ctx.lineTo(6.5, -27.5);
-      ctx.lineTo(12, -21.5);
-      ctx.closePath();
+      ctx.ellipse(8.2, -13.5, 3.3, 6.5, 0.28, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.moveTo(6.5, -27.5);
-      ctx.lineTo(5.2, -25.5);
-      ctx.lineTo(8.5, -25.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Slender collie muzzle & dark nose
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.moveTo(12, -16.5);
-      ctx.lineTo(22.5, -14.2);
-      ctx.lineTo(13, -11.5);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#11161d';
-      ctx.beginPath();
-      ctx.arc(22.2, -14.3, 1.65, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Expressive eye with catchlight
+      // Nose & warm friendly eye
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
-      ctx.arc(14.5, -18.2, 1.5, 0, Math.PI * 2);
+      ctx.arc(21.2, -14.5, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(13.8, -18, 1.6, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
+      ctx.arc(14.2, -18.5, 0.55, 0, Math.PI * 2);
       ctx.fill();
 
     } else if (this.breed === 'husky') {
@@ -1663,15 +1640,88 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'shiba') {
+      // Shiba Inu: plush fox-red/sesame coat, cream urajiro markings, curled tail, alert ears
       const col = this.isShiny ? this.shinyColor : '#d35400';
-      ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 9); ctx.fillRect(6 + legSwing, -2, 4, 9);
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(-14, -15, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -9, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, -6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(10, -16, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(10, -28); ctx.lineTo(14, -18); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -15); ctx.lineTo(17, -13); ctx.lineTo(12, -10); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -13.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      const warmShade = this.isShiny ? this.shinyColor : '#a84300';
+      const creamFur = '#fffaf0';
+
+      // Back & front legs with cream paws
+      ctx.fillStyle = col;
+      ctx.fillRect(-10.5 - legSwing, -2.5, 4, 9.5);
+      ctx.fillRect(6 + legSwing, -2.5, 4, 9.5);
+      ctx.fillStyle = creamFur;
+      ctx.fillRect(-10.5 - legSwing, 4, 4, 3);
+      ctx.fillRect(6 + legSwing, 4, 4, 3);
+
+      // Curled Shiba tail with wagging bounce
+      const wag = Math.sin(this.animPhase * 2.4) * 2.2;
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 4.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-13.5, -9.5);
+      ctx.quadraticCurveTo(-19.5, -14 + wag, -16.5, -19.5 + wag);
+      ctx.arc(-14.5, -17.5 + wag, 2.8, 0.5 * Math.PI, 2.2 * Math.PI);
+      ctx.stroke();
+      ctx.restore();
+
+      // Compact sturdy torso + cream belly/chest
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(-0.5, -9, 14.5, 8.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = warmShade;
+      ctx.beginPath();
+      ctx.ellipse(-4, -11, 7.5, 4.2, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = creamFur;
+      ctx.beginPath();
+      ctx.ellipse(2, -5.8, 10.5, 4.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Plush Shiba head, pointed ears & cream cheek/muzzle
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(10.5, -16.5, 7.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = warmShade;
+      ctx.beginPath();
+      ctx.moveTo(6.5, -20.5);
+      ctx.lineTo(9.5, -28.5);
+      ctx.lineTo(13.5, -19.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = creamFur;
+      ctx.beginPath();
+      ctx.moveTo(8, -21);
+      ctx.lineTo(9.8, -26);
+      ctx.lineTo(11.8, -20);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.ellipse(15, -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dark nose & happy squinting/sparkling Shiba eye
+      ctx.fillStyle = '#11161d';
+      ctx.beginPath();
+      ctx.arc(19.6, -14.4, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(14.2, -17, 1.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(14.6, -17.5, 0.5, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'shepherd') {
       // German Shepherd: rich saddle coat, dark muzzle/ears, swept bushy tail
@@ -1759,17 +1809,85 @@ class Dog {
       ctx.fill();
 
     } else if (this.breed === 'beagle') {
+      // Beagle: tricolor hound coat, long velvety floppy ears, white-tipped tail
       const col = this.isShiny ? this.shinyColor : '#e67e22';
-      ctx.fillStyle = col; ctx.fillRect(-10 - legSwing, -2, 4, 8); ctx.fillRect(5 + legSwing, -2, 4, 8);
-      ctx.fillStyle = '#fff'; ctx.fillRect(-10 - legSwing, 4, 4, 3); ctx.fillRect(5 + legSwing, 4, 4, 3);
-      const wag = Math.sin(this.animPhase * 2) * 4;
-      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-14, -9); ctx.quadraticCurveTo(-20, -18 + wag, -18, -22); ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -8, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(7, -7, 6, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(10, -15, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#795548'; ctx.beginPath(); ctx.ellipse(7, -12, 3.5, 7, 0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(10, -14); ctx.lineTo(17, -12); ctx.lineTo(12, -9); ctx.fill();
-      ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(17.5, -12.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      const earBrown = this.isShiny ? this.shinyColor : '#6d4c41';
+      const saddleDark = this.isShiny ? this.shinyColor : '#3e2723';
+      const whiteFur = '#f8f9fa';
+
+      // Short sturdy legs with white paws
+      ctx.fillStyle = col;
+      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, 8.5);
+      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, 8.5);
+      ctx.fillStyle = whiteFur;
+      ctx.fillRect(-10.5 - legSwing, 3.5, 4.2, 3);
+      ctx.fillRect(5.5 + legSwing, 3.5, 4.2, 3);
+
+      // Upright wagging tail with white tip
+      const wag = Math.sin(this.animPhase * 2.3) * 3.8;
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-13.5, -9);
+      ctx.quadraticCurveTo(-19.5, -16.5 + wag, -18.5, -21 + wag);
+      ctx.stroke();
+
+      ctx.strokeStyle = whiteFur;
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(-18.8, -18.5 + wag);
+      ctx.lineTo(-18.5, -22 + wag);
+      ctx.stroke();
+      ctx.restore();
+
+      // Torso with dark saddle & white underbelly
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(-0.5, -8.5, 14.5, 8.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = saddleDark;
+      ctx.beginPath();
+      ctx.ellipse(-3, -10.5, 7.5, 4.2, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.ellipse(4.5, -6.2, 7.5, 4.5, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head, white snout & long droopy hound ear
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(10.5, -15.5, 7.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = whiteFur;
+      ctx.beginPath();
+      ctx.ellipse(15, -12.5, 5.2, 3.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = earBrown;
+      ctx.beginPath();
+      ctx.ellipse(7.5, -11.8, 3.6, 7.5, 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Nose & soulful hound eye
+      ctx.fillStyle = '#11161d';
+      ctx.beginPath();
+      ctx.arc(19.6, -13.2, 1.65, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1e1e';
+      ctx.beginPath();
+      ctx.arc(13.5, -16.2, 1.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(13.9, -16.7, 0.5, 0, Math.PI * 2);
+      ctx.fill();
 
     } else if (this.breed === 'labrador') {
       // Labrador Retriever: warm golden/fox-red coat (or shiny color), thick otter tail, floppy ears
