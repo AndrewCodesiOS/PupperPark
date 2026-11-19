@@ -769,9 +769,9 @@ function renderRosterTab() {
       <span class="roster-lvl-badge${entry.isShiny ? ' shiny' : ''}">Lv. ${entry.level}${entry.isShiny ? ' ✨' : ''}</span>
       <span class="roster-roll-badge ${gradeClass}">${stats.rollGrade}</span>
       <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
-      <span class="roster-chip">Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong>${stats.bonusPayout > 0 ? ` <em>(+${stats.bonusPayout.toFixed(2)})</em>` : ''}</span>
-      <span class="roster-chip">Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong>${stats.bonusScaling > 0 ? ` <em>(+${stats.bonusScaling.toFixed(2)})</em>` : ''}</span>
-      <span class="roster-chip">Quick Learner <strong>${stats.quickLearner.toFixed(2)}x</strong>${stats.bonusXp > 0 ? ` <em>(+${stats.bonusXp.toFixed(2)})</em>` : ''}</span>
+      <span class="roster-chip">Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em></span>
+      <span class="roster-chip">Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
+      <span class="roster-chip">Quick Learner <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
       <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
       <span class="roster-chip">Lvl +<strong>${levelBonusPct}%</strong></span>
     `;
