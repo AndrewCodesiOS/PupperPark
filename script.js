@@ -255,7 +255,7 @@ function getActiveXpBoostMult() {
 let state = {
   bones: 0,
   lifetimeBones: 0,
-  magicBones: 0,
+  magicBones: 10000,
   dogs: {
     aussie: 1, beagle: 0, collie: 0, husky: 0,
     golden: 0, shepherd: 0, shiba: 0, labrador: 0
