@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const MAX_DOGS = 12;
+const MAX_DOGS = 6;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
 const RETIRE_REFUND_RATE = 0.50; // Up to 50% of retired dog's dug bones
 const LEVEL_BONUS_PER_LEVEL = 0.001; // +0.1% per level above Lv.1
