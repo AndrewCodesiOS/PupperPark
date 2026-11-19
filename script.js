@@ -212,7 +212,7 @@ function getDogLevelBonusMult(entry) {
 }
 
 let state = {
-  bones: 0,
+  bones: 1000000,
   lifetimeBones: 0,
   magicBones: 0,
   dogs: {
@@ -2119,29 +2119,58 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
+  // Determine whether camera is viewing the back of the doghouse
+  const cosA = Math.cos(cameraAngle);
+  const sinA = Math.sin(cameraAngle);
+  const viewingBack = (cosA + sinA) < 0;
+
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
   ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#8d5524';
-  ctx.fillRect(-20, -24, 40, 26);
+  if (viewingBack) {
+    // Solid back wall & plank detail when rotated behind the doghouse
+    ctx.fillStyle = '#73431a';
+    ctx.fillRect(-20, -24, 40, 26);
 
-  ctx.fillStyle = '#171033';
-  ctx.beginPath();
-  ctx.arc(0, -10, 10, Math.PI, 0);
-  ctx.lineTo(10, 2);
-  ctx.lineTo(-10, 2);
-  ctx.closePath();
-  ctx.fill();
+    ctx.strokeStyle = '#5c3413';
+    ctx.lineWidth = 1.5;
+    [-10, 0, 10].forEach(px => {
+      ctx.beginPath();
+      ctx.moveTo(px, -24);
+      ctx.lineTo(px, 2);
+      ctx.stroke();
+    });
 
-  ctx.fillStyle = '#40739e';
-  ctx.beginPath();
-  ctx.moveTo(-26, -22);
-  ctx.lineTo(0, -40);
-  ctx.lineTo(26, -22);
-  ctx.closePath();
-  ctx.fill();
+    ctx.fillStyle = '#345e82';
+    ctx.beginPath();
+    ctx.moveTo(-26, -22);
+    ctx.lineTo(0, -40);
+    ctx.lineTo(26, -22);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Front wall, doorway & roof when facing the camera
+    ctx.fillStyle = '#8d5524';
+    ctx.fillRect(-20, -24, 40, 26);
+
+    ctx.fillStyle = '#171033';
+    ctx.beginPath();
+    ctx.arc(0, -10, 10, Math.PI, 0);
+    ctx.lineTo(10, 2);
+    ctx.lineTo(-10, 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#40739e';
+    ctx.beginPath();
+    ctx.moveTo(-26, -22);
+    ctx.lineTo(0, -40);
+    ctx.lineTo(26, -22);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.restore();
 }
