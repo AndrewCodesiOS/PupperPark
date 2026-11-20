@@ -2,11 +2,13 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const MAX_DOGS = 6;
+const MAX_DOG_LEVEL = 100;
+const MAX_BONES = 250000;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
-const RETIRE_REFUND_RATE = 0.50; // Up to 50% of retired dog's dug bones
-const LEVEL_BONUS_PER_LEVEL = 0.001; // +0.1% per level above Lv.1
+const RETIRE_REFUND_RATE = 0.25; // 25% of retired dog's dug bones (no waiting period)
+const LEVEL_BONUS_PER_LEVEL = 0.0015; // +0.15% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
-const DIG_MULT_SQRT_SCALE = 0.0025; // Gentle sqrt curve from dug bones
+const DIG_MULT_SQRT_SCALE = 0.0018; // Controlled sqrt curve from dug bones
 
 const BASE_IDLE_MULTIPLIER = 0.10; // Starting 10% offline dig yield
 const DUCK_IDLE_STEP = 0.025;      // +2.5% offline dig yield per Rubber Duck
@@ -16,10 +18,11 @@ const BONUS_PAYOUT_MAX = 0.25;  // Up to +0.25 Bone Yield
 const BONUS_SCALING_MAX = 0.16; // Up to +0.16 Pack Growth
 const BONUS_XP_MAX = 0.15;      // Up to +0.15 Quick Learner
 const XP_TREAT_MULT = 1.75;     // 1.75x XP earned while XP treat is active
+const TIMED_TREAT_MAX_STACKS = 5;
 
-const REROLL_BASE_COST = 5000;
-const REROLL_COST_MULTIPLIER = 1.5;
-const REROLL_SHINY_ODDS = 1 / 16000;
+const SPAWN_SHINY_ODDS = 1 / 650;
+const REROLL_SHINY_ODDS = 1 / 1300;
+const REROLL_STEP_COST = 25;
 
 const PARK_BARK_MIN_COOLDOWN = 4.2;   // Park-wide minimum seconds between any barks
 const PARK_BARK_MAX_COOLDOWN = 7.8;   // Park-wide maximum seconds between barks
@@ -182,14 +185,14 @@ const sfx = {
  * - treasureChance: per-dig chance to trigger a treasure draft
  */
 const BREED_CONFIG = {
-  aussie:   { rank: 1, cost: 15,     costMult: 1.42, walkMult: 1.20, digSec: 1.10, payoutMult: 1.00, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
-  beagle:   { rank: 2, cost: 180,    costMult: 1.46, walkMult: 1.05, digSec: 1.05, payoutMult: 1.60, scalingMult: 1.15, xpMult: 1.05, magicBonus: 0.000, treasureChance: 0.00008 },
-  collie:   { rank: 3, cost: 550,    costMult: 1.50, walkMult: 1.30, digSec: 0.70, payoutMult: 1.10, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.000, treasureChance: 0.00008 },
-  husky:    { rank: 4, cost: 1600,   costMult: 1.54, walkMult: 1.35, digSec: 0.95, payoutMult: 1.20, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.000, treasureChance: 0.00008 },
-  golden:   { rank: 5, cost: 4800,   costMult: 1.58, walkMult: 1.10, digSec: 1.00, payoutMult: 2.00, scalingMult: 1.20, xpMult: 1.05, magicBonus: 0.005, treasureChance: 0.00008 },
-  shepherd: { rank: 6, cost: 14000,  costMult: 1.62, walkMult: 1.20, digSec: 0.95, payoutMult: 1.35, scalingMult: 1.25, xpMult: 1.10, magicBonus: 0.005, treasureChance: 0.00008 },
-  shiba:    { rank: 7, cost: 42000,  costMult: 1.66, walkMult: 1.15, digSec: 1.00, payoutMult: 1.25, scalingMult: 1.20, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00064 },
-  labrador: { rank: 8, cost: 110000, costMult: 1.70, walkMult: 1.25, digSec: 0.85, payoutMult: 2.20, scalingMult: 1.35, xpMult: 1.20, magicBonus: 0.010, treasureChance: 0.00012 }
+  aussie:   { rank: 1, cost: 20,    costMult: 1.24, walkMult: 1.10, digSec: 1.85, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
+  beagle:   { rank: 2, cost: 120,   costMult: 1.26, walkMult: 1.00, digSec: 1.75, payoutMult: 1.35, scalingMult: 1.12, xpMult: 1.05, magicBonus: 0.010, treasureChance: 0.00008 },
+  collie:   { rank: 3, cost: 340,   costMult: 1.28, walkMult: 1.20, digSec: 1.35, payoutMult: 1.05, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00008 },
+  husky:    { rank: 4, cost: 850,   costMult: 1.30, walkMult: 1.25, digSec: 1.65, payoutMult: 1.15, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.020, treasureChance: 0.00008 },
+  golden:   { rank: 5, cost: 2100,  costMult: 1.32, walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
+  shepherd: { rank: 6, cost: 4800,  costMult: 1.34, walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
+  shiba:    { rank: 7, cost: 10500, costMult: 1.36, walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
+  labrador: { rank: 8, cost: 22000, costMult: 1.38, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 }
 };
 
 const PERK_POOL = [
@@ -249,18 +252,19 @@ function getRollRating(entryOrRoll) {
   ) / 3;
 }
 
-function getRerollCost() {
-  const count = typeof state.rerollCount === 'number' && !Number.isNaN(state.rerollCount)
-    ? Math.max(0, Math.floor(state.rerollCount))
-    : 0;
-  const baseCost = typeof state.rerollBaseCost === 'number' && !Number.isNaN(state.rerollBaseCost)
-    ? state.rerollBaseCost
-    : REROLL_BASE_COST;
-  const mult = typeof state.rerollCostMultiplier === 'number' && !Number.isNaN(state.rerollCostMultiplier)
-    ? state.rerollCostMultiplier
-    : REROLL_COST_MULTIPLIER;
+function getDogRerollCount(entry) {
+  if (!entry || typeof entry.rerollCount !== 'number' || Number.isNaN(entry.rerollCount)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(entry.rerollCount));
+}
 
-  return Math.max(1, Math.floor(baseCost * Math.pow(mult, count)));
+function getRerollCost(entryOrDogId = null) {
+  const entry = typeof entryOrDogId === 'string'
+    ? state.roster.find(d => d.id === entryOrDogId)
+    : entryOrDogId;
+  const dogCount = getDogRerollCount(entry);
+  return REROLL_STEP_COST * (dogCount + 1);
 }
 
 function getEffectiveBreedStats(entry, fallbackBreed = 'aussie') {
@@ -299,7 +303,8 @@ function createRosterEntry(breed, isShiny = false, shinyColor = null, customName
     bonusPayout: rolls.bonusPayout,
     bonusScaling: rolls.bonusScaling,
     bonusXp: rolls.bonusXp,
-    rollGrade: rolls.rollGrade
+    rollGrade: rolls.rollGrade,
+    rerollCount: 0
   };
 }
 
@@ -336,12 +341,17 @@ let state = {
   digPower: 1,
   speedMultiplier: 1,
   idleMultiplier: BASE_IDLE_MULTIPLIER,
-  magicChance: 0.12,
+  magicChance: 0.22,
+  boneCapReachedNotified: false,
   
   kongTimer: 0,
   baconTimer: 0,
   pupCupTimer: 0,
   xpTreatTimer: 0,
+  kongStacks: 0,
+  baconStacks: 0,
+  pupCupStacks: 0,
+  xpTreatStacks: 0,
   feastAnimTimer: 0,
   
   hasTennisBall: false,
@@ -349,10 +359,6 @@ let state = {
   hasDuck: false,
 
   isDraftingPerk: false,
-
-  rerollCount: 0,
-  rerollBaseCost: REROLL_BASE_COST,
-  rerollCostMultiplier: REROLL_COST_MULTIPLIER,
 
   costs: {},
   lastSaveTime: Date.now()
@@ -362,15 +368,15 @@ function initDefaultCosts() {
   Object.keys(BREED_CONFIG).forEach(b => {
     state.costs[b] = BREED_CONFIG[b].cost;
   });
-  state.costs.toyBones = 25;
-  state.costs.toySpeed = 40;
-  state.costs.toyIdle = 200;
+  state.costs.toyBones = 35;
+  state.costs.toySpeed = 65;
+  state.costs.toyIdle = 250;
 
-  state.costs.treatKong = 150;
-  state.costs.treatBacon = 300;
-  state.costs.treatFeast = 500;
-  state.costs.treatCup = 750;
-  state.costs.treatXp = 220;
+  state.costs.treatXp = 140;
+  state.costs.treatKong = 180;
+  state.costs.treatBacon = 260;
+  state.costs.treatFeast = 400;
+  state.costs.treatCup = 550;
 }
 
 initDefaultCosts();
@@ -384,6 +390,92 @@ const barkPopups = [];
 
 let pendingRetireDogId = null;
 let pendingRerollDogId = null;
+
+
+const TREAT_STACK_MAP = {
+  kong: { timerKey: 'kongTimer', stackKey: 'kongStacks', duration: 15 },
+  bacon: { timerKey: 'baconTimer', stackKey: 'baconStacks', duration: 20 },
+  cup: { timerKey: 'pupCupTimer', stackKey: 'pupCupStacks', duration: 25 },
+  xp: { timerKey: 'xpTreatTimer', stackKey: 'xpTreatStacks', duration: 20 }
+};
+
+function getTreatStacks(treatKey) {
+  const cfg = TREAT_STACK_MAP[treatKey];
+  if (!cfg) return 0;
+  const raw = typeof state[cfg.stackKey] === 'number' && !Number.isNaN(state[cfg.stackKey])
+    ? Math.max(0, Math.floor(state[cfg.stackKey]))
+    : 0;
+  return Math.min(TIMED_TREAT_MAX_STACKS, raw);
+}
+
+function showBoneCapCongratsModal() {
+  const modal = document.getElementById('boneCapModal');
+  const text = document.getElementById('boneCapModalText');
+  if (text) {
+    text.textContent = `Congratulations! You reached the maximum cap of ${MAX_BONES.toLocaleString()} Bones. Spend some bones on dogs, toys, or treats to collect more bones!`;
+  }
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+document.getElementById('btnCloseBoneCap')?.addEventListener('click', () => {
+  initAudio();
+  const modal = document.getElementById('boneCapModal');
+  if (modal) modal.style.display = 'none';
+});
+
+function addRegularBones(rawAmount) {
+  const amount = Math.max(0, Number(rawAmount) || 0);
+  if (amount <= 0) return 0;
+
+  if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
+    state.lifetimeBones = 0;
+  }
+
+  const currentBones = Math.max(0, Number(state.bones) || 0);
+  if (currentBones >= MAX_BONES) {
+    state.bones = MAX_BONES;
+    if (!state.boneCapReachedNotified) {
+      state.boneCapReachedNotified = true;
+      showBoneCapCongratsModal();
+    }
+    return 0;
+  }
+
+  const spaceLeft = MAX_BONES - currentBones;
+  const added = Math.min(amount, spaceLeft);
+  state.bones = currentBones + added;
+  state.lifetimeBones += added;
+
+  if (state.bones >= MAX_BONES) {
+    state.bones = MAX_BONES;
+    if (!state.boneCapReachedNotified) {
+      state.boneCapReachedNotified = true;
+      showBoneCapCongratsModal();
+    }
+  }
+
+  return added;
+}
+
+function addMagicBones(rawAmount) {
+  const amount = Math.max(0, Number(rawAmount) || 0);
+  if (amount <= 0) return 0;
+  if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
+    state.lifetimeBones = 0;
+  }
+  state.magicBones = (Number(state.magicBones) || 0) + amount;
+  return amount;
+}
+
+function spendRegularBones(cost) {
+  const amt = Math.max(0, Number(cost) || 0);
+  state.bones = Math.max(0, (Number(state.bones) || 0) - amt);
+  if (state.bones < MAX_BONES) {
+    state.boneCapReachedNotified = false;
+  }
+}
 
 function syncBreedCountsFromRoster() {
   Object.keys(state.dogs).forEach(b => {
@@ -528,7 +620,10 @@ function loadGame() {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
       if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
-        state.lifetimeBones = state.bones || 0;
+        state.lifetimeBones = Math.max(0, state.bones || 0);
+      }
+      if (typeof state.boneCapReachedNotified !== 'boolean') {
+        state.boneCapReachedNotified = (state.bones || 0) >= MAX_BONES;
       }
       if (typeof state.showNameTags !== 'boolean') {
         state.showNameTags = true;
@@ -539,19 +634,13 @@ function loadGame() {
       if (typeof state.xpTreatTimer !== 'number' || Number.isNaN(state.xpTreatTimer)) {
         state.xpTreatTimer = 0;
       }
-      if (typeof state.rerollCount !== 'number' || Number.isNaN(state.rerollCount) || state.rerollCount < 0) {
-        state.rerollCount = 0;
-      }
-      if (typeof state.rerollBaseCost !== 'number' || Number.isNaN(state.rerollBaseCost) || state.rerollBaseCost <= 0) {
-        state.rerollBaseCost = REROLL_BASE_COST;
-      }
-      if (
-        typeof state.rerollCostMultiplier !== 'number' ||
-        Number.isNaN(state.rerollCostMultiplier) ||
-        state.rerollCostMultiplier < 1
-      ) {
-        state.rerollCostMultiplier = REROLL_COST_MULTIPLIER;
-      }
+      ['kongStacks', 'baconStacks', 'pupCupStacks', 'xpTreatStacks'].forEach(sk => {
+        if (typeof state[sk] !== 'number' || Number.isNaN(state[sk]) || state[sk] < 0) {
+          state[sk] = 0;
+        } else {
+          state[sk] = Math.min(TIMED_TREAT_MAX_STACKS, Math.floor(state[sk]));
+        }
+      });
       if (!state.shinyDogs) state.shinyDogs = [];
       if (!state.perks) state.perks = [];
       if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
@@ -598,6 +687,13 @@ function loadGame() {
     });
   }
 
+  if (typeof state.bones !== 'number' || Number.isNaN(state.bones) || state.bones < 0) {
+    state.bones = 0;
+  }
+  if (state.bones > MAX_BONES) {
+    state.bones = MAX_BONES;
+  }
+
   if (state.roster.length > MAX_DOGS) {
     state.roster = state.roster.slice(0, MAX_DOGS);
   }
@@ -626,17 +722,17 @@ function loadGame() {
       entry.bonusXp = rolled.bonusXp;
       entry.rollGrade = rolled.rollGrade;
     }
+    if (typeof entry.rerollCount !== 'number' || Number.isNaN(entry.rerollCount) || entry.rerollCount < 0) {
+      entry.rerollCount = 0;
+    }
   });
 
   cameraAngle = typeof state.cameraAngle === 'number' && !Number.isNaN(state.cameraAngle)
     ? state.cameraAngle
     : 0;
 
-  if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
-    state.lifetimeBones = state.bones || 0;
-  }
-  if (state.lifetimeBones < state.bones) {
-    state.lifetimeBones = state.bones;
+  if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones) || state.lifetimeBones < 0) {
+    state.lifetimeBones = Math.max(0, state.bones || 0);
   }
 
   syncBreedCountsFromRoster();
@@ -654,12 +750,9 @@ function loadGame() {
     const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
     const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
-    if (earned > 0) {
-      state.bones += earned;
-      state.lifetimeBones += earned;
-    }
+    const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
     if (earned > 0 || foundTreasure) {
-      showOfflineModal(earned, 0, foundTreasure);
+      showOfflineModal(actualEarned, 0, foundTreasure);
     }
   }
 
@@ -745,7 +838,7 @@ document.getElementById('btnOpenMenu').addEventListener('click', () => {
   initAudio();
   gameModal.style.display = 'flex';
   drawerWindow.style.transform = 'translateY(0)';
-  renderRosterTab(true);
+  renderRosterTab();
 });
 
 function closeMenu() {
@@ -793,7 +886,7 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'tab-roster') {
-      renderRosterTab(true);
+      renderRosterTab();
     } else if (btn.dataset.tab === 'tab-perks') {
       updateUI();
     }
@@ -810,7 +903,7 @@ function toggleFavoriteDog(dogId) {
   } else {
     sfx.collect();
   }
-  renderRosterTab(true);
+  renderRosterTab();
   saveGame();
 }
 
@@ -830,7 +923,8 @@ function renderRerollModalContent(dogId, resultInfo = null) {
 
   const stats = getEffectiveBreedStats(entry);
   const breedName = BREED_LABELS[entry.breed] || entry.breed;
-  const cost = getRerollCost();
+  const dogRerolls = getDogRerollCount(entry);
+  const cost = getRerollCost(entry);
   const canAfford = (state.magicBones || 0) >= cost;
 
   if (rerollDogSummary) {
@@ -852,7 +946,7 @@ function renderRerollModalContent(dogId, resultInfo = null) {
 
   if (rerollRulesText) {
     rerollRulesText.textContent =
-      'Rolls new stat boost values for this pup. If your current roll is higher rated than the new roll, your previous higher stats are kept. Also includes a 1-in-16,000 chance to turn a non-shiny pup ✨ Shiny (vs. 1-in-8,000 odds at spawn)! Level, XP, and dug bones stay untouched.';
+      `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a 1-in-1,300 chance to become ✨ Shiny (vs. 1-in-650 at spawn).`;
   }
 
   if (rerollResultBanner) {
@@ -869,7 +963,7 @@ function renderRerollModalContent(dogId, resultInfo = null) {
         : `New roll applied! Now ${stats.rollGrade} (+${stats.bonusPayout.toFixed(2)} Yield / +${stats.bonusScaling.toFixed(2)} Growth / +${stats.bonusXp.toFixed(2)} XP).`;
 
       const shinyMsg = resultInfo.becameShiny
-        ? `<div class="reroll-shiny-callout">✨ JACKPOT! 1-in-16,000 Shiny roll hit — ${entry.name} is now Shiny!</div>`
+        ? `<div class="reroll-shiny-callout">✨ JACKPOT! 1-in-1,300 Shiny roll hit — ${entry.name} is now Shiny!</div>`
         : '';
 
       rerollResultBanner.innerHTML = `<div>${statMsg}</div>${shinyMsg}`;
@@ -908,11 +1002,11 @@ function executeDogReroll(dogId) {
   const entry = state.roster.find(d => d.id === dogId);
   if (!entry) return;
 
-  const cost = getRerollCost();
+  const cost = getRerollCost(entry);
   if ((state.magicBones || 0) < cost) return;
 
   state.magicBones -= cost;
-  state.rerollCount = (typeof state.rerollCount === 'number' ? state.rerollCount : 0) + 1;
+  entry.rerollCount = getDogRerollCount(entry) + 1;
 
   if (
     typeof entry.bonusPayout !== 'number' ||
@@ -962,7 +1056,7 @@ function executeDogReroll(dogId) {
   }
 
   updateUI();
-  renderRosterTab(true);
+  renderRosterTab();
   saveGame();
   renderRerollModalContent(dogId, {
     keptPrevious,
@@ -1038,10 +1132,7 @@ function retireDog(dogId) {
   const refundPct = Math.round(RETIRE_REFUND_RATE * 100);
   const refund = Math.floor((retiredDog.bonesEarned || 0) * RETIRE_REFUND_RATE);
 
-  if (refund > 0) {
-    state.bones += refund;
-    state.lifetimeBones += refund;
-  }
+  const actualRefund = refund > 0 ? addRegularBones(refund) : 0;
 
   syncBreedCountsFromRoster();
   rebuildCanvasDogsFromRoster();
@@ -1049,388 +1140,176 @@ function retireDog(dogId) {
 
   const noticeEl = document.getElementById('retireNotice');
   if (noticeEl) {
-    noticeEl.textContent = `${retiredDog.name} retired! You received ${refund.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`;
+    noticeEl.textContent = `${retiredDog.name} retired! You received ${actualRefund.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`;
     noticeEl.style.display = 'block';
   }
 
   updateUI();
-  renderRosterTab(true);
+  renderRosterTab();
   saveGame();
 }
 
-let isRosterPointerDown = false;
-let pendingRosterRebuild = false;
-let pendingRosterInPlace = false;
-const rosterCardRefs = new Map();
-
-function ensureRosterCardStructure(container, entry, canRetire) {
-  if (
-    typeof entry.bonusPayout !== 'number' ||
-    typeof entry.bonusScaling !== 'number' ||
-    typeof entry.bonusXp !== 'number' ||
-    !entry.rollGrade
-  ) {
-    const rolled = rollDogBonusStats();
-    entry.bonusPayout = rolled.bonusPayout;
-    entry.bonusScaling = rolled.bonusScaling;
-    entry.bonusXp = rolled.bonusXp;
-    entry.rollGrade = rolled.rollGrade;
-  }
-
-  const breedName = BREED_LABELS[entry.breed] || entry.breed;
-  const isFav = Boolean(entry.isFavorite);
-
-  const card = document.createElement('div');
-  card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
-  card.dataset.dogId = entry.id;
-  card.style.position = 'relative';
-  card.style.display = 'flex';
-  card.style.alignItems = 'stretch';
-  card.style.justifyContent = 'space-between';
-  card.style.gap = '12px';
-
-  const mainCol = document.createElement('div');
-  mainCol.className = 'roster-main';
-  mainCol.style.flex = '1';
-  mainCol.style.minWidth = '0';
-
-  const topRow = document.createElement('div');
-  topRow.className = 'roster-top';
-
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.className = 'roster-name-input';
-  nameInput.value = entry.name;
-  nameInput.maxLength = 24;
-  nameInput.setAttribute('aria-label', `Name for ${breedName}`);
-
-  const commitName = () => {
-    const cleaned = nameInput.value.trim();
-    entry.name = cleaned || breedName;
-    nameInput.value = entry.name;
-    requestSave();
-  };
-  nameInput.addEventListener('change', commitName);
-  nameInput.addEventListener('blur', commitName);
-
-  topRow.appendChild(nameInput);
-
-  const xpBarOuter = document.createElement('div');
-  xpBarOuter.className = 'roster-xp-track';
-
-  const xpBarInner = document.createElement('div');
-  xpBarInner.className = 'roster-xp-fill';
-  xpBarOuter.appendChild(xpBarInner);
-
-  const chipsRow = document.createElement('div');
-  chipsRow.className = 'roster-chips';
-
-  const favChip = document.createElement('span');
-  favChip.className = 'roster-chip roster-fav-chip';
-  favChip.textContent = '★ Favorite';
-  favChip.style.display = isFav ? '' : 'none';
-
-  const breedChip = document.createElement('span');
-  breedChip.className = 'roster-chip';
-  breedChip.textContent = breedName;
-
-  const lvlChip = document.createElement('span');
-  lvlChip.className = `roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}`;
-  const lvlValEl = document.createElement('strong');
-  const shinySuffixEl = document.createTextNode(entry.isShiny ? ' ✨' : '');
-  lvlChip.appendChild(document.createTextNode('Lv. '));
-  lvlChip.appendChild(lvlValEl);
-  lvlChip.appendChild(shinySuffixEl);
-
-  const rollChip = document.createElement('span');
-  rollChip.className = 'roster-chip roster-roll-chip';
-  const rollValEl = document.createElement('strong');
-  rollChip.appendChild(rollValEl);
-
-  const dugChip = document.createElement('span');
-  dugChip.className = 'roster-chip';
-  const dugValEl = document.createElement('strong');
-  dugChip.appendChild(document.createTextNode('Dug '));
-  dugChip.appendChild(dugValEl);
-  dugChip.appendChild(document.createTextNode(' 🦴'));
-
-  const yieldChip = document.createElement('span');
-  yieldChip.className = 'roster-chip';
-  const yieldValEl = document.createElement('strong');
-  const yieldBonusEl = document.createElement('em');
-  yieldChip.appendChild(document.createTextNode('Bone Yield '));
-  yieldChip.appendChild(yieldValEl);
-  yieldChip.appendChild(document.createTextNode(' '));
-  yieldChip.appendChild(yieldBonusEl);
-
-  const growthChip = document.createElement('span');
-  growthChip.className = 'roster-chip';
-  const growthValEl = document.createElement('strong');
-  const growthBonusEl = document.createElement('em');
-  growthChip.appendChild(document.createTextNode('Pack Growth '));
-  growthChip.appendChild(growthValEl);
-  growthChip.appendChild(document.createTextNode(' '));
-  growthChip.appendChild(growthBonusEl);
-
-  const xpMultChip = document.createElement('span');
-  xpMultChip.className = 'roster-chip';
-  const xpMultValEl = document.createElement('strong');
-  const xpMultBonusEl = document.createElement('em');
-  xpMultChip.appendChild(document.createTextNode('Quick Learner '));
-  xpMultChip.appendChild(xpMultValEl);
-  xpMultChip.appendChild(document.createTextNode(' '));
-  xpMultChip.appendChild(xpMultBonusEl);
-
-  const xpProgressChip = document.createElement('span');
-  xpProgressChip.className = 'roster-chip';
-  const xpProgressValEl = document.createElement('strong');
-  xpProgressChip.appendChild(document.createTextNode('XP '));
-  xpProgressChip.appendChild(xpProgressValEl);
-
-  const lvlBonusChip = document.createElement('span');
-  lvlBonusChip.className = 'roster-chip';
-  const lvlBonusValEl = document.createElement('strong');
-  lvlBonusChip.appendChild(document.createTextNode('Lvl +'));
-  lvlBonusChip.appendChild(lvlBonusValEl);
-
-  chipsRow.append(
-    favChip,
-    breedChip,
-    lvlChip,
-    rollChip,
-    dugChip,
-    yieldChip,
-    growthChip,
-    xpMultChip,
-    xpProgressChip,
-    lvlBonusChip
-  );
-
-  mainCol.appendChild(topRow);
-  mainCol.appendChild(xpBarOuter);
-  mainCol.appendChild(chipsRow);
-  card.appendChild(mainCol);
-
-  const rightAction = document.createElement('div');
-  rightAction.className = 'roster-right-action';
-  rightAction.style.cssText = `
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-end;
-    align-self: stretch;
-    gap: 10px;
-    flex-shrink: 0;
-  `;
-
-  const favBtn = document.createElement('button');
-  favBtn.type = 'button';
-  favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
-  favBtn.style.cssText = `
-    width: 42px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    font-size: 1.45rem;
-    line-height: 1;
-    cursor: pointer;
-    flex-shrink: 0;
-    margin-bottom: auto;
-  `;
-  favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
-  rightAction.appendChild(favBtn);
-
-  const rerollBtn = document.createElement('button');
-  rerollBtn.type = 'button';
-  rerollBtn.className = 'reroll-dice-btn';
-  rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
-  rerollBtn.title = 'Reroll Stats & Shiny Chance (✨)';
-  rerollBtn.textContent = '🎲';
-  rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
-  rightAction.appendChild(rerollBtn);
-
-  let retireBtn = null;
-  let retireRefundEl = null;
-  if (canRetire) {
-    retireBtn = document.createElement('button');
-    retireBtn.type = 'button';
-    retireBtn.className = 'retire-pill-btn retire-pill-two-line';
-
-    const topSpan = document.createElement('span');
-    topSpan.className = 'retire-line-top';
-    topSpan.textContent = 'Retire';
-
-    retireRefundEl = document.createElement('span');
-    retireRefundEl.className = 'retire-line-sub';
-
-    retireBtn.appendChild(topSpan);
-    retireBtn.appendChild(retireRefundEl);
-    retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
-    rightAction.appendChild(retireBtn);
-  }
-
-  card.appendChild(rightAction);
-  container.appendChild(card);
-
-  const refs = {
-    card,
-    nameInput,
-    xpBarInner,
-    favChip,
-    lvlChip,
-    lvlValEl,
-    rollChip,
-    rollValEl,
-    dugValEl,
-    yieldValEl,
-    yieldBonusEl,
-    growthValEl,
-    growthBonusEl,
-    xpMultValEl,
-    xpMultBonusEl,
-    xpProgressValEl,
-    lvlBonusValEl,
-    favBtn,
-    rerollBtn,
-    retireRefundEl
-  };
-
-  rosterCardRefs.set(entry.id, refs);
-  return refs;
-}
-
-function updateRosterCardInPlace(refs, entry) {
-  const stats = getEffectiveBreedStats(entry);
-  const xpNeeded = getXpNeededForLevel(entry.level);
-  const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
-  const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
-  const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
-  const breedName = BREED_LABELS[entry.breed] || entry.breed;
-  const isFav = Boolean(entry.isFavorite);
-
-  refs.card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
-  if (document.activeElement !== refs.nameInput && refs.nameInput.value !== entry.name) {
-    refs.nameInput.value = entry.name;
-  }
-  refs.nameInput.setAttribute('aria-label', `Name for ${breedName}`);
-
-  refs.xpBarInner.style.width = `${pct}%`;
-
-  refs.favChip.style.display = isFav ? '' : 'none';
-  refs.lvlChip.className = `roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}`;
-  refs.lvlValEl.textContent = String(entry.level);
-
-  const gradeClass = stats.rollGrade === '★ Max Roll'
-    ? 'grade-max'
-    : stats.rollGrade === 'Prime'
-      ? 'grade-prime'
-      : stats.rollGrade === 'Sharp'
-        ? 'grade-sharp'
-        : 'grade-standard';
-  refs.rollChip.className = `roster-chip roster-roll-chip ${gradeClass}`;
-  refs.rollValEl.textContent = stats.rollGrade;
-
-  refs.dugValEl.textContent = Math.floor(entry.bonesEarned).toLocaleString();
-  refs.yieldValEl.textContent = `${stats.boneYield.toFixed(2)}x`;
-  refs.yieldBonusEl.textContent = `(+${stats.bonusPayout.toFixed(2)})`;
-
-  refs.growthValEl.textContent = `${stats.packGrowth.toFixed(2)}x`;
-  refs.growthBonusEl.textContent = `(+${stats.bonusScaling.toFixed(2)})`;
-
-  refs.xpMultValEl.textContent = `${stats.quickLearner.toFixed(2)}x`;
-  refs.xpMultBonusEl.textContent = `(+${stats.bonusXp.toFixed(2)})`;
-
-  refs.xpProgressValEl.textContent = `${Math.floor(entry.xp)}/${xpNeeded}`;
-  refs.lvlBonusValEl.textContent = `${levelBonusPct}%`;
-
-  refs.favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
-  refs.favBtn.setAttribute('aria-pressed', String(isFav));
-  refs.favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
-  refs.favBtn.textContent = isFav ? '★' : '☆';
-  refs.favBtn.style.background = isFav ? 'rgba(255, 234, 167, 0.22)' : 'rgba(255, 255, 255, 0.06)';
-  refs.favBtn.style.border = `1.5px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.22)'}`;
-  refs.favBtn.style.color = isFav ? '#ffeaa7' : '#b2bec3';
-
-  refs.rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
-
-  if (refs.retireRefundEl) {
-    refs.retireRefundEl.textContent = `+${refundPreview.toLocaleString()} 🦴`;
-  }
-}
-
-function getRosterStructureSignature(canRetire) {
-  return state.roster
-    .map(d => `${d.id}:${d.breed}:${d.isFavorite ? 1 : 0}:${d.isShiny ? 1 : 0}:${canRetire ? 1 : 0}`)
-    .join('|');
-}
-
-function renderRosterTab(forceRebuild = false) {
+function renderRosterTab() {
   const container = document.getElementById('rosterListContainer');
   if (!container) return;
-
-  const activeEl = document.activeElement;
-  const isTypingInRoster = activeEl && container.contains(activeEl) &&
-    (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
-
-  if (isRosterPointerDown || isTypingInRoster) {
-    if (forceRebuild) {
-      pendingRosterRebuild = true;
-    } else {
-      pendingRosterInPlace = true;
-    }
-    return;
-  }
 
   const canRetire = state.roster.length > 1;
-  const sig = getRosterStructureSignature(canRetire);
-  const needsFullRebuild = forceRebuild || container.dataset.rosterSig !== sig || container.children.length !== state.roster.length;
-
-  if (needsFullRebuild) {
-    container.innerHTML = '';
-    rosterCardRefs.clear();
-    container.dataset.rosterSig = sig;
-    state.roster.forEach(entry => {
-      const refs = ensureRosterCardStructure(container, entry, canRetire);
-      updateRosterCardInPlace(refs, entry);
-    });
-    pendingRosterRebuild = false;
-    pendingRosterInPlace = false;
-    return;
-  }
+  container.innerHTML = '';
 
   state.roster.forEach(entry => {
-    let refs = rosterCardRefs.get(entry.id);
-    if (!refs) {
-      refs = ensureRosterCardStructure(container, entry, canRetire);
+    if (
+      typeof entry.bonusPayout !== 'number' ||
+      typeof entry.bonusScaling !== 'number' ||
+      typeof entry.bonusXp !== 'number' ||
+      !entry.rollGrade
+    ) {
+      const rolled = rollDogBonusStats();
+      entry.bonusPayout = rolled.bonusPayout;
+      entry.bonusScaling = rolled.bonusScaling;
+      entry.bonusXp = rolled.bonusXp;
+      entry.rollGrade = rolled.rollGrade;
     }
-    updateRosterCardInPlace(refs, entry);
+
+    const stats = getEffectiveBreedStats(entry);
+    const xpNeeded = getXpNeededForLevel(entry.level);
+    const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
+    const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
+    const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
+    const breedName = BREED_LABELS[entry.breed] || entry.breed;
+    const isFav = Boolean(entry.isFavorite);
+
+    const gradeClass = stats.rollGrade === '★ Max Roll'
+      ? 'grade-max'
+      : stats.rollGrade === 'Prime'
+        ? 'grade-prime'
+        : stats.rollGrade === 'Sharp'
+          ? 'grade-sharp'
+          : 'grade-standard';
+
+    const card = document.createElement('div');
+    card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
+    card.style.position = 'relative';
+    card.style.display = 'flex';
+    card.style.alignItems = 'stretch';
+    card.style.justifyContent = 'space-between';
+    card.style.gap = '12px';
+
+    const mainCol = document.createElement('div');
+    mainCol.className = 'roster-main';
+    mainCol.style.flex = '1';
+    mainCol.style.minWidth = '0';
+
+    const topRow = document.createElement('div');
+    topRow.className = 'roster-top';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'roster-name-input';
+    nameInput.value = entry.name;
+    nameInput.maxLength = 24;
+    nameInput.setAttribute('aria-label', `Name for ${breedName}`);
+
+    const commitName = () => {
+      const cleaned = nameInput.value.trim();
+      entry.name = cleaned || breedName;
+      nameInput.value = entry.name;
+      requestSave();
+    };
+    nameInput.addEventListener('change', commitName);
+    nameInput.addEventListener('blur', commitName);
+
+    topRow.appendChild(nameInput);
+
+    const xpBarOuter = document.createElement('div');
+    xpBarOuter.className = 'roster-xp-track';
+
+    const xpBarInner = document.createElement('div');
+    xpBarInner.className = 'roster-xp-fill';
+    xpBarInner.style.width = `${pct}%`;
+    xpBarOuter.appendChild(xpBarInner);
+
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'roster-chips';
+    chipsRow.innerHTML = `
+      ${isFav ? '<span class="roster-chip roster-fav-chip">★ Favorite</span>' : ''}
+      <span class="roster-chip">${breedName}</span>
+      <span class="roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}">Lv. <strong>${entry.level}</strong>${entry.level >= MAX_DOG_LEVEL ? ' <em>(MAX)</em>' : ''}${entry.isShiny ? ' ✨' : ''}</span>
+      <span class="roster-chip roster-roll-chip ${gradeClass}"><strong>${stats.rollGrade}</strong></span>
+      <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
+      <span class="roster-chip">Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em></span>
+      <span class="roster-chip">Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
+      <span class="roster-chip">Quick Learner <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
+      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
+      <span class="roster-chip">Lvl +<strong>${levelBonusPct}%</strong></span>
+    `;
+
+    mainCol.appendChild(topRow);
+    mainCol.appendChild(xpBarOuter);
+    mainCol.appendChild(chipsRow);
+    card.appendChild(mainCol);
+
+    const rightAction = document.createElement('div');
+    rightAction.className = 'roster-right-action';
+    rightAction.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-end;
+      align-self: stretch;
+      gap: 10px;
+      flex-shrink: 0;
+    `;
+
+    const favBtn = document.createElement('button');
+    favBtn.type = 'button';
+    favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
+    favBtn.setAttribute('aria-pressed', String(isFav));
+    favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
+    favBtn.textContent = isFav ? '★' : '☆';
+    favBtn.style.cssText = `
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${isFav ? 'rgba(255, 234, 167, 0.22)' : 'rgba(255, 255, 255, 0.06)'};
+      border: 1.5px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.22)'};
+      color: ${isFav ? '#ffeaa7' : '#b2bec3'};
+      border-radius: 12px;
+      font-size: 1.45rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-bottom: auto;
+    `;
+    favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
+    rightAction.appendChild(favBtn);
+
+    const rerollBtn = document.createElement('button');
+    rerollBtn.type = 'button';
+    rerollBtn.className = 'reroll-dice-btn';
+    rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
+    rerollBtn.title = `Reroll Stats & Shiny Chance (${getRerollCost(entry)} ✨)`;
+    rerollBtn.textContent = '🎲';
+    rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
+    rightAction.appendChild(rerollBtn);
+
+    if (canRetire) {
+      const retireBtn = document.createElement('button');
+      retireBtn.type = 'button';
+      retireBtn.className = 'retire-pill-btn retire-pill-two-line';
+      retireBtn.innerHTML = `
+        <span class="retire-line-top">Retire</span>
+        <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
+      `;
+      retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
+      rightAction.appendChild(retireBtn);
+    }
+
+    card.appendChild(rightAction);
+    container.appendChild(card);
   });
-  pendingRosterInPlace = false;
 }
-
-(function bindRosterInteractionGuards() {
-  const container = document.getElementById('rosterListContainer');
-  if (!container) return;
-
-  container.addEventListener('pointerdown', () => {
-    isRosterPointerDown = true;
-  });
-
-  const flushPendingRosterUpdates = () => {
-    if (!isRosterPointerDown) return;
-    isRosterPointerDown = false;
-    if (pendingRosterRebuild) {
-      renderRosterTab(true);
-    } else if (pendingRosterInPlace) {
-      renderRosterTab(false);
-    }
-  };
-
-  window.addEventListener('pointerup', flushPendingRosterUpdates);
-  window.addEventListener('pointercancel', flushPendingRosterUpdates);
-})();
 
 // Decor Buy Handlers (capped at max placement limit: Tree 3, Flowers 5, Fountain 2)
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
@@ -1620,7 +1499,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   document.getElementById('placementBanner').style.display = 'none';
   closeMenu();
   updateUI();
-  renderRosterTab(true);
+  renderRosterTab();
   saveGame();
 });
 
@@ -1841,7 +1720,7 @@ canvas.addEventListener('pointerup', (e) => {
         groundY: clickY + 5,
         age: 0,
         isMagic,
-        value: (isMagic ? 1 : state.digPower) * cupMult
+        value: isMagic ? 1 : state.digPower * cupMult
       });
     }
   }
@@ -2033,31 +1912,43 @@ class Dog {
     const stats = getEffectiveBreedStats(entry, this.breed);
     const cupMult = state.pupCupTimer > 0 ? 2 : 1;
 
-    // Scale standard bones per dig using the dog's dug-bone scaling + pack dig multiplier
+    // Magic bone digs award strictly 1 Magic Bone and 0 regular bones;
+    // regular bone digs scale with dug-bone scaling + pack dig multiplier.
     const dogDigMult = getDigMultiplier(entry);
     const rawAmount = state.digPower * stats.boneYield * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
-    const boneValue = this.isMagicDig ? cupMult : amount;
+    const boneValue = this.isMagicDig ? 1 : amount;
     const pos = gridToScreen(this.gx, this.gy);
 
     if (entry) {
-      entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
-      const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
-      const xpTreatMult = getActiveXpBoostMult();
-      const xpGain = Math.max(
-        1,
-        Math.round(baseXp * stats.quickLearner * xpTreatMult * (this.isMagicDig ? 2 : 1))
-      );
-      entry.xp = (entry.xp || 0) + xpGain;
-
-      let leveledUp = false;
-      while (entry.xp >= getXpNeededForLevel(entry.level)) {
-        entry.xp -= getXpNeededForLevel(entry.level);
-        entry.level += 1;
-        leveledUp = true;
+      if (!this.isMagicDig) {
+        entry.bonesEarned = Math.min(MAX_BONES, (entry.bonesEarned || 0) + boneValue);
       }
-      if (leveledUp) {
-        sfx.upgrade();
+      if (entry.level < MAX_DOG_LEVEL) {
+        const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
+        const xpTreatMult = getActiveXpBoostMult();
+        const xpGain = Math.max(
+          1,
+          Math.round(baseXp * stats.quickLearner * xpTreatMult * (this.isMagicDig ? 2 : 1))
+        );
+        entry.xp = (entry.xp || 0) + xpGain;
+
+        let leveledUp = false;
+        while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
+          entry.xp -= getXpNeededForLevel(entry.level);
+          entry.level += 1;
+          leveledUp = true;
+        }
+        if (entry.level >= MAX_DOG_LEVEL) {
+          entry.level = MAX_DOG_LEVEL;
+          entry.xp = 0;
+        }
+        if (leveledUp) {
+          sfx.upgrade();
+        }
+      } else {
+        entry.level = MAX_DOG_LEVEL;
+        entry.xp = 0;
       }
     }
 
@@ -3306,10 +3197,10 @@ function recruitDog(breed) {
   const normBreed = normalizeBreedKey(breed);
   const cost = state.costs[normBreed];
   if (state.bones >= cost) {
-    state.bones -= cost;
+    spendRegularBones(cost);
     state.costs[normBreed] = Math.floor(cost * BREED_CONFIG[normBreed].costMult);
   
-    const isShiny = Math.random() < (1 / 8000);
+    const isShiny = Math.random() < SPAWN_SHINY_ODDS;
 
     const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     const chosenColor = isShiny ? shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)] : null;
@@ -3326,7 +3217,7 @@ function recruitDog(breed) {
     }
 
     updateUI();
-    renderRosterTab(true);
+    renderRosterTab();
     saveGame();
   }
 }
@@ -3340,12 +3231,30 @@ document.getElementById('btnSummonShepherd').addEventListener('click', () => rec
 document.getElementById('btnSummonShiba').addEventListener('click', () => recruitDog('shiba'));
 document.getElementById('btnSummonLabrador').addEventListener('click', () => recruitDog('labrador'));
 
+function buyTimedTreat(treatKey, costKey) {
+  const cfg = TREAT_STACK_MAP[treatKey];
+  if (!cfg) return;
+  const currentStacks = getTreatStacks(treatKey);
+  if (currentStacks >= TIMED_TREAT_MAX_STACKS) return;
+
+  const cost = state.costs[costKey];
+  if (state.bones >= cost) {
+    spendRegularBones(cost);
+    state[cfg.stackKey] = currentStacks + 1;
+    state[cfg.timerKey] = (Number(state[cfg.timerKey]) || 0) + cfg.duration;
+    state.costs[costKey] = Math.floor(cost * 1.32);
+    sfx.treat();
+    updateUI();
+    saveGame();
+  }
+}
+
 document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.toyBones) {
-    state.bones -= state.costs.toyBones;
-    state.digPower += 1;
-    state.costs.toyBones = Math.floor(state.costs.toyBones * 1.55);
+    spendRegularBones(state.costs.toyBones);
+    state.digPower = Math.round((state.digPower + 1) * 10) / 10;
+    state.costs.toyBones = Math.floor(state.costs.toyBones * 1.30);
     state.hasTennisBall = true;
     sfx.upgrade();
     updateUI();
@@ -3356,9 +3265,9 @@ document.getElementById('btnToyBones').addEventListener('click', () => {
 document.getElementById('btnToySpeed').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.toySpeed) {
-    state.bones -= state.costs.toySpeed;
-    state.speedMultiplier *= 1.2;
-    state.costs.toySpeed = Math.floor(state.costs.toySpeed * 1.65);
+    spendRegularBones(state.costs.toySpeed);
+    state.speedMultiplier = Math.round(state.speedMultiplier * 1.15 * 1000) / 1000;
+    state.costs.toySpeed = Math.floor(state.costs.toySpeed * 1.35);
     state.hasFrisbee = true;
     sfx.upgrade();
     updateUI();
@@ -3368,10 +3277,10 @@ document.getElementById('btnToySpeed').addEventListener('click', () => {
 
 document.getElementById('btnToyIdle').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.toyIdle) {
-    state.bones -= state.costs.toyIdle;
+  if (state.bones >= state.costs.toyIdle && state.idleMultiplier < MAX_IDLE_MULTIPLIER) {
+    spendRegularBones(state.costs.toyIdle);
     state.idleMultiplier = Math.min(MAX_IDLE_MULTIPLIER, Math.round((state.idleMultiplier + DUCK_IDLE_STEP) * 1000) / 1000);
-    state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.70);
+    state.costs.toyIdle = Math.floor(state.costs.toyIdle * 1.35);
     state.hasDuck = true;
     sfx.upgrade();
     updateUI();
@@ -3381,36 +3290,22 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
 
 document.getElementById('btnTreatKong').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.treatKong) {
-    state.bones -= state.costs.treatKong;
-    state.kongTimer = 15;
-    state.costs.treatKong = Math.floor(state.costs.treatKong * 1.6);
-    sfx.treat();
-    updateUI();
-    saveGame();
-  }
+  buyTimedTreat('kong', 'treatKong');
 });
 
 document.getElementById('btnTreatBacon').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.treatBacon) {
-    state.bones -= state.costs.treatBacon;
-    state.baconTimer = 20;
-    state.costs.treatBacon = Math.floor(state.costs.treatBacon * 1.6);
-    sfx.treat();
-    updateUI();
-    saveGame();
-  }
+  buyTimedTreat('bacon', 'treatBacon');
 });
 
-// Modest Jumbo Meaty Bone reward: +15% digPower (at least +1) instead of a large bone burst
+// Jumbo Meaty Bone reward: +12% Dig Power (at least +1) with controlled cost scaling
 document.getElementById('btnTreatFeast').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.treatFeast) {
-    state.bones -= state.costs.treatFeast;
-    const modestDigGain = Math.max(1, Math.round(state.digPower * 0.15 * 10) / 10);
+    spendRegularBones(state.costs.treatFeast);
+    const modestDigGain = Math.max(1, Math.round(state.digPower * 0.12 * 10) / 10);
     state.digPower = Math.round((state.digPower + modestDigGain) * 10) / 10;
-    state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.6);
+    state.costs.treatFeast = Math.floor(state.costs.treatFeast * 1.35);
     state.feastAnimTimer = 1.5;
     sfx.treat();
     updateUI();
@@ -3420,28 +3315,13 @@ document.getElementById('btnTreatFeast').addEventListener('click', () => {
 
 document.getElementById('btnTreatCup').addEventListener('click', () => {
   initAudio();
-  if (state.bones >= state.costs.treatCup) {
-    state.bones -= state.costs.treatCup;
-    state.pupCupTimer = 25;
-    state.costs.treatCup = Math.floor(state.costs.treatCup * 1.6);
-    sfx.treat();
-    updateUI();
-    saveGame();
-  }
+  buyTimedTreat('cup', 'treatCup');
 });
 
-// XP-boosting treat handler (optional button #btnTreatXp)
+// XP-boosting treat handler (#btnTreatXp)
 document.getElementById('btnTreatXp')?.addEventListener('click', () => {
   initAudio();
-  const xpCost = state.costs.treatXp || 220;
-  if (state.bones >= xpCost) {
-    state.bones -= xpCost;
-    state.xpTreatTimer = 20;
-    state.costs.treatXp = Math.floor(xpCost * 1.6);
-    sfx.treat();
-    updateUI();
-    saveGame();
-  }
+  buyTimedTreat('xp', 'treatXp');
 });
 
 function formatStackedTreasureSummary(perk, count) {
@@ -3462,30 +3342,46 @@ function formatStackedTreasureSummary(perk, count) {
   return parts.length > 0 ? `Stacked (${count}x): ${parts.join(' & ')}` : perk.desc;
 }
 
-function formatTimedTreatCostLabel(cost, timer) {
+function formatTimedTreatCostLabel(cost, timer, treatKey) {
+  const stacks = getTreatStacks(treatKey);
+  if (stacks >= TIMED_TREAT_MAX_STACKS) {
+    const timePart = timer > 0 ? ` • ${Math.ceil(timer)}s` : '';
+    return `MAX (${TIMED_TREAT_MAX_STACKS}x)${timePart}`;
+  }
   const baseStr = `${cost.toLocaleString()} 🦴`;
-  return timer > 0 ? `${baseStr} • ${Math.ceil(timer)}s` : baseStr;
+  if (stacks > 0 && timer > 0) {
+    return `${baseStr} • ${stacks}x (${Math.ceil(timer)}s)`;
+  }
+  if (timer > 0) {
+    return `${baseStr} • ${Math.ceil(timer)}s`;
+  }
+  return baseStr;
 }
 
 function refreshTreatButtonTimers() {
   const costTreatXpEl = document.getElementById('costTreatXp');
   if (costTreatXpEl) {
-    costTreatXpEl.textContent = formatTimedTreatCostLabel(state.costs.treatXp || 220, state.xpTreatTimer);
+    costTreatXpEl.textContent = formatTimedTreatCostLabel(state.costs.treatXp || 140, state.xpTreatTimer, 'xp');
   }
 
   const costTreatKongEl = document.getElementById('costTreatKong');
   if (costTreatKongEl) {
-    costTreatKongEl.textContent = formatTimedTreatCostLabel(state.costs.treatKong || 150, state.kongTimer);
+    costTreatKongEl.textContent = formatTimedTreatCostLabel(state.costs.treatKong || 180, state.kongTimer, 'kong');
   }
 
   const costTreatBaconEl = document.getElementById('costTreatBacon');
   if (costTreatBaconEl) {
-    costTreatBaconEl.textContent = formatTimedTreatCostLabel(state.costs.treatBacon || 300, state.baconTimer);
+    costTreatBaconEl.textContent = formatTimedTreatCostLabel(state.costs.treatBacon || 260, state.baconTimer, 'bacon');
   }
 
   const costTreatCupEl = document.getElementById('costTreatCup');
   if (costTreatCupEl) {
-    costTreatCupEl.textContent = formatTimedTreatCostLabel(state.costs.treatCup || 750, state.pupCupTimer);
+    costTreatCupEl.textContent = formatTimedTreatCostLabel(state.costs.treatCup || 550, state.pupCupTimer, 'cup');
+  }
+
+  const costTreatFeastEl = document.getElementById('costTreatFeast');
+  if (costTreatFeastEl) {
+    costTreatFeastEl.textContent = `${(state.costs.treatFeast || 400).toLocaleString()} 🦴`;
   }
 }
 
@@ -3660,15 +3556,18 @@ function updateUI() {
 
   document.getElementById('bpsCount').textContent = `avg${formattedTrueBones}/dig`;
 
+  const atDuckCap = state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
-  document.getElementById('costToyIdle').textContent = `${state.costs.toyIdle.toLocaleString()} 🦴`;
+  document.getElementById('costToyIdle').textContent = atDuckCap
+    ? 'MAX (75%)'
+    : `${state.costs.toyIdle.toLocaleString()} 🦴`;
 
   refreshTreatButtonTimers();
 
   document.getElementById('statDigPower').textContent = Number(state.digPower.toFixed(1));
   document.getElementById('statSpeed').textContent = `${getDigMultiplier().toFixed(1)}x`;
-  document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
+  document.getElementById('statChance').textContent = `${Math.round(Math.min(0.9, state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
   const lifetimeEl = document.getElementById('statLifetimeBones');
   if (lifetimeEl) {
     lifetimeEl.textContent = Math.floor(state.lifetimeBones).toLocaleString();
@@ -3676,20 +3575,21 @@ function updateUI() {
 
   document.getElementById('btnToyBones').disabled = state.bones < state.costs.toyBones;
   document.getElementById('btnToySpeed').disabled = state.bones < state.costs.toySpeed;
-  document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle || state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
+  document.getElementById('btnToyIdle').disabled = state.bones < state.costs.toyIdle || atDuckCap;
 
-  document.getElementById('btnTreatKong').disabled = state.bones < state.costs.treatKong;
-  document.getElementById('btnTreatBacon').disabled = state.bones < state.costs.treatBacon;
+  document.getElementById('btnTreatKong').disabled = state.bones < state.costs.treatKong || getTreatStacks('kong') >= TIMED_TREAT_MAX_STACKS;
+  document.getElementById('btnTreatBacon').disabled = state.bones < state.costs.treatBacon || getTreatStacks('bacon') >= TIMED_TREAT_MAX_STACKS;
   document.getElementById('btnTreatFeast').disabled = state.bones < state.costs.treatFeast;
-  document.getElementById('btnTreatCup').disabled = state.bones < state.costs.treatCup;
+  document.getElementById('btnTreatCup').disabled = state.bones < state.costs.treatCup || getTreatStacks('cup') >= TIMED_TREAT_MAX_STACKS;
 
   const btnTreatXpEl = document.getElementById('btnTreatXp');
   if (btnTreatXpEl) {
-    btnTreatXpEl.disabled = state.bones < (state.costs.treatXp || 220);
+    btnTreatXpEl.disabled = state.bones < (state.costs.treatXp || 140) || getTreatStacks('xp') >= TIMED_TREAT_MAX_STACKS;
   }
 
   if (pendingRerollDogId && rerollModal && rerollModal.style.display === 'flex') {
-    const nextCost = getRerollCost();
+    const activeRerollDog = state.roster.find(d => d.id === pendingRerollDogId);
+    const nextCost = getRerollCost(activeRerollDog);
     if (rerollCostLabel) {
       rerollCostLabel.textContent = `${nextCost.toLocaleString()} ✨`;
     }
@@ -3713,10 +3613,33 @@ function loop(now) {
     const prevCupCeil = Math.ceil(state.pupCupTimer);
     const prevXpCeil = Math.ceil(state.xpTreatTimer);
 
-    if (state.kongTimer > 0) state.kongTimer = Math.max(0, state.kongTimer - dt);
-    if (state.baconTimer > 0) state.baconTimer = Math.max(0, state.baconTimer - dt);
-    if (state.pupCupTimer > 0) state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
-    if (state.xpTreatTimer > 0) state.xpTreatTimer = Math.max(0, state.xpTreatTimer - dt);
+    if (state.kongTimer > 0) {
+      state.kongTimer = Math.max(0, state.kongTimer - dt);
+      if (state.kongTimer === 0) state.kongStacks = 0;
+    } else if (state.kongStacks > 0) {
+      state.kongStacks = 0;
+    }
+
+    if (state.baconTimer > 0) {
+      state.baconTimer = Math.max(0, state.baconTimer - dt);
+      if (state.baconTimer === 0) state.baconStacks = 0;
+    } else if (state.baconStacks > 0) {
+      state.baconStacks = 0;
+    }
+
+    if (state.pupCupTimer > 0) {
+      state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
+      if (state.pupCupTimer === 0) state.pupCupStacks = 0;
+    } else if (state.pupCupStacks > 0) {
+      state.pupCupStacks = 0;
+    }
+
+    if (state.xpTreatTimer > 0) {
+      state.xpTreatTimer = Math.max(0, state.xpTreatTimer - dt);
+      if (state.xpTreatTimer === 0) state.xpTreatStacks = 0;
+    } else if (state.xpTreatStacks > 0) {
+      state.xpTreatStacks = 0;
+    }
 
     if (
       Math.ceil(state.kongTimer) !== prevKongCeil ||
@@ -3964,12 +3887,10 @@ function loop(now) {
 
         if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
           if (b.isMagic) {
-            state.magicBones += b.value;
-            state.lifetimeBones += b.value;
+            addMagicBones(1);
             sfx.magicCollect();
           } else {
-            state.bones += b.value;
-            state.lifetimeBones += b.value;
+            addRegularBones(b.value);
             sfx.collect();
           }
           droppedBones.splice(i, 1);
@@ -4011,16 +3932,17 @@ function loop(now) {
       ctx.globalAlpha = 1;
     }
 
-    // Update roster stats/XP/refunds in place periodically without tearing down buttons mid-tap
+    // Refresh roster tab bars/stats periodically while open so typing in inputs isn't interrupted
     const rosterTab = document.getElementById('tab-roster');
     if (
       gameModal.style.display === 'flex' &&
       rosterTab &&
       rosterTab.classList.contains('active') &&
+      document.activeElement?.tagName !== 'INPUT' &&
       now - lastRosterUiRefresh > 600
     ) {
       lastRosterUiRefresh = now;
-      renderRosterTab(false);
+      renderRosterTab();
     }
   } catch (err) {
     console.error("Game loop error caught:", err);
