@@ -3441,7 +3441,12 @@ function updateUI() {
     }
   }
 
-  document.getElementById('bpsCount').textContent = `${getDigMultiplier().toFixed(1)}x/dig`;
+  const trueBonesPerDig = getAverageBonesPerDig();
+  const formattedTrueBones = Number.isInteger(trueBonesPerDig)
+    ? trueBonesPerDig.toLocaleString()
+    : trueBonesPerDig.toFixed(1);
+
+  document.getElementById('bpsCount').textContent = `${formattedTrueBones} 🦴/dig`;
 
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
@@ -3449,16 +3454,7 @@ function updateUI() {
 
   refreshTreatButtonTimers();
 
-  const trueBonesPerDig = getAverageBonesPerDig();
-  const formattedTrueBones = Number.isInteger(trueBonesPerDig)
-    ? trueBonesPerDig.toLocaleString()
-    : trueBonesPerDig.toFixed(1);
-
   document.getElementById('statDigPower').textContent = Number(state.digPower.toFixed(1));
-  const trueBonesEl = document.getElementById('statTrueBonesPerDig');
-  if (trueBonesEl) {
-    trueBonesEl.textContent = `${formattedTrueBones} 🦴`;
-  }
   document.getElementById('statSpeed').textContent = `${getDigMultiplier().toFixed(1)}x`;
   document.getElementById('statChance').textContent = `${Math.round((state.magicChance + getPerkMultipliers().magicBonus) * 100)}%`;
   const lifetimeEl = document.getElementById('statLifetimeBones');
