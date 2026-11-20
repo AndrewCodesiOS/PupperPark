@@ -42,6 +42,7 @@ const TREAT_CONFIG = {
 const SPAWN_SHINY_ODDS = 1 / 650;
 const REROLL_SHINY_ODDS = 1 / 1300;
 const REROLL_STEP_COST = 25;
+const SHINY_PALETTES = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
 
 const PARK_BARK_MIN_COOLDOWN = 4.2;   // Park-wide minimum seconds between any barks
 const PARK_BARK_MAX_COOLDOWN = 7.8;   // Park-wide maximum seconds between barks
@@ -239,6 +240,14 @@ function computeNextCappedCost(currentCost, mult, cap) {
 
 function generateDefaultName(breed, indexNum) {
   return DEFAULT_PUP_NAMES[(indexNum - 1) % DEFAULT_PUP_NAMES.length].trim();
+}
+
+function rollStarterShiny() {
+  const isShiny = Math.random() < SPAWN_SHINY_ODDS;
+  const shinyColor = isShiny
+    ? SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)]
+    : null;
+  return { isShiny, shinyColor };
 }
 
 function rollDogBonusStats() {
@@ -762,7 +771,8 @@ function loadGame() {
   }
 
   if (state.roster.length === 0) {
-    state.roster.push(createRosterEntry('aussie', false, null, 'Biscuit'));
+    const starterShinyRoll = rollStarterShiny();
+    state.roster.push(createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit'));
   }
 
   state.roster.forEach((entry, idx) => {
@@ -1099,10 +1109,9 @@ function executeDogReroll(dogId) {
 
   let becameShiny = false;
   if (!entry.isShiny && Math.random() < REROLL_SHINY_ODDS) {
-    const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
     entry.isShiny = true;
     if (!entry.shinyColor) {
-      entry.shinyColor = shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
+      entry.shinyColor = SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
     }
     becameShiny = true;
 
@@ -1502,6 +1511,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   pendingRetireDogId = null;
   pendingRerollDogId = null;
   cameraAngle = 0;
+  const starterShinyRoll = rollStarterShiny();
 
   state = {
     bones: 0,
@@ -1512,7 +1522,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
       golden: 0, shepherd: 0, shiba: 0, labrador: 0
     },
     shinyDogs: [],
-    roster: [createRosterEntry('aussie', false, null, 'Biscuit')],
+    roster: [createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit')],
     perks: [],
     decorInventory: { tree: 0, flowers: 0, fountain: 0 },
     placedDecorations: [],
@@ -1829,9 +1839,7 @@ class Dog {
     this.rosterId = rosterId;
     this.breed = normalizeBreedKey(breed);
     this.isShiny = isShiny;
-    
-    const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
-    this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
+    this.shinyColor = shinyColor || SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
     this.isMagicDig = false;
     this.onReachToy = null;
   }
@@ -3269,9 +3277,7 @@ function recruitDog(breed) {
     state.costs[normBreed] = computeNextCappedCost(cost, cfg.costMult, cfg.priceCap);
   
     const isShiny = Math.random() < SPAWN_SHINY_ODDS;
-
-    const shinyPalettes = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
-    const chosenColor = isShiny ? shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)] : null;
+    const chosenColor = isShiny ? SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)] : null;
 
     const entry = createRosterEntry(normBreed, isShiny, chosenColor);
     state.roster.push(entry);
