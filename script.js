@@ -466,6 +466,7 @@ function addMagicBones(rawAmount) {
     state.lifetimeBones = 0;
   }
   state.magicBones = (Number(state.magicBones) || 0) + amount;
+  state.lifetimeBones += amount;
   return amount;
 }
 
@@ -1460,23 +1461,24 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     digPower: 1,
     speedMultiplier: 1,
     idleMultiplier: BASE_IDLE_MULTIPLIER,
-    magicChance: 0.12,
-    
+    magicChance: 0.22,
+    boneCapReachedNotified: false,
+
     kongTimer: 0,
     baconTimer: 0,
     pupCupTimer: 0,
     xpTreatTimer: 0,
+    kongStacks: 0,
+    baconStacks: 0,
+    pupCupStacks: 0,
+    xpTreatStacks: 0,
     feastAnimTimer: 0,
-    
+
     hasTennisBall: false,
     hasFrisbee: false,
     hasDuck: false,
 
     isDraftingPerk: false,
-
-    rerollCount: 0,
-    rerollBaseCost: REROLL_BASE_COST,
-    rerollCostMultiplier: REROLL_COST_MULTIPLIER,
 
     costs: {},
     lastSaveTime: Date.now()
