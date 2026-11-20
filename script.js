@@ -1665,6 +1665,7 @@ class Dog {
     this.state = 'IDLE'; // 'IDLE' | 'WALK' | 'DIG' | 'SLEEP'
     this.timer = 0.5 + Math.random() * 1.5;
     this.facingRight = Math.random() > 0.5;
+    this.sleepFacingRight = this.facingRight;
     this.animPhase = Math.random() * Math.PI * 2;
     this.barkCooldown = DOG_BARK_MIN_COOLDOWN * 0.5 + Math.random() * (DOG_BARK_MAX_COOLDOWN - DOG_BARK_MIN_COOLDOWN * 0.5);
     this.rosterId = rosterId;
@@ -1675,6 +1676,12 @@ class Dog {
     this.shinyColor = shinyColor || shinyPalettes[Math.floor(Math.random() * shinyPalettes.length)];
     this.isMagicDig = false;
     this.onReachToy = null;
+  }
+
+  enterSleep() {
+    this.state = 'SLEEP';
+    this.sleepFacingRight = this.facingRight;
+    this.timer = 3.2 + Math.random() * 2.8;
   }
 
   getRosterEntry() {
@@ -1727,11 +1734,12 @@ class Dog {
       this.state === 'WALK'
         ? 9 * Math.min(1.25, visualPace)
         : this.state === 'SLEEP'
-          ? 1.5
+          ? 1.4
           : 5 * Math.min(1.25, visualPace)
     );
 
     if (this.state === 'SLEEP') {
+      this.facingRight = this.sleepFacingRight;
       this.timer -= dt;
       if (this.timer <= 0) {
         this.state = 'IDLE';
@@ -1741,8 +1749,7 @@ class Dog {
       this.timer -= dt * visualPace;
       if (this.timer <= 0) {
         if (Math.random() < 0.28) {
-          this.state = 'SLEEP';
-          this.timer = 3.2 + Math.random() * 2.8;
+          this.enterSleep();
         } else {
           this.pickNewTarget();
         }
@@ -1857,6 +1864,7 @@ class Dog {
   draw(ctx) {
     const pos = gridToScreen(this.gx, this.gy);
     const isSleeping = this.state === 'SLEEP';
+    const effectiveFacingRight = isSleeping ? this.sleepFacingRight : this.facingRight;
 
     ctx.save();
     ctx.translate(pos.x, pos.y);
@@ -1866,7 +1874,7 @@ class Dog {
       ctx.strokeStyle = 'rgba(255, 234, 167, 0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, 11, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, isSleeping ? 9.5 : 11, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -1884,11 +1892,11 @@ class Dog {
     // Contact shadow right on the tile surface
     ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
     ctx.beginPath();
-    ctx.ellipse(0, 5, isSleeping ? 21 : 17, isSleeping ? 9 : 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.save();
-    if (!this.facingRight) {
+    if (!effectiveFacingRight) {
       ctx.scale(-1, 1);
     }
 
@@ -1897,12 +1905,12 @@ class Dog {
       feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
     }
 
-    // Lay sleeping dogs flat onto their side on the ground plane while retaining full sprite geometry
-    const sleepBreath = isSleeping ? Math.sin(this.animPhase) * 0.45 : 0;
+    // Lay down upright/curled against the ground (no sideways roll/tilt)
+    const sleepBreath = isSleeping ? Math.sin(this.animPhase) * 0.35 : 0;
     const bounce = isSleeping
-      ? -7.5
+      ? -6.5
       : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump;
-    const poseTilt = isSleeping ? Math.PI * 0.44 : (this.state === 'DIG' ? 0.25 : 0);
+    const poseTilt = isSleeping ? 0 : (this.state === 'DIG' ? 0.25 : 0);
 
     ctx.translate(0, -bounce);
     ctx.rotate(poseTilt);
@@ -1910,11 +1918,11 @@ class Dog {
     const legSwing = isSleeping
       ? -1.5
       : (this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0));
-    const legHeight = isSleeping ? 6.5 : 10;
-    const pawY = isSleeping ? 2 : 4;
-    const pawHeight = isSleeping ? 2.2 : 3;
+    const legHeight = isSleeping ? 4.5 : 10;
+    const pawY = isSleeping ? 3 : 4;
+    const pawHeight = isSleeping ? 2 : 3;
     const tailWag = isSleeping
-      ? Math.sin(this.animPhase * 0.7) * 0.8
+      ? Math.sin(this.animPhase * 0.65) * 0.5
       : Math.sin(this.animPhase * 2.2) * 2.5;
 
     if (this.breed === 'aussie') {
@@ -1924,68 +1932,68 @@ class Dog {
       const whiteFur = '#f8f9fa';
 
       ctx.fillStyle = primaryColor;
-      ctx.fillRect(-11 - legSwing, -3, 4.2, legHeight);
-      ctx.fillRect(6.5 + legSwing, -3, 4.2, legHeight);
+      ctx.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
+      ctx.fillRect(6.5 + legSwing, -2.5, 4.2, legHeight);
       ctx.fillStyle = whiteFur;
       ctx.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
       ctx.fillRect(6.5 + legSwing, pawY, 4.2, pawHeight);
 
       ctx.fillStyle = coatDark;
       ctx.beginPath();
-      ctx.arc(-15, -10.5 + tailWag, 4.8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? -12 : -15, (isSleeping ? -6.5 : -10.5) + tailWag, 4.6, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = coatDark;
       ctx.beginPath();
-      ctx.ellipse(-2, -9.5, 14.5, 9 + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-1.5, -8, isSleeping ? 13 : 14.5, (isSleeping ? 7.8 : 9) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = merlePatch;
       ctx.beginPath();
-      ctx.ellipse(-4, -11.5, 8.5, 4.8, -0.12, 0, Math.PI * 2);
+      ctx.ellipse(-4, -10, 8.5, 4.5, -0.12, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = primaryColor;
       ctx.beginPath();
-      ctx.ellipse(2, -7.5, 6, 4, 0.1, 0, Math.PI * 2);
+      ctx.ellipse(2, -6.5, 6, 3.8, 0.1, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.arc(8.5, -8, 7.8, 0, Math.PI * 2);
+      ctx.arc(8.5, -7.5, 7.5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = coatDark;
       ctx.beginPath();
-      ctx.arc(11, -17, 8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17, 7.6, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = primaryColor;
       ctx.beginPath();
-      ctx.arc(12.5, -15, 4.2, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 11 : 12.5, isSleeping ? -11 : -15, 4.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#382f2c';
       ctx.beginPath();
-      ctx.moveTo(6.5, -20.5);
-      ctx.lineTo(5.5, isSleeping ? -24.5 : -26.5);
-      ctx.lineTo(11, -22.5);
+      ctx.moveTo(6.5, isSleeping ? -16 : -20.5);
+      ctx.lineTo(5.5, isSleeping ? -18.5 : -26.5);
+      ctx.lineTo(11, isSleeping ? -17.5 : -22.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.ellipse(17, -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 15 : 17, isSleeping ? -11 : -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#1e272e';
       ctx.beginPath();
-      ctx.arc(21, -15.6, 1.8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 19 : 21, isSleeping ? -11.6 : -15.6, 1.8, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = primaryColor;
       ctx.beginPath();
-      ctx.arc(14.2, -19.2, 1.4, 0, Math.PI * 2);
+      ctx.arc(14.2, isSleeping ? -14.2 : -19.2, 1.4, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -1993,7 +2001,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14.5, -17.3, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(13, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#1e1e1e';
@@ -2012,8 +2020,8 @@ class Dog {
       const whiteFur = '#f8f9fa';
 
       ctx.fillStyle = collieColor;
-      ctx.fillRect(-12 - legSwing, -3, 3.8, legHeight);
-      ctx.fillRect(7 - legSwing * 0.5, -3, 3.8, legHeight);
+      ctx.fillRect(-12 - legSwing, -2.5, 3.8, legHeight);
+      ctx.fillRect(7 - legSwing * 0.5, -2.5, 3.8, legHeight);
       ctx.fillStyle = whiteFur;
       ctx.fillRect(-12 - legSwing, pawY, 3.8, pawHeight);
       ctx.fillRect(7 - legSwing * 0.5, pawY, 3.8, pawHeight);
@@ -2024,65 +2032,65 @@ class Dog {
       ctx.lineWidth = 5.5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-14.5, -9.5);
-      ctx.quadraticCurveTo(-22.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
+      ctx.quadraticCurveTo(isSleeping ? -18.5 : -22.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
       ctx.stroke();
 
       ctx.strokeStyle = whiteFur;
       ctx.lineWidth = 2.6;
       ctx.beginPath();
-      ctx.moveTo(-20, -12.5 + wag * 0.3);
-      ctx.quadraticCurveTo(-23.5, -14 + wag, -26.5, -8.5 + wag * 0.6);
+      ctx.moveTo(isSleeping ? -17 : -20, (isSleeping ? -7.5 : -12.5) + wag * 0.3);
+      ctx.quadraticCurveTo(isSleeping ? -19 : -23.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = collieColor;
       ctx.beginPath();
-      ctx.ellipse(-1.5, -10, 15.5, 8.2 + sleepBreath * 0.2, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(-1.5, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, -0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = featherShade;
       ctx.beginPath();
-      ctx.ellipse(-5, -11.5, 8, 4.5, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(-5, isSleeping ? -9.5 : -11.5, 8, 4.2, -0.08, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.ellipse(6.5, -10.5, 5.5, 8, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(6.5, isSleeping ? -8.5 : -10.5, 5.5, 7.2, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = collieColor;
       ctx.beginPath();
-      ctx.arc(11, -17.5, 7.5, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = collieColor;
       ctx.beginPath();
-      ctx.moveTo(7.5, -21);
-      ctx.lineTo(6.5, isSleeping ? -25.5 : -27.5);
-      ctx.lineTo(12, -21.5);
+      ctx.moveTo(7.5, isSleeping ? -16 : -21);
+      ctx.lineTo(6.5, isSleeping ? -18.5 : -27.5);
+      ctx.lineTo(12, isSleeping ? -16.5 : -21.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -25.5 : -27.5);
-      ctx.lineTo(5.2, isSleeping ? -24 : -25.5);
-      ctx.lineTo(8.5, isSleeping ? -24 : -25.5);
+      ctx.moveTo(6.5, isSleeping ? -18.5 : -27.5);
+      ctx.lineTo(5.2, isSleeping ? -17 : -25.5);
+      ctx.lineTo(8.5, isSleeping ? -17 : -25.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.moveTo(12, -16.5);
-      ctx.lineTo(22.5, -14.2);
-      ctx.lineTo(13, -11.5);
+      ctx.moveTo(11, isSleeping ? -13 : -15.5);
+      ctx.lineTo(isSleeping ? 20 : 22.5, isSleeping ? -10.8 : -14.2);
+      ctx.lineTo(12.5, isSleeping ? -9.2 : -11);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
-      ctx.arc(22.2, -14.3, 1.65, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 19.7 : 22.2, isSleeping ? -10.9 : -14.3, 1.65, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2090,7 +2098,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14.5, -18.2, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#1e1e1e';
@@ -2109,8 +2117,8 @@ class Dog {
       const creamHighlight = '#ffeaa7';
 
       ctx.fillStyle = col;
-      ctx.fillRect(-11.5 - legSwing, -3, 4.6, legHeight);
-      ctx.fillRect(6.5 + legSwing, -3, 4.6, legHeight);
+      ctx.fillRect(-11.5 - legSwing, -2.5, 4.6, legHeight);
+      ctx.fillRect(6.5 + legSwing, -2.5, 4.6, legHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.1) * 3.5;
       ctx.save();
@@ -2118,46 +2126,46 @@ class Dog {
       ctx.lineWidth = 6.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-14.5, -9);
-      ctx.quadraticCurveTo(-23, -15 + wag, -26.5, -10.5 + wag * 0.6);
+      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9);
+      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
       ctx.stroke();
 
       ctx.strokeStyle = creamHighlight;
       ctx.lineWidth = 2.6;
       ctx.beginPath();
-      ctx.moveTo(-19.5, -12.5 + wag * 0.3);
-      ctx.quadraticCurveTo(-23.5, -15 + wag, -26.5, -10.5 + wag * 0.6);
+      ctx.moveTo(isSleeping ? -17 : -19.5, (isSleeping ? -8 : -12.5) + wag * 0.3);
+      ctx.quadraticCurveTo(isSleeping ? -19.5 : -23.5, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(-1, -9.5, 15.5, 9.2 + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-1, isSleeping ? -8 : -9.5, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.8 : 9.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = creamHighlight;
       ctx.beginPath();
-      ctx.ellipse(6.5, -8.5, 5.5, 6.5, 0.15, 0, Math.PI * 2);
+      ctx.ellipse(6.5, isSleeping ? -7 : -8.5, 5.5, 6, 0.1, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(11, -16.5, 7.8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.4, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = creamHighlight;
       ctx.beginPath();
-      ctx.ellipse(16.5, -14, 5, 3.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 14.5 : 16.5, isSleeping ? -10.2 : -14, 5, 3.6, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = richShade;
       ctx.beginPath();
-      ctx.ellipse(8.2, -13.5, 3.3, 6.5, 0.28, 0, Math.PI * 2);
+      ctx.ellipse(8.2, isSleeping ? -10.2 : -13.5, 3.3, 6, 0.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#1e1e1e';
       ctx.beginPath();
-      ctx.arc(21.2, -14.5, 1.8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -14.5, 1.8, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2165,7 +2173,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(13.8, -18, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#1e1e1e';
@@ -2184,8 +2192,8 @@ class Dog {
       const bellyWhite = '#f8f9fa';
 
       ctx.fillStyle = col;
-      ctx.fillRect(-11 - legSwing, -3, 4.2, legHeight);
-      ctx.fillRect(6 + legSwing, -3, 4.2, legHeight);
+      ctx.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
+      ctx.fillRect(6 + legSwing, -2.5, 4.2, legHeight);
       ctx.fillStyle = bellyWhite;
       ctx.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
       ctx.fillRect(6 + legSwing, pawY, 4.2, pawHeight);
@@ -2196,60 +2204,60 @@ class Dog {
       ctx.lineWidth = 6.5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-14, -9);
-      ctx.quadraticCurveTo(-23, -15 + wag, -25, -10 + wag * 0.6);
+      ctx.moveTo(-14, isSleeping ? -7.5 : -9);
+      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
       ctx.stroke();
 
       ctx.strokeStyle = bellyWhite;
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(-18, -12 + wag * 0.3);
-      ctx.quadraticCurveTo(-23, -15 + wag, -25, -10 + wag * 0.6);
+      ctx.moveTo(isSleeping ? -16.5 : -18, (isSleeping ? -8 : -12) + wag * 0.3);
+      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(-1, -10, 14.5, 8.5 + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.5) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = bellyWhite;
       ctx.beginPath();
-      ctx.ellipse(3, -6.5, 10, 4.5, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(3, isSleeping ? -5.5 : -6.5, 10, 4, -0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(10.5, -17, 7.5, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -12.5 : -17, 7.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = darkTrim;
       ctx.beginPath();
-      ctx.moveTo(6.5, -21);
-      ctx.lineTo(9.5, isSleeping ? -26.5 : -28.5);
-      ctx.lineTo(13, -20);
+      ctx.moveTo(6.5, isSleeping ? -16.5 : -21);
+      ctx.lineTo(9.5, isSleeping ? -19 : -28.5);
+      ctx.lineTo(13, isSleeping ? -16 : -20);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = bellyWhite;
       ctx.beginPath();
-      ctx.moveTo(8, -21.5);
-      ctx.lineTo(9.8, isSleeping ? -24.5 : -26);
-      ctx.lineTo(11.5, -20.5);
+      ctx.moveTo(8, isSleeping ? -17 : -21.5);
+      ctx.lineTo(9.8, isSleeping ? -18 : -26);
+      ctx.lineTo(11.5, isSleeping ? -16.5 : -20.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = bellyWhite;
       ctx.beginPath();
-      ctx.ellipse(14.5, -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 13 : 14.5, isSleeping ? -11 : -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(10.5, -16, 4.2, 0, Math.PI * 2);
+      ctx.arc(10.5, isSleeping ? -12 : -16, 4.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#1e272e';
       ctx.beginPath();
-      ctx.ellipse(20.2, -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 18.2 : 20.2, isSleeping ? -11.6 : -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2257,7 +2265,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14.8, -17.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(13.2, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#00a8ff';
@@ -2288,55 +2296,55 @@ class Dog {
       ctx.lineWidth = 4.6;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-13.5, -9.5);
-      ctx.quadraticCurveTo(-19.5, -14 + wag, -16.5, -19.5 + wag);
-      ctx.arc(-14.5, -17.5 + wag, 2.8, 0.5 * Math.PI, 2.2 * Math.PI);
+      ctx.moveTo(-13.5, isSleeping ? -7.5 : -9.5);
+      ctx.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -9 : -14) + wag, isSleeping ? -15 : -16.5, (isSleeping ? -12 : -19.5) + wag);
+      ctx.arc(isSleeping ? -13.5 : -14.5, (isSleeping ? -10.5 : -17.5) + wag, 2.4, 0.5 * Math.PI, 2.2 * Math.PI);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(-0.5, -9, 14.5, 8.4 + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-0.5, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.4) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = warmShade;
       ctx.beginPath();
-      ctx.ellipse(-4, -11, 7.5, 4.2, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(-4, isSleeping ? -9.2 : -11, 7.5, 4, -0.08, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = creamFur;
       ctx.beginPath();
-      ctx.ellipse(2, -5.8, 10.5, 4.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(2, isSleeping ? -5 : -5.8, 10.5, 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(10.5, -16.5, 7.6, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = warmShade;
       ctx.beginPath();
-      ctx.moveTo(6.5, -20.5);
-      ctx.lineTo(9.5, isSleeping ? -26.5 : -28.5);
-      ctx.lineTo(13.5, -19.5);
+      ctx.moveTo(6.5, isSleeping ? -16 : -20.5);
+      ctx.lineTo(9.5, isSleeping ? -18.5 : -28.5);
+      ctx.lineTo(13.5, isSleeping ? -15.5 : -19.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = creamFur;
       ctx.beginPath();
-      ctx.moveTo(8, -21);
-      ctx.lineTo(9.8, isSleeping ? -24.5 : -26);
-      ctx.lineTo(11.8, -20);
+      ctx.moveTo(8, isSleeping ? -16.5 : -21);
+      ctx.lineTo(9.8, isSleeping ? -17.5 : -26);
+      ctx.lineTo(11.8, isSleeping ? -16 : -20);
       ctx.closePath();
       ctx.fill();
 
       ctx.beginPath();
-      ctx.ellipse(15, -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 13 : 15, isSleeping ? -10.2 : -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
-      ctx.arc(19.6, -14.4, 1.6, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10.8 : -14.4, 1.6, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2344,7 +2352,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14.2, -17, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(12.8, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#1e1e1e';
@@ -2363,11 +2371,11 @@ class Dog {
       const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
 
       ctx.fillStyle = darkCol;
-      ctx.fillRect(-12 - legSwing, -3, 4.2, isSleeping ? 4 : 6);
-      ctx.fillRect(7 + legSwing, -3, 4.2, isSleeping ? 4 : 6);
+      ctx.fillRect(-12 - legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
+      ctx.fillRect(7 + legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
       ctx.fillStyle = tanAccent;
-      ctx.fillRect(-12 - legSwing, isSleeping ? 0.5 : 2, 4.2, isSleeping ? 3 : 5);
-      ctx.fillRect(7 + legSwing, isSleeping ? 0.5 : 2, 4.2, isSleeping ? 3 : 5);
+      ctx.fillRect(-12 - legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
+      ctx.fillRect(7 + legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2) * 3.2;
       ctx.save();
@@ -2375,54 +2383,54 @@ class Dog {
       ctx.lineWidth = 5.5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-14.5, -9.5);
-      ctx.quadraticCurveTo(-22, -11 + wag, -25, -5 + wag * 0.5);
+      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
+      ctx.quadraticCurveTo(isSleeping ? -19 : -22, (isSleeping ? -7.5 : -11) + wag, isSleeping ? -21.5 : -25, (isSleeping ? -4.5 : -5) + wag * 0.5);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = saddleCol;
       ctx.beginPath();
-      ctx.ellipse(-1, -10, 15.5, 8.8 + sleepBreath * 0.2, -0.12, 0, Math.PI * 2);
+      ctx.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, -0.06, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = darkCol;
       ctx.beginPath();
-      ctx.ellipse(-2, -12.5, 12.5, 5.2, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(-2, isSleeping ? -10 : -12.5, 12.5, 4.8, -0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = saddleCol;
       ctx.beginPath();
-      ctx.arc(11, -17.5, 7.8, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.4, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = darkCol;
       ctx.beginPath();
-      ctx.moveTo(6.5, -21);
-      ctx.lineTo(8.5, isSleeping ? -28 : -30.5);
-      ctx.lineTo(13, -20.5);
+      ctx.moveTo(6.5, isSleeping ? -16.5 : -21);
+      ctx.lineTo(8.5, isSleeping ? -19.5 : -30.5);
+      ctx.lineTo(13, isSleeping ? -16 : -20.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = tanAccent;
       ctx.beginPath();
-      ctx.moveTo(8, -21.5);
-      ctx.lineTo(9.2, isSleeping ? -25.5 : -27.5);
-      ctx.lineTo(11.5, -21);
+      ctx.moveTo(8, isSleeping ? -17 : -21.5);
+      ctx.lineTo(9.2, isSleeping ? -18.5 : -27.5);
+      ctx.lineTo(11.5, isSleeping ? -16.5 : -21);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = darkCol;
       ctx.beginPath();
-      ctx.moveTo(12, -18.5);
-      ctx.lineTo(21.5, -15.5);
-      ctx.lineTo(20.5, -12.5);
-      ctx.lineTo(12, -13);
+      ctx.moveTo(11, isSleeping ? -13.5 : -17);
+      ctx.lineTo(isSleeping ? 19.5 : 21.5, isSleeping ? -11.2 : -15.5);
+      ctx.lineTo(isSleeping ? 18.5 : 20.5, isSleeping ? -9.5 : -12.5);
+      ctx.lineTo(11, isSleeping ? -9.5 : -12);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
-      ctx.arc(21.3, -14.8, 1.7, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 19.3 : 21.3, isSleeping ? -11 : -14.8, 1.7, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2430,7 +2438,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14.5, -18, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#f9ca24';
@@ -2450,8 +2458,8 @@ class Dog {
       const whiteFur = '#f8f9fa';
 
       ctx.fillStyle = col;
-      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 6 : 8.5);
-      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 6 : 8.5);
+      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
+      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
       ctx.fillStyle = whiteFur;
       ctx.fillRect(-10.5 - legSwing, pawY, 4.2, pawHeight);
       ctx.fillRect(5.5 + legSwing, pawY, 4.2, pawHeight);
@@ -2462,51 +2470,51 @@ class Dog {
       ctx.lineWidth = 4.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-13.5, -9);
-      ctx.quadraticCurveTo(-19.5, -16.5 + wag, -18.5, -21 + wag);
+      ctx.moveTo(-13.5, isSleeping ? -7.5 : -9);
+      ctx.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -10.5 : -16.5) + wag, isSleeping ? -16 : -18.5, (isSleeping ? -12.5 : -21) + wag);
       ctx.stroke();
 
       ctx.strokeStyle = whiteFur;
       ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.moveTo(-18.8, -18.5 + wag);
-      ctx.lineTo(-18.5, -22 + wag);
+      ctx.moveTo(isSleeping ? -16.2 : -18.8, (isSleeping ? -11.5 : -18.5) + wag);
+      ctx.lineTo(isSleeping ? -16 : -18.5, (isSleeping ? -13.2 : -22) + wag);
       ctx.stroke();
       ctx.restore();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.ellipse(-0.5, -8.5, 14.5, 8.2 + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-0.5, isSleeping ? -7.5 : -8.5, isSleeping ? 13 : 14.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = saddleDark;
       ctx.beginPath();
-      ctx.ellipse(-3, -10.5, 7.5, 4.2, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(-3, isSleeping ? -9.2 : -10.5, 7.5, 4, -0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.ellipse(4.5, -6.2, 7.5, 4.5, 0.08, 0, Math.PI * 2);
+      ctx.ellipse(4.5, isSleeping ? -5.2 : -6.2, 7.5, 4.2, 0.05, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(10.5, -15.5, 7.4, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -11.5 : -15.5, 7, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = whiteFur;
       ctx.beginPath();
-      ctx.ellipse(15, -12.5, 5.2, 3.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(isSleeping ? 13 : 15, isSleeping ? -9.5 : -12.5, 5.2, 3.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = earBrown;
       ctx.beginPath();
-      ctx.ellipse(7.5, -11.8, 3.6, 7.5, 0.25, 0, Math.PI * 2);
+      ctx.ellipse(7.5, isSleeping ? -9.5 : -11.8, 3.6, 6.5, 0.18, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#11161d';
       ctx.beginPath();
-      ctx.arc(19.6, -13.2, 1.65, 0, Math.PI * 2);
+      ctx.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10 : -13.2, 1.65, 0, Math.PI * 2);
       ctx.fill();
 
       if (isSleeping) {
@@ -2514,7 +2522,7 @@ class Dog {
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(13.5, -16.2, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(12.2, -12, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.fillStyle = '#1e1e1e';
@@ -2531,34 +2539,34 @@ class Dog {
       const col = this.isShiny ? this.shinyColor : '#e5a93c';
       const earCol = this.isShiny ? this.shinyColor : '#c78924';
       ctx.fillStyle = col;
-      ctx.fillRect(-11 - legSwing, -3, 4.5, legHeight);
-      ctx.fillRect(6 + legSwing, -3, 4.5, legHeight);
+      ctx.fillRect(-11 - legSwing, -2.5, 4.5, legHeight);
+      ctx.fillRect(6 + legSwing, -2.5, 4.5, legHeight);
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.2) * 3.5;
       ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.moveTo(-14, -9);
-      ctx.quadraticCurveTo(-22, -13 + wag, -25, -9 + wag * 0.5);
+      ctx.moveTo(-14, isSleeping ? -7.5 : -9);
+      ctx.quadraticCurveTo(isSleeping ? -18.5 : -22, (isSleeping ? -9 : -13) + wag, isSleeping ? -21 : -25, (isSleeping ? -6.5 : -9) + wag * 0.5);
       ctx.lineWidth = 5;
       ctx.lineCap = 'round';
       ctx.strokeStyle = col;
       ctx.stroke();
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(-1, -9, 14.5, 8.8 + sleepBreath * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-1, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(11, -16.5, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = earCol;
-      ctx.beginPath(); ctx.ellipse(8.5, -13.5, 3.2, 6.2, 0.28, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(8.5, isSleeping ? -10.5 : -13.5, 3.2, 5.8, 0.2, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(17, -14, 5.2, 3.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(isSleeping ? 15 : 17, isSleeping ? -10.2 : -14, 5.2, 3.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath(); ctx.arc(21.2, -15, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -15, 1.8, 0, Math.PI * 2); ctx.fill();
 
       if (isSleeping) {
         ctx.strokeStyle = '#1e1e1e';
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(14, -18.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else {
         ctx.beginPath();
@@ -2572,7 +2580,7 @@ class Dog {
     if (state.showNameTags) {
       const entry = this.getRosterEntry();
       const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
-      const tagY = isSleeping ? -23 : -36;
+      const tagY = isSleeping ? -22 : -36;
 
       ctx.font = '700 11px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
       const textWidth = ctx.measureText(label).width;
@@ -2611,7 +2619,7 @@ class Dog {
       ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
       ctx.fillStyle = 'rgba(200, 210, 218, 0.85)';
       ctx.textAlign = 'center';
-      ctx.fillText('zZz', 10 + zDrift * 0.4, -18 - zDrift);
+      ctx.fillText('zZz', 10 + zDrift * 0.4, -16 - zDrift);
       ctx.restore();
     }
 
