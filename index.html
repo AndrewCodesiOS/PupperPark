@@ -338,6 +338,7 @@
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
             <div class="stat-box"><span>Dig Power:</span> <strong id="statDigPower">1</strong></div>
+            <div class="stat-box"><span>True Bones / Dig:</span> <strong id="statTrueBonesPerDig">1 🦴</strong></div>
             <div class="stat-box"><span>Dig Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
             <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">12%</strong></div>
             <div class="stat-box"><span>Lifetime Bones:</span> <strong id="statLifetimeBones">0</strong></div>
@@ -371,11 +372,11 @@
     </div>
   </div>
 
-  <!-- Reroll Dog Traits Modal -->
+  <!-- Reroll Dog Traits & Shiny Chance Modal -->
   <div id="rerollModal" class="modal" style="display: none;">
     <div class="modal-window reroll-modal-window">
       <div class="reroll-modal-header">
-        <h2>🎲 Trait &amp; Stat Reroll</h2>
+        <h2>🎲 Stats &amp; Shiny Chance Reroll</h2>
         <button type="button" id="btnCloseRerollModal" class="close-btn" aria-label="Close reroll modal">✕</button>
       </div>
 
@@ -387,7 +388,7 @@
 
       <div class="reroll-actions">
         <button type="button" id="btnConfirmReroll" class="action-btn reroll-purchase-btn">
-          <span class="btn-name">Reroll Stats</span>
+          <span class="btn-name">Reroll Stats &amp; Shiny</span>
           <span class="btn-cost" id="rerollCostLabel">5,000 ✨</span>
         </button>
       </div>
