@@ -745,7 +745,7 @@ document.getElementById('btnOpenMenu').addEventListener('click', () => {
   initAudio();
   gameModal.style.display = 'flex';
   drawerWindow.style.transform = 'translateY(0)';
-  renderRosterTab();
+  renderRosterTab(true);
 });
 
 function closeMenu() {
@@ -793,7 +793,7 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'tab-roster') {
-      renderRosterTab();
+      renderRosterTab(true);
     } else if (btn.dataset.tab === 'tab-perks') {
       updateUI();
     }
@@ -810,7 +810,7 @@ function toggleFavoriteDog(dogId) {
   } else {
     sfx.collect();
   }
-  renderRosterTab();
+  renderRosterTab(true);
   saveGame();
 }
 
@@ -962,7 +962,7 @@ function executeDogReroll(dogId) {
   }
 
   updateUI();
-  renderRosterTab();
+  renderRosterTab(true);
   saveGame();
   renderRerollModalContent(dogId, {
     keptPrevious,
@@ -1054,171 +1054,383 @@ function retireDog(dogId) {
   }
 
   updateUI();
-  renderRosterTab();
+  renderRosterTab(true);
   saveGame();
 }
 
-function renderRosterTab() {
+let isRosterPointerDown = false;
+let pendingRosterRebuild = false;
+let pendingRosterInPlace = false;
+const rosterCardRefs = new Map();
+
+function ensureRosterCardStructure(container, entry, canRetire) {
+  if (
+    typeof entry.bonusPayout !== 'number' ||
+    typeof entry.bonusScaling !== 'number' ||
+    typeof entry.bonusXp !== 'number' ||
+    !entry.rollGrade
+  ) {
+    const rolled = rollDogBonusStats();
+    entry.bonusPayout = rolled.bonusPayout;
+    entry.bonusScaling = rolled.bonusScaling;
+    entry.bonusXp = rolled.bonusXp;
+    entry.rollGrade = rolled.rollGrade;
+  }
+
+  const breedName = BREED_LABELS[entry.breed] || entry.breed;
+  const isFav = Boolean(entry.isFavorite);
+
+  const card = document.createElement('div');
+  card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
+  card.dataset.dogId = entry.id;
+  card.style.position = 'relative';
+  card.style.display = 'flex';
+  card.style.alignItems = 'stretch';
+  card.style.justifyContent = 'space-between';
+  card.style.gap = '12px';
+
+  const mainCol = document.createElement('div');
+  mainCol.className = 'roster-main';
+  mainCol.style.flex = '1';
+  mainCol.style.minWidth = '0';
+
+  const topRow = document.createElement('div');
+  topRow.className = 'roster-top';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'roster-name-input';
+  nameInput.value = entry.name;
+  nameInput.maxLength = 24;
+  nameInput.setAttribute('aria-label', `Name for ${breedName}`);
+
+  const commitName = () => {
+    const cleaned = nameInput.value.trim();
+    entry.name = cleaned || breedName;
+    nameInput.value = entry.name;
+    requestSave();
+  };
+  nameInput.addEventListener('change', commitName);
+  nameInput.addEventListener('blur', commitName);
+
+  topRow.appendChild(nameInput);
+
+  const xpBarOuter = document.createElement('div');
+  xpBarOuter.className = 'roster-xp-track';
+
+  const xpBarInner = document.createElement('div');
+  xpBarInner.className = 'roster-xp-fill';
+  xpBarOuter.appendChild(xpBarInner);
+
+  const chipsRow = document.createElement('div');
+  chipsRow.className = 'roster-chips';
+
+  const favChip = document.createElement('span');
+  favChip.className = 'roster-chip roster-fav-chip';
+  favChip.textContent = '★ Favorite';
+  favChip.style.display = isFav ? '' : 'none';
+
+  const breedChip = document.createElement('span');
+  breedChip.className = 'roster-chip';
+  breedChip.textContent = breedName;
+
+  const lvlChip = document.createElement('span');
+  lvlChip.className = `roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}`;
+  const lvlValEl = document.createElement('strong');
+  const shinySuffixEl = document.createTextNode(entry.isShiny ? ' ✨' : '');
+  lvlChip.appendChild(document.createTextNode('Lv. '));
+  lvlChip.appendChild(lvlValEl);
+  lvlChip.appendChild(shinySuffixEl);
+
+  const rollChip = document.createElement('span');
+  rollChip.className = 'roster-chip roster-roll-chip';
+  const rollValEl = document.createElement('strong');
+  rollChip.appendChild(rollValEl);
+
+  const dugChip = document.createElement('span');
+  dugChip.className = 'roster-chip';
+  const dugValEl = document.createElement('strong');
+  dugChip.appendChild(document.createTextNode('Dug '));
+  dugChip.appendChild(dugValEl);
+  dugChip.appendChild(document.createTextNode(' 🦴'));
+
+  const yieldChip = document.createElement('span');
+  yieldChip.className = 'roster-chip';
+  const yieldValEl = document.createElement('strong');
+  const yieldBonusEl = document.createElement('em');
+  yieldChip.appendChild(document.createTextNode('Bone Yield '));
+  yieldChip.appendChild(yieldValEl);
+  yieldChip.appendChild(document.createTextNode(' '));
+  yieldChip.appendChild(yieldBonusEl);
+
+  const growthChip = document.createElement('span');
+  growthChip.className = 'roster-chip';
+  const growthValEl = document.createElement('strong');
+  const growthBonusEl = document.createElement('em');
+  growthChip.appendChild(document.createTextNode('Pack Growth '));
+  growthChip.appendChild(growthValEl);
+  growthChip.appendChild(document.createTextNode(' '));
+  growthChip.appendChild(growthBonusEl);
+
+  const xpMultChip = document.createElement('span');
+  xpMultChip.className = 'roster-chip';
+  const xpMultValEl = document.createElement('strong');
+  const xpMultBonusEl = document.createElement('em');
+  xpMultChip.appendChild(document.createTextNode('Quick Learner '));
+  xpMultChip.appendChild(xpMultValEl);
+  xpMultChip.appendChild(document.createTextNode(' '));
+  xpMultChip.appendChild(xpMultBonusEl);
+
+  const xpProgressChip = document.createElement('span');
+  xpProgressChip.className = 'roster-chip';
+  const xpProgressValEl = document.createElement('strong');
+  xpProgressChip.appendChild(document.createTextNode('XP '));
+  xpProgressChip.appendChild(xpProgressValEl);
+
+  const lvlBonusChip = document.createElement('span');
+  lvlBonusChip.className = 'roster-chip';
+  const lvlBonusValEl = document.createElement('strong');
+  lvlBonusChip.appendChild(document.createTextNode('Lvl +'));
+  lvlBonusChip.appendChild(lvlBonusValEl);
+
+  chipsRow.append(
+    favChip,
+    breedChip,
+    lvlChip,
+    rollChip,
+    dugChip,
+    yieldChip,
+    growthChip,
+    xpMultChip,
+    xpProgressChip,
+    lvlBonusChip
+  );
+
+  mainCol.appendChild(topRow);
+  mainCol.appendChild(xpBarOuter);
+  mainCol.appendChild(chipsRow);
+  card.appendChild(mainCol);
+
+  const rightAction = document.createElement('div');
+  rightAction.className = 'roster-right-action';
+  rightAction.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-end;
+    align-self: stretch;
+    gap: 10px;
+    flex-shrink: 0;
+  `;
+
+  const favBtn = document.createElement('button');
+  favBtn.type = 'button';
+  favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
+  favBtn.style.cssText = `
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.45rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-bottom: auto;
+  `;
+  favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
+  rightAction.appendChild(favBtn);
+
+  const rerollBtn = document.createElement('button');
+  rerollBtn.type = 'button';
+  rerollBtn.className = 'reroll-dice-btn';
+  rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
+  rerollBtn.title = 'Reroll Stats & Shiny Chance (✨)';
+  rerollBtn.textContent = '🎲';
+  rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
+  rightAction.appendChild(rerollBtn);
+
+  let retireBtn = null;
+  let retireRefundEl = null;
+  if (canRetire) {
+    retireBtn = document.createElement('button');
+    retireBtn.type = 'button';
+    retireBtn.className = 'retire-pill-btn retire-pill-two-line';
+
+    const topSpan = document.createElement('span');
+    topSpan.className = 'retire-line-top';
+    topSpan.textContent = 'Retire';
+
+    retireRefundEl = document.createElement('span');
+    retireRefundEl.className = 'retire-line-sub';
+
+    retireBtn.appendChild(topSpan);
+    retireBtn.appendChild(retireRefundEl);
+    retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
+    rightAction.appendChild(retireBtn);
+  }
+
+  card.appendChild(rightAction);
+  container.appendChild(card);
+
+  const refs = {
+    card,
+    nameInput,
+    xpBarInner,
+    favChip,
+    lvlChip,
+    lvlValEl,
+    rollChip,
+    rollValEl,
+    dugValEl,
+    yieldValEl,
+    yieldBonusEl,
+    growthValEl,
+    growthBonusEl,
+    xpMultValEl,
+    xpMultBonusEl,
+    xpProgressValEl,
+    lvlBonusValEl,
+    favBtn,
+    rerollBtn,
+    retireRefundEl
+  };
+
+  rosterCardRefs.set(entry.id, refs);
+  return refs;
+}
+
+function updateRosterCardInPlace(refs, entry) {
+  const stats = getEffectiveBreedStats(entry);
+  const xpNeeded = getXpNeededForLevel(entry.level);
+  const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
+  const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
+  const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
+  const breedName = BREED_LABELS[entry.breed] || entry.breed;
+  const isFav = Boolean(entry.isFavorite);
+
+  refs.card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
+  if (document.activeElement !== refs.nameInput && refs.nameInput.value !== entry.name) {
+    refs.nameInput.value = entry.name;
+  }
+  refs.nameInput.setAttribute('aria-label', `Name for ${breedName}`);
+
+  refs.xpBarInner.style.width = `${pct}%`;
+
+  refs.favChip.style.display = isFav ? '' : 'none';
+  refs.lvlChip.className = `roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}`;
+  refs.lvlValEl.textContent = String(entry.level);
+
+  const gradeClass = stats.rollGrade === '★ Max Roll'
+    ? 'grade-max'
+    : stats.rollGrade === 'Prime'
+      ? 'grade-prime'
+      : stats.rollGrade === 'Sharp'
+        ? 'grade-sharp'
+        : 'grade-standard';
+  refs.rollChip.className = `roster-chip roster-roll-chip ${gradeClass}`;
+  refs.rollValEl.textContent = stats.rollGrade;
+
+  refs.dugValEl.textContent = Math.floor(entry.bonesEarned).toLocaleString();
+  refs.yieldValEl.textContent = `${stats.boneYield.toFixed(2)}x`;
+  refs.yieldBonusEl.textContent = `(+${stats.bonusPayout.toFixed(2)})`;
+
+  refs.growthValEl.textContent = `${stats.packGrowth.toFixed(2)}x`;
+  refs.growthBonusEl.textContent = `(+${stats.bonusScaling.toFixed(2)})`;
+
+  refs.xpMultValEl.textContent = `${stats.quickLearner.toFixed(2)}x`;
+  refs.xpMultBonusEl.textContent = `(+${stats.bonusXp.toFixed(2)})`;
+
+  refs.xpProgressValEl.textContent = `${Math.floor(entry.xp)}/${xpNeeded}`;
+  refs.lvlBonusValEl.textContent = `${levelBonusPct}%`;
+
+  refs.favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
+  refs.favBtn.setAttribute('aria-pressed', String(isFav));
+  refs.favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
+  refs.favBtn.textContent = isFav ? '★' : '☆';
+  refs.favBtn.style.background = isFav ? 'rgba(255, 234, 167, 0.22)' : 'rgba(255, 255, 255, 0.06)';
+  refs.favBtn.style.border = `1.5px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.22)'}`;
+  refs.favBtn.style.color = isFav ? '#ffeaa7' : '#b2bec3';
+
+  refs.rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
+
+  if (refs.retireRefundEl) {
+    refs.retireRefundEl.textContent = `+${refundPreview.toLocaleString()} 🦴`;
+  }
+}
+
+function getRosterStructureSignature(canRetire) {
+  return state.roster
+    .map(d => `${d.id}:${d.breed}:${d.isFavorite ? 1 : 0}:${d.isShiny ? 1 : 0}:${canRetire ? 1 : 0}`)
+    .join('|');
+}
+
+function renderRosterTab(forceRebuild = false) {
   const container = document.getElementById('rosterListContainer');
   if (!container) return;
 
+  const activeEl = document.activeElement;
+  const isTypingInRoster = activeEl && container.contains(activeEl) &&
+    (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+
+  if (isRosterPointerDown || isTypingInRoster) {
+    if (forceRebuild) {
+      pendingRosterRebuild = true;
+    } else {
+      pendingRosterInPlace = true;
+    }
+    return;
+  }
+
   const canRetire = state.roster.length > 1;
-  container.innerHTML = '';
+  const sig = getRosterStructureSignature(canRetire);
+  const needsFullRebuild = forceRebuild || container.dataset.rosterSig !== sig || container.children.length !== state.roster.length;
+
+  if (needsFullRebuild) {
+    container.innerHTML = '';
+    rosterCardRefs.clear();
+    container.dataset.rosterSig = sig;
+    state.roster.forEach(entry => {
+      const refs = ensureRosterCardStructure(container, entry, canRetire);
+      updateRosterCardInPlace(refs, entry);
+    });
+    pendingRosterRebuild = false;
+    pendingRosterInPlace = false;
+    return;
+  }
 
   state.roster.forEach(entry => {
-    if (
-      typeof entry.bonusPayout !== 'number' ||
-      typeof entry.bonusScaling !== 'number' ||
-      typeof entry.bonusXp !== 'number' ||
-      !entry.rollGrade
-    ) {
-      const rolled = rollDogBonusStats();
-      entry.bonusPayout = rolled.bonusPayout;
-      entry.bonusScaling = rolled.bonusScaling;
-      entry.bonusXp = rolled.bonusXp;
-      entry.rollGrade = rolled.rollGrade;
+    let refs = rosterCardRefs.get(entry.id);
+    if (!refs) {
+      refs = ensureRosterCardStructure(container, entry, canRetire);
     }
-
-    const stats = getEffectiveBreedStats(entry);
-    const xpNeeded = getXpNeededForLevel(entry.level);
-    const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
-    const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
-    const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
-    const breedName = BREED_LABELS[entry.breed] || entry.breed;
-    const isFav = Boolean(entry.isFavorite);
-
-    const gradeClass = stats.rollGrade === '★ Max Roll'
-      ? 'grade-max'
-      : stats.rollGrade === 'Prime'
-        ? 'grade-prime'
-        : stats.rollGrade === 'Sharp'
-          ? 'grade-sharp'
-          : 'grade-standard';
-
-    const card = document.createElement('div');
-    card.className = `roster-card${isFav ? ' is-favorite' : ''}`;
-    card.style.position = 'relative';
-    card.style.display = 'flex';
-    card.style.alignItems = 'stretch';
-    card.style.justifyContent = 'space-between';
-    card.style.gap = '12px';
-
-    const mainCol = document.createElement('div');
-    mainCol.className = 'roster-main';
-    mainCol.style.flex = '1';
-    mainCol.style.minWidth = '0';
-
-    const topRow = document.createElement('div');
-    topRow.className = 'roster-top';
-
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.className = 'roster-name-input';
-    nameInput.value = entry.name;
-    nameInput.maxLength = 24;
-    nameInput.setAttribute('aria-label', `Name for ${breedName}`);
-
-    const commitName = () => {
-      const cleaned = nameInput.value.trim();
-      entry.name = cleaned || breedName;
-      nameInput.value = entry.name;
-      requestSave();
-    };
-    nameInput.addEventListener('change', commitName);
-    nameInput.addEventListener('blur', commitName);
-
-    topRow.appendChild(nameInput);
-
-    const xpBarOuter = document.createElement('div');
-    xpBarOuter.className = 'roster-xp-track';
-
-    const xpBarInner = document.createElement('div');
-    xpBarInner.className = 'roster-xp-fill';
-    xpBarInner.style.width = `${pct}%`;
-    xpBarOuter.appendChild(xpBarInner);
-
-    const chipsRow = document.createElement('div');
-    chipsRow.className = 'roster-chips';
-    chipsRow.innerHTML = `
-      ${isFav ? '<span class="roster-chip roster-fav-chip">★ Favorite</span>' : ''}
-      <span class="roster-chip">${breedName}</span>
-      <span class="roster-chip roster-lvl-chip${entry.isShiny ? ' shiny' : ''}">Lv. <strong>${entry.level}</strong>${entry.isShiny ? ' ✨' : ''}</span>
-      <span class="roster-chip roster-roll-chip ${gradeClass}"><strong>${stats.rollGrade}</strong></span>
-      <span class="roster-chip">Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
-      <span class="roster-chip">Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em></span>
-      <span class="roster-chip">Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
-      <span class="roster-chip">Quick Learner <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
-      <span class="roster-chip">XP <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong></span>
-      <span class="roster-chip">Lvl +<strong>${levelBonusPct}%</strong></span>
-    `;
-
-    mainCol.appendChild(topRow);
-    mainCol.appendChild(xpBarOuter);
-    mainCol.appendChild(chipsRow);
-    card.appendChild(mainCol);
-
-    const rightAction = document.createElement('div');
-    rightAction.className = 'roster-right-action';
-    rightAction.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: flex-end;
-      align-self: stretch;
-      gap: 10px;
-      flex-shrink: 0;
-    `;
-
-    const favBtn = document.createElement('button');
-    favBtn.type = 'button';
-    favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
-    favBtn.setAttribute('aria-pressed', String(isFav));
-    favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
-    favBtn.textContent = isFav ? '★' : '☆';
-    favBtn.style.cssText = `
-      width: 42px;
-      height: 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: ${isFav ? 'rgba(255, 234, 167, 0.22)' : 'rgba(255, 255, 255, 0.06)'};
-      border: 1.5px solid ${isFav ? '#ffeaa7' : 'rgba(255, 255, 255, 0.22)'};
-      color: ${isFav ? '#ffeaa7' : '#b2bec3'};
-      border-radius: 12px;
-      font-size: 1.45rem;
-      line-height: 1;
-      cursor: pointer;
-      flex-shrink: 0;
-      margin-bottom: auto;
-    `;
-    favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
-    rightAction.appendChild(favBtn);
-
-    const rerollBtn = document.createElement('button');
-    rerollBtn.type = 'button';
-    rerollBtn.className = 'reroll-dice-btn';
-    rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
-    rerollBtn.title = 'Reroll Stats & Shiny Chance (✨)';
-    rerollBtn.textContent = '🎲';
-    rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
-    rightAction.appendChild(rerollBtn);
-
-    if (canRetire) {
-      const retireBtn = document.createElement('button');
-      retireBtn.type = 'button';
-      retireBtn.className = 'retire-pill-btn retire-pill-two-line';
-      retireBtn.innerHTML = `
-        <span class="retire-line-top">Retire</span>
-        <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
-      `;
-      retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
-      rightAction.appendChild(retireBtn);
-    }
-
-    card.appendChild(rightAction);
-    container.appendChild(card);
+    updateRosterCardInPlace(refs, entry);
   });
+  pendingRosterInPlace = false;
 }
+
+(function bindRosterInteractionGuards() {
+  const container = document.getElementById('rosterListContainer');
+  if (!container) return;
+
+  container.addEventListener('pointerdown', () => {
+    isRosterPointerDown = true;
+  });
+
+  const flushPendingRosterUpdates = () => {
+    if (!isRosterPointerDown) return;
+    isRosterPointerDown = false;
+    if (pendingRosterRebuild) {
+      renderRosterTab(true);
+    } else if (pendingRosterInPlace) {
+      renderRosterTab(false);
+    }
+  };
+
+  window.addEventListener('pointerup', flushPendingRosterUpdates);
+  window.addEventListener('pointercancel', flushPendingRosterUpdates);
+})();
 
 // Decor Buy Handlers (capped at max placement limit: Tree 3, Flowers 5, Fountain 2)
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
@@ -1408,7 +1620,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   document.getElementById('placementBanner').style.display = 'none';
   closeMenu();
   updateUI();
-  renderRosterTab();
+  renderRosterTab(true);
   saveGame();
 });
 
@@ -3114,7 +3326,7 @@ function recruitDog(breed) {
     }
 
     updateUI();
-    renderRosterTab();
+    renderRosterTab(true);
     saveGame();
   }
 }
@@ -3799,17 +4011,16 @@ function loop(now) {
       ctx.globalAlpha = 1;
     }
 
-    // Refresh roster tab bars/stats periodically while open so typing in inputs isn't interrupted
+    // Update roster stats/XP/refunds in place periodically without tearing down buttons mid-tap
     const rosterTab = document.getElementById('tab-roster');
     if (
       gameModal.style.display === 'flex' &&
       rosterTab &&
       rosterTab.classList.contains('active') &&
-      document.activeElement?.tagName !== 'INPUT' &&
       now - lastRosterUiRefresh > 600
     ) {
       lastRosterUiRefresh = now;
-      renderRosterTab();
+      renderRosterTab(false);
     }
   } catch (err) {
     console.error("Game loop error caught:", err);
