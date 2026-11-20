@@ -3446,7 +3446,7 @@ function updateUI() {
     ? trueBonesPerDig.toLocaleString()
     : trueBonesPerDig.toFixed(1);
 
-  document.getElementById('bpsCount').textContent = `${formattedTrueBones} 🦴/dig`;
+  document.getElementById('bpsCount').textContent = `${formattedTrueBones} /dig`;
 
   document.getElementById('costToyBones').textContent = `${state.costs.toyBones.toLocaleString()} 🦴`;
   document.getElementById('costToySpeed').textContent = `${state.costs.toySpeed.toLocaleString()} 🦴`;
