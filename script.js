@@ -1727,7 +1727,7 @@ class Dog {
       this.state === 'WALK'
         ? 9 * Math.min(1.25, visualPace)
         : this.state === 'SLEEP'
-          ? 1.6
+          ? 1.5
           : 5 * Math.min(1.25, visualPace)
     );
 
@@ -1866,7 +1866,7 @@ class Dog {
       ctx.strokeStyle = 'rgba(255, 234, 167, 0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(0, 4, isSleeping ? 21 : 24 + Math.sin(this.animPhase * 3) * 3, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, 11, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -1881,10 +1881,10 @@ class Dog {
       ctx.restore();
     }
 
-    // Grounded contact shadow right on the tile surface
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+    // Contact shadow right on the tile surface
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
     ctx.beginPath();
-    ctx.ellipse(0, 6, isSleeping ? 20 : 17, isSleeping ? 9 : 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 5, isSleeping ? 21 : 17, isSleeping ? 9 : 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.save();
@@ -1897,24 +1897,24 @@ class Dog {
       feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
     }
 
-    // Keep sleeping dogs grounded on the tile surface (no floating offset) with gentle breathing & a relaxed lay-down tilt
+    // Lay sleeping dogs flat onto their side on the ground plane while retaining full sprite geometry
     const sleepBreath = isSleeping ? Math.sin(this.animPhase) * 0.45 : 0;
     const bounce = isSleeping
-      ? 0
+      ? -7.5
       : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump;
-    const poseTilt = isSleeping ? 0.14 : (this.state === 'DIG' ? 0.25 : 0);
+    const poseTilt = isSleeping ? Math.PI * 0.44 : (this.state === 'DIG' ? 0.25 : 0);
 
     ctx.translate(0, -bounce);
     ctx.rotate(poseTilt);
 
     const legSwing = isSleeping
-      ? 0
+      ? -1.5
       : (this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0));
-    const legHeight = isSleeping ? 7 : 10;
-    const pawY = isSleeping ? 4.5 : 4;
-    const pawHeight = isSleeping ? 2.5 : 3;
+    const legHeight = isSleeping ? 6.5 : 10;
+    const pawY = isSleeping ? 2 : 4;
+    const pawHeight = isSleeping ? 2.2 : 3;
     const tailWag = isSleeping
-      ? Math.sin(this.animPhase * 0.7) * 0.9
+      ? Math.sin(this.animPhase * 0.7) * 0.8
       : Math.sin(this.animPhase * 2.2) * 2.5;
 
     if (this.breed === 'aussie') {
@@ -2363,11 +2363,11 @@ class Dog {
       const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
 
       ctx.fillStyle = darkCol;
-      ctx.fillRect(-12 - legSwing, -3, 4.2, isSleeping ? 4.5 : 6);
-      ctx.fillRect(7 + legSwing, -3, 4.2, isSleeping ? 4.5 : 6);
+      ctx.fillRect(-12 - legSwing, -3, 4.2, isSleeping ? 4 : 6);
+      ctx.fillRect(7 + legSwing, -3, 4.2, isSleeping ? 4 : 6);
       ctx.fillStyle = tanAccent;
-      ctx.fillRect(-12 - legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 3.5 : 5);
-      ctx.fillRect(7 + legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 3.5 : 5);
+      ctx.fillRect(-12 - legSwing, isSleeping ? 0.5 : 2, 4.2, isSleeping ? 3 : 5);
+      ctx.fillRect(7 + legSwing, isSleeping ? 0.5 : 2, 4.2, isSleeping ? 3 : 5);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2) * 3.2;
       ctx.save();
@@ -2450,8 +2450,8 @@ class Dog {
       const whiteFur = '#f8f9fa';
 
       ctx.fillStyle = col;
-      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 6.5 : 8.5);
-      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 6.5 : 8.5);
+      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 6 : 8.5);
+      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 6 : 8.5);
       ctx.fillStyle = whiteFur;
       ctx.fillRect(-10.5 - legSwing, pawY, 4.2, pawHeight);
       ctx.fillRect(5.5 + legSwing, pawY, 4.2, pawHeight);
@@ -2569,22 +2569,10 @@ class Dog {
 
     ctx.restore();
 
-    if (isSleeping) {
-      // Gentle floating zZz indicator above sleeping pup
-      const zDrift = (this.animPhase * 3.5) % 10;
-      ctx.save();
-      ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-      ctx.fillStyle = 'rgba(223, 230, 233, 0.85)';
-      ctx.textAlign = 'center';
-      ctx.fillText('zZz', 10 + zDrift * 0.4, -22 - zDrift);
-      ctx.restore();
-    }
-
     if (state.showNameTags) {
       const entry = this.getRosterEntry();
-      const baseLabel = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
-      const label = isSleeping ? `${baseLabel} 💤` : baseLabel;
-      const tagY = isSleeping ? -31 : -36;
+      const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
+      const tagY = isSleeping ? -23 : -36;
 
       ctx.font = '700 11px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
       const textWidth = ctx.measureText(label).width;
@@ -2605,6 +2593,26 @@ class Dog {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, 0, tagY + 0.5);
+
+      if (isSleeping) {
+        // Place grey zZz right outside the name tag
+        const zDrift = (this.animPhase * 2.5) % 6;
+        ctx.save();
+        ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+        ctx.fillStyle = 'rgba(200, 210, 218, 0.85)';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('zZz', boxW / 2 + 5 + zDrift * 0.25, tagY - zDrift * 0.45);
+        ctx.restore();
+      }
+    } else if (isSleeping) {
+      const zDrift = (this.animPhase * 3.5) % 10;
+      ctx.save();
+      ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+      ctx.fillStyle = 'rgba(200, 210, 218, 0.85)';
+      ctx.textAlign = 'center';
+      ctx.fillText('zZz', 10 + zDrift * 0.4, -18 - zDrift);
+      ctx.restore();
     }
 
     ctx.restore();
