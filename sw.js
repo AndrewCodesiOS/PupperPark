@@ -1,5 +1,5 @@
 // Bump CACHE_NAME (e.g., pupperpark-v2 -> pupperpark-v3) whenever you update game files
-const CACHE_NAME = 'pupperpark-v3.5';
+const CACHE_NAME = 'pupperpark-v3.6';
 
 const ASSETS_TO_CACHE = [
   './',
