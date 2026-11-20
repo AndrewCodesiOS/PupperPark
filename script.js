@@ -448,6 +448,8 @@ const barkPopups = [];
 
 let pendingRetireDogId = null;
 let pendingRerollDogId = null;
+let backgroundedAt = null;
+let queuedAwayProgress = null;
 
 
 const TREAT_STACK_MAP = {
@@ -654,6 +656,65 @@ function rollOfflineTreasure() {
   return perkCopy;
 }
 
+function isModalCurrentlyOpen(modalId) {
+  const el = document.getElementById(modalId);
+  if (!el) return false;
+  const styleDisplay = el.style.display;
+  if (styleDisplay && styleDisplay !== 'none') return true;
+  return window.getComputedStyle(el).display !== 'none';
+}
+
+function flushQueuedAwayProgressIfReady() {
+  if (!queuedAwayProgress) return;
+  if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
+    return;
+  }
+  const { actualEarned, estimatedDigs, foundTreasure } = queuedAwayProgress;
+  queuedAwayProgress = null;
+  updateUI();
+  showOfflineModal(actualEarned, estimatedDigs, foundTreasure);
+}
+
+/**
+ * Credits idle bone gains (and optional away treasure) for elapsed time away,
+ * whether returning from background or reopening after a full close.
+ */
+function applyAwayProgress(rawElapsedSeconds) {
+  if (typeof rawElapsedSeconds !== 'number' || Number.isNaN(rawElapsedSeconds) || rawElapsedSeconds <= 15) {
+    return false;
+  }
+
+  const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
+  const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
+  const avgPerDig = getAverageBonesPerDig();
+  const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
+
+  // Very low chance to uncover a treasure while away (scales gently with estimatedDigs, capped at 3.5%)
+  const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
+  const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
+
+  const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
+  if (actualEarned > 0 || foundTreasure) {
+    updateUI();
+    if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
+      if (queuedAwayProgress) {
+        queuedAwayProgress.actualEarned += actualEarned;
+        queuedAwayProgress.estimatedDigs += estimatedDigs;
+        if (foundTreasure) {
+          queuedAwayProgress.foundTreasure = foundTreasure;
+        }
+      } else {
+        queuedAwayProgress = { actualEarned, estimatedDigs, foundTreasure };
+      }
+    } else {
+      showOfflineModal(actualEarned, estimatedDigs, foundTreasure);
+    }
+    return true;
+  }
+
+  return false;
+}
+
 function rebuildCanvasDogsFromRoster() {
   dogs.length = 0;
   state.roster.forEach(entry => {
@@ -813,20 +874,8 @@ function loadGame() {
   const now = Date.now();
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
-  if (elapsedSeconds > 15 && typeof state.lastSaveTime === 'number' && !Number.isNaN(state.lastSaveTime)) {
-    const effectiveSeconds = Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS);
-    const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
-    const avgPerDig = getAverageBonesPerDig();
-    const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
-
-    // Very low chance to uncover a treasure while away (scales gently with estimatedDigs, capped at 3.5%)
-    const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
-    const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
-
-    const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
-    if (earned > 0 || foundTreasure) {
-      showOfflineModal(actualEarned, 0, foundTreasure);
-    }
+  if (typeof state.lastSaveTime === 'number' && !Number.isNaN(state.lastSaveTime)) {
+    applyAwayProgress(elapsedSeconds);
   }
 
   state.lastSaveTime = now;
@@ -866,16 +915,54 @@ function requestSave() {
   }
 }
 
-setInterval(saveGame, 10000);
+setInterval(() => {
+  if (!document.hidden) {
+    saveGame();
+  }
+}, 10000);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    backgroundedAt = Date.now();
+    // Preserve prior lastSaveTime until returning so away duration isn't zeroed out
+    if (pendingSaveTimeout) {
+      clearTimeout(pendingSaveTimeout);
+      pendingSaveTimeout = null;
+    }
+    try {
+      localStorage.setItem('pupperpark_save', JSON.stringify({ ...state, cameraAngle }));
+    } catch (e) {
+      // Ignore storage quota/restriction errors
+    }
+  } else {
+    const awaySince = typeof backgroundedAt === 'number' && !Number.isNaN(backgroundedAt)
+      ? backgroundedAt
+      : state.lastSaveTime;
+    backgroundedAt = null;
+    lastTime = performance.now();
+
+    if (typeof awaySince === 'number' && !Number.isNaN(awaySince)) {
+      const elapsedSeconds = (Date.now() - awaySince) / 1000;
+      applyAwayProgress(elapsedSeconds);
+    }
+
     saveGame();
   }
 });
 
-window.addEventListener('pagehide', saveGame);
-window.addEventListener('beforeunload', saveGame);
+window.addEventListener('pagehide', () => {
+  if (backgroundedAt === null) {
+    backgroundedAt = Date.now();
+  }
+  saveGame();
+});
+
+window.addEventListener('beforeunload', () => {
+  if (backgroundedAt === null) {
+    backgroundedAt = Date.now();
+  }
+  saveGame();
+});
 
 function showOfflineModal(earned, estimatedDigs = 0, foundTreasure = null) {
   const modal = document.getElementById('offlineModal');
@@ -901,6 +988,7 @@ function showOfflineModal(earned, estimatedDigs = 0, foundTreasure = null) {
 
 document.getElementById('btnCloseOffline').addEventListener('click', () => {
   document.getElementById('offlineModal').style.display = 'none';
+  flushQueuedAwayProgressIfReady();
 });
 
 const gameModal = document.getElementById('gameModal');
@@ -1510,6 +1598,8 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   localStorage.removeItem('pupperpark_save');
   pendingRetireDogId = null;
   pendingRerollDogId = null;
+  backgroundedAt = null;
+  queuedAwayProgress = null;
   cameraAngle = 0;
   const starterShinyRoll = rollStarterShiny();
 
@@ -2736,7 +2826,7 @@ class Dog {
       ctx.beginPath(); ctx.ellipse(8.5, isSleeping ? -10.5 : -13.5, 3.2, 5.8, 0.2, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.ellipse(isSleeping ? 15 : 17, isSleeping ? -10.2 : -14, 5.2, 3.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e';
+      ctx.fillStyle = '#1e272e';
       ctx.beginPath(); ctx.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -15, 1.8, 0, Math.PI * 2); ctx.fill();
 
       if (isSleeping) {
@@ -2843,6 +2933,7 @@ function triggerPerkDraft() {
       sfx.upgrade();
       updateUI();
       saveGame();
+      flushQueuedAwayProgressIfReady();
     });
 
     choicesContainer.appendChild(btn);
@@ -3381,22 +3472,22 @@ document.getElementById('btnTreatXp')?.addEventListener('click', () => {
   buyTimedTreat('xp', 'treatXp');
 });
 
-document.getElementById('btnTreatKong').addEventListener('click', () => {
+document.getElementById('btnTreatKong')?.addEventListener('click', () => {
   initAudio();
   buyTimedTreat('kong', 'treatKong');
 });
 
-document.getElementById('btnTreatCup').addEventListener('click', () => {
+document.getElementById('btnTreatCup')?.addEventListener('click', () => {
   initAudio();
   buyTimedTreat('cup', 'treatCup');
 });
 
-document.getElementById('btnTreatFeast').addEventListener('click', () => {
+document.getElementById('btnTreatFeast')?.addEventListener('click', () => {
   initAudio();
   buyTimedTreat('feast', 'treatFeast');
 });
 
-document.getElementById('btnTreatBacon').addEventListener('click', () => {
+document.getElementById('btnTreatBacon')?.addEventListener('click', () => {
   initAudio();
   buyTimedTreat('bacon', 'treatBacon');
 });
@@ -3690,8 +3781,9 @@ let lastTime = performance.now();
 let lastRosterUiRefresh = 0;
 function loop(now) {
   try {
-    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    const rawDt = (now - lastTime) / 1000;
     lastTime = now;
+    const dt = rawDt > 1 ? 0.016 : Math.min(0.05, Math.max(0, rawDt));
 
     const prevKongCeil = Math.ceil(state.kongTimer);
     const prevBaconCeil = Math.ceil(state.baconTimer);
