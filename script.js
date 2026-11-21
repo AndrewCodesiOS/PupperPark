@@ -431,21 +431,13 @@ function getPerkMultipliers() {
   return { boneMult, workBonus, magicBonus };
 }
 
-/**
- * Computes the dog's personal dug-bone scaling factor (0 until the dog digs its first bone),
- * using a gentle Math.sqrt curve multiplied by effective Pack Growth and level bonus.
- */
 function getDogDugScaling(entry) {
   const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
-  if (dug <= 0) return 0; // Waits until this dog digs its first bone
+  if (dug <= 0) return 0;
   const stats = getEffectiveBreedStats(entry);
   return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * stats.packGrowth * getDogLevelBonusMult(entry);
 }
 
-/**
- * Overall dig payout multiplier for the pack (or for a specific dog entry),
- * combining dug-bone scaling, Frisbee speedMultiplier, Bacon treat, and Treasure perks.
- */
 function getDigMultiplier(entry = null) {
   let dugSum = 0;
   if (entry) {
@@ -461,9 +453,6 @@ function getDigMultiplier(entry = null) {
   return (DIG_MULT_BASE + dugSum) * state.speedMultiplier * baconBonus * workBonus * boneMult;
 }
 
-/**
- * Estimates true average bones awarded per standard dog dig across the current roster.
- */
 function getAverageBonesPerDig() {
   if (!state.roster || state.roster.length === 0) return state.digPower;
   const cupMult = state.pupCupTimer > 0 ? 2 : 1;
@@ -481,10 +470,6 @@ function getAverageBonesPerDig() {
   return total / state.roster.length;
 }
 
-/**
- * Estimates total digs performed over `seconds` across the current roster
- * using each dog's walk speed, dig duration, and work bonus.
- */
 function estimateOfflineDigs(seconds) {
   if (!state.roster || state.roster.length === 0 || seconds <= 0) return 0;
   const { workBonus } = getPerkMultipliers();
@@ -502,9 +487,6 @@ function estimateOfflineDigs(seconds) {
   return Math.max(1, Math.floor(totalDigs));
 }
 
-/**
- * Rolls 3 random treasures from PERK_POOL and randomly picks 1 of the 3.
- */
 function rollOfflineTreasure() {
   if (!Array.isArray(PERK_POOL) || PERK_POOL.length === 0) return null;
   const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
@@ -598,7 +580,6 @@ function loadGame() {
     }
   }
 
-  // Migrate legacy dogs/shinyDogs into roster if roster is empty
   if (!Array.isArray(state.roster) || state.roster.length === 0) {
     state.roster = [];
     Object.keys(state.dogs || {}).forEach(rawBreed => {
@@ -665,7 +646,6 @@ function loadGame() {
     const avgPerDig = getAverageBonesPerDig();
     const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
 
-    // Very low chance to uncover a treasure while away (scales gently with estimatedDigs, capped at 3.5%)
     const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
     const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
@@ -853,9 +833,7 @@ function toggleFavoriteDog(dogId) {
   initAudio();
   const target = state.roster.find(d => d.id === dogId);
   if (!target) return;
-  if (pendingRetireDogId === dogId && !target.isFavorite) {
-    // Allow un-favoriting even if modal isn't open
-  } else if (pendingRetireDogId === dogId && target.isFavorite) {
+  if (pendingRetireDogId === dogId && target.isFavorite) {
     pendingRetireDogId = null;
     if (retireConfirmModal) retireConfirmModal.style.display = 'none';
   }
@@ -869,7 +847,6 @@ function toggleFavoriteDog(dogId) {
   saveGame();
 }
 
-// Reroll Dog Traits & Stats Modal Handlers
 const rerollModal = document.getElementById('rerollModal');
 const rerollDogSummary = document.getElementById('rerollDogSummary');
 const rerollCurrentStats = document.getElementById('rerollCurrentStats');
@@ -1046,7 +1023,6 @@ rerollModal?.addEventListener('click', (e) => {
   }
 });
 
-// Retire Dog Confirmation Modal Handlers (up to 50% refund; favorited dogs cannot be retired)
 const retireConfirmModal = document.getElementById('retireConfirmModal');
 const retireConfirmText = document.getElementById('retireConfirmText');
 
@@ -1278,7 +1254,6 @@ function renderRosterTab() {
   });
 }
 
-// Decor Buy Handlers (capped at max placement limit: Tree 3, Flowers 5, Fountain 2)
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
   initAudio();
   const currentTreeOwned = state.decorInventory.tree || 0;
@@ -1315,7 +1290,6 @@ document.getElementById('btnBuyDecorFountain').addEventListener('click', () => {
   }
 });
 
-// Decor Place Handlers
 document.getElementById('btnPlaceDecorTree').addEventListener('click', () => {
   initAudio();
   const placedCount = state.placedDecorations.filter(d => d.type === 'tree').length;
@@ -1355,7 +1329,6 @@ document.getElementById('btnPlaceDecorFountain').addEventListener('click', () =>
   sfx.gather();
 });
 
-// Clear Park Confirmation Modal Handlers
 const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
 document.getElementById('btnClearDecor').addEventListener('click', () => {
   initAudio();
@@ -1376,7 +1349,6 @@ document.getElementById('btnConfirmClearDecor').addEventListener('click', () => 
   saveGame();
 });
 
-// Settings: Name Tags Toggle Handler
 document.getElementById('btnToggleNameTags')?.addEventListener('click', () => {
   initAudio();
   state.showNameTags = !state.showNameTags;
@@ -1385,7 +1357,6 @@ document.getElementById('btnToggleNameTags')?.addEventListener('click', () => {
   saveGame();
 });
 
-// Settings: Reset Progress Modal Handlers
 const resetConfirmModal = document.getElementById('resetConfirmModal');
 document.getElementById('btnResetProgress').addEventListener('click', () => {
   initAudio();
@@ -1550,8 +1521,8 @@ function getCenteredTilePos(gx, gy) {
 }
 
 const RESERVED_PROP_TILES = [
-  { gx: clampTileIndex(1.2), gy: clampTileIndex(1.2) }, // Doghouse
-  { gx: clampTileIndex(5.8), gy: clampTileIndex(1.2) }  // Starter corner tree
+  { gx: clampTileIndex(1.2), gy: clampTileIndex(1.2) },
+  { gx: clampTileIndex(5.8), gy: clampTileIndex(1.2) }
 ];
 
 function isTileOccupied(tileGx, tileGy) {
@@ -1743,7 +1714,7 @@ class Dog {
     this.gy = gy;
     this.targetGx = gx;
     this.targetGy = gy;
-    this.state = 'IDLE'; // 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'SNIFF'
+    this.state = 'IDLE';
     this.timer = 0.5 + Math.random() * 1.5;
     this.facingRight = Math.random() > 0.5;
     this.sleepFacingRight = this.facingRight;
@@ -1758,6 +1729,10 @@ class Dog {
     this.isMagicDig = false;
     this.onReachToy = null;
     this.pendingActionAfterWalk = null;
+  }
+
+  getRosterEntry() {
+    return state.roster.find(r => r.id === this.rosterId) || null;
   }
 
   enterSleep() {
@@ -1794,7 +1769,6 @@ class Dog {
   pickNewTarget() {
     this.pendingActionAfterWalk = null;
 
-    // Chance to walk over to a placed decoration and sniff it
     if (Array.isArray(state.placedDecorations) && state.placedDecorations.length > 0 && Math.random() < 0.3) {
       const dec = state.placedDecorations[Math.floor(Math.random() * state.placedDecorations.length)];
       const angle = Math.random() * Math.PI * 2;
@@ -1819,7 +1793,6 @@ class Dog {
     const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
     const { workBonus } = getPerkMultipliers();
 
-    // Keep visual movement & animation speeds gentle and capped so dogs stay smooth
     const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25);
     const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
@@ -1942,7 +1915,6 @@ class Dog {
     const stats = getEffectiveBreedStats(entry, this.breed);
     const cupMult = state.pupCupTimer > 0 ? 2 : 1;
 
-    // Scale standard bones per dig using the dog's dug-bone scaling + pack dig multiplier
     const dogDigMult = getDigMultiplier(entry);
     const rawAmount = state.digPower * stats.boneYield * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
@@ -1982,44 +1954,46 @@ class Dog {
     });
   }
 
-  draw(ctx) {
+  draw(targetCtx = ctx) {
+    const c = targetCtx || ctx;
+    if (!c) return;
+
     const pos = gridToScreen(this.gx, this.gy);
     const isSleeping = this.state === 'SLEEP';
     const isSniffing = this.state === 'SNIFF';
     const effectiveFacingRight = isSleeping ? this.sleepFacingRight : this.facingRight;
 
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
+    c.save();
+    c.translate(pos.x, pos.y);
 
     if (this.isShiny) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 234, 167, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, isSleeping ? 9.5 : 11, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
+      c.save();
+      c.strokeStyle = 'rgba(255, 234, 167, 0.8)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, isSleeping ? 9.5 : 11, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
     }
 
     if (this.state === 'DIG' && this.isMagicDig) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 234, 167, 0.85)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(0, 6, 26 + Math.sin(this.animPhase * 2) * 3, 13, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
+      c.save();
+      c.strokeStyle = 'rgba(255, 234, 167, 0.85)';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.ellipse(0, 6, 26 + Math.sin(this.animPhase * 2) * 3, 13, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
     }
 
-    // Contact shadow right on the tile surface
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
-    ctx.beginPath();
-    ctx.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
-    ctx.fill();
+    c.fillStyle = 'rgba(0, 0, 0, 0.34)';
+    c.beginPath();
+    c.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
+    c.fill();
 
-    ctx.save();
+    c.save();
     if (!effectiveFacingRight) {
-      ctx.scale(-1, 1);
+      c.scale(-1, 1);
     }
 
     let feastJump = 0;
@@ -2034,8 +2008,8 @@ class Dog {
       : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump - sniffBob;
     const poseTilt = isSleeping ? 0 : (this.state === 'DIG' ? 0.25 : (isSniffing ? 0.16 : 0));
 
-    ctx.translate(0, -bounce);
-    ctx.rotate(poseTilt);
+    c.translate(0, -bounce);
+    c.rotate(poseTilt);
 
     const legSwing = isSleeping
       ? -1.5
@@ -2053,87 +2027,87 @@ class Dog {
       const merlePatch = this.isShiny ? this.shinyColor : '#736560';
       const whiteFur = '#f8f9fa';
 
-      ctx.fillStyle = primaryColor;
-      ctx.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
-      ctx.fillRect(6.5 + legSwing, -2.5, 4.2, legHeight);
-      ctx.fillStyle = whiteFur;
-      ctx.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
-      ctx.fillRect(6.5 + legSwing, pawY, 4.2, pawHeight);
+      c.fillStyle = primaryColor;
+      c.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
+      c.fillRect(6.5 + legSwing, -2.5, 4.2, legHeight);
+      c.fillStyle = whiteFur;
+      c.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
+      c.fillRect(6.5 + legSwing, pawY, 4.2, pawHeight);
 
-      ctx.fillStyle = coatDark;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? -12 : -15, (isSleeping ? -6.5 : -10.5) + tailWag, 4.6, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = coatDark;
+      c.beginPath();
+      c.arc(isSleeping ? -12 : -15, (isSleeping ? -6.5 : -10.5) + tailWag, 4.6, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = coatDark;
-      ctx.beginPath();
-      ctx.ellipse(-1.5, -8, isSleeping ? 13 : 14.5, (isSleeping ? 7.8 : 9) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = coatDark;
+      c.beginPath();
+      c.ellipse(-1.5, -8, isSleeping ? 13 : 14.5, (isSleeping ? 7.8 : 9) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = merlePatch;
-      ctx.beginPath();
-      ctx.ellipse(-4, -10, 8.5, 4.5, -0.12, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = merlePatch;
+      c.beginPath();
+      c.ellipse(-4, -10, 8.5, 4.5, -0.12, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = primaryColor;
-      ctx.beginPath();
-      ctx.ellipse(2, -6.5, 6, 3.8, 0.1, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = primaryColor;
+      c.beginPath();
+      c.ellipse(2, -6.5, 6, 3.8, 0.1, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.arc(8.5, -7.5, 7.5, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.arc(8.5, -7.5, 7.5, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = coatDark;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17, 7.6, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = coatDark;
+      c.beginPath();
+      c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17, 7.6, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = primaryColor;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 11 : 12.5, isSleeping ? -11 : -15, 4.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = primaryColor;
+      c.beginPath();
+      c.arc(isSleeping ? 11 : 12.5, isSleeping ? -11 : -15, 4.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#382f2c';
-      ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -16 : -20.5);
-      ctx.lineTo(5.5, isSleeping ? -18.5 : -26.5);
-      ctx.lineTo(11, isSleeping ? -17.5 : -22.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = '#382f2c';
+      c.beginPath();
+      c.moveTo(6.5, isSleeping ? -16 : -20.5);
+      c.lineTo(5.5, isSleeping ? -18.5 : -26.5);
+      c.lineTo(11, isSleeping ? -17.5 : -22.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 15 : 17, isSleeping ? -11 : -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(isSleeping ? 15 : 17, isSleeping ? -11 : -14.8, 4.8, 3.4, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#1e272e';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 19 : 21, isSleeping ? -11.6 : -15.6, 1.8, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#1e272e';
+      c.beginPath();
+      c.arc(isSleeping ? 19 : 21, isSleeping ? -11.6 : -15.6, 1.8, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = primaryColor;
-      ctx.beginPath();
-      ctx.arc(14.2, isSleeping ? -14.2 : -19.2, 1.4, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = primaryColor;
+      c.beginPath();
+      c.arc(14.2, isSleeping ? -14.2 : -19.2, 1.4, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(13, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(13, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#1e1e1e';
-        ctx.beginPath();
-        ctx.arc(14.5, -17.3, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(14.9, -17.8, 0.55, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#1e1e1e';
+        c.beginPath();
+        c.arc(14.5, -17.3, 1.6, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(14.9, -17.8, 0.55, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'collie') {
@@ -2141,96 +2115,96 @@ class Dog {
       const featherShade = this.isShiny ? this.shinyColor : '#1e272e';
       const whiteFur = '#f8f9fa';
 
-      ctx.fillStyle = collieColor;
-      ctx.fillRect(-12 - legSwing, -2.5, 3.8, legHeight);
-      ctx.fillRect(7 - legSwing * 0.5, -2.5, 3.8, legHeight);
-      ctx.fillStyle = whiteFur;
-      ctx.fillRect(-12 - legSwing, pawY, 3.8, pawHeight);
-      ctx.fillRect(7 - legSwing * 0.5, pawY, 3.8, pawHeight);
+      c.fillStyle = collieColor;
+      c.fillRect(-12 - legSwing, -2.5, 3.8, legHeight);
+      c.fillRect(7 - legSwing * 0.5, -2.5, 3.8, legHeight);
+      c.fillStyle = whiteFur;
+      c.fillRect(-12 - legSwing, pawY, 3.8, pawHeight);
+      c.fillRect(7 - legSwing * 0.5, pawY, 3.8, pawHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.1) * 3.4;
-      ctx.save();
-      ctx.strokeStyle = collieColor;
-      ctx.lineWidth = 5.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
-      ctx.quadraticCurveTo(isSleeping ? -18.5 : -22.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
-      ctx.stroke();
+      c.save();
+      c.strokeStyle = collieColor;
+      c.lineWidth = 5.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
+      c.quadraticCurveTo(isSleeping ? -18.5 : -22.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
+      c.stroke();
 
-      ctx.strokeStyle = whiteFur;
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(isSleeping ? -17 : -20, (isSleeping ? -7.5 : -12.5) + wag * 0.3);
-      ctx.quadraticCurveTo(isSleeping ? -19 : -23.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
-      ctx.stroke();
-      ctx.restore();
+      c.strokeStyle = whiteFur;
+      c.lineWidth = 2.6;
+      c.beginPath();
+      c.moveTo(isSleeping ? -17 : -20, (isSleeping ? -7.5 : -12.5) + wag * 0.3);
+      c.quadraticCurveTo(isSleeping ? -19 : -23.5, (isSleeping ? -8.5 : -14) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -5 : -8.5) + wag * 0.6);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = collieColor;
-      ctx.beginPath();
-      ctx.ellipse(-1.5, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, -0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = collieColor;
+      c.beginPath();
+      c.ellipse(-1.5, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, -0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = featherShade;
-      ctx.beginPath();
-      ctx.ellipse(-5, isSleeping ? -9.5 : -11.5, 8, 4.2, -0.08, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = featherShade;
+      c.beginPath();
+      c.ellipse(-5, isSleeping ? -9.5 : -11.5, 8, 4.2, -0.08, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.ellipse(6.5, isSleeping ? -8.5 : -10.5, 5.5, 7.2, 0.15, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(6.5, isSleeping ? -8.5 : -10.5, 5.5, 7.2, 0.15, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = collieColor;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = collieColor;
+      c.beginPath();
+      c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = collieColor;
-      ctx.beginPath();
-      ctx.moveTo(7.5, isSleeping ? -16 : -21);
-      ctx.lineTo(6.5, isSleeping ? -18.5 : -27.5);
-      ctx.lineTo(12, isSleeping ? -16.5 : -21.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = collieColor;
+      c.beginPath();
+      c.moveTo(7.5, isSleeping ? -16 : -21);
+      c.lineTo(6.5, isSleeping ? -18.5 : -27.5);
+      c.lineTo(12, isSleeping ? -16.5 : -21.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -18.5 : -27.5);
-      ctx.lineTo(5.2, isSleeping ? -17 : -25.5);
-      ctx.lineTo(8.5, isSleeping ? -17 : -25.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.moveTo(6.5, isSleeping ? -18.5 : -27.5);
+      c.lineTo(5.2, isSleeping ? -17 : -25.5);
+      c.lineTo(8.5, isSleeping ? -17 : -25.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.moveTo(11, isSleeping ? -13 : -15.5);
-      ctx.lineTo(isSleeping ? 20 : 22.5, isSleeping ? -10.8 : -14.2);
-      ctx.lineTo(12.5, isSleeping ? -9.2 : -11);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.moveTo(11, isSleeping ? -13 : -15.5);
+      c.lineTo(isSleeping ? 20 : 22.5, isSleeping ? -10.8 : -14.2);
+      c.lineTo(12.5, isSleeping ? -9.2 : -11);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = '#11161d';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 19.7 : 22.2, isSleeping ? -10.9 : -14.3, 1.65, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#11161d';
+      c.beginPath();
+      c.arc(isSleeping ? 19.7 : 22.2, isSleeping ? -10.9 : -14.3, 1.65, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#1e1e1e';
-        ctx.beginPath();
-        ctx.arc(14.5, -18.2, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#1e1e1e';
+        c.beginPath();
+        c.arc(14.5, -18.2, 1.5, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'golden') {
@@ -2238,74 +2212,74 @@ class Dog {
       const richShade = this.isShiny ? this.shinyColor : '#d35400';
       const creamHighlight = '#ffeaa7';
 
-      ctx.fillStyle = col;
-      ctx.fillRect(-11.5 - legSwing, -2.5, 4.6, legHeight);
-      ctx.fillRect(6.5 + legSwing, -2.5, 4.6, legHeight);
+      c.fillStyle = col;
+      c.fillRect(-11.5 - legSwing, -2.5, 4.6, legHeight);
+      c.fillRect(6.5 + legSwing, -2.5, 4.6, legHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.1) * 3.5;
-      ctx.save();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 6.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9);
-      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
-      ctx.stroke();
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = 6.2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-14.5, isSleeping ? -7.5 : -9);
+      c.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
+      c.stroke();
 
-      ctx.strokeStyle = creamHighlight;
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(isSleeping ? -17 : -19.5, (isSleeping ? -8 : -12.5) + wag * 0.3);
-      ctx.quadraticCurveTo(isSleeping ? -19.5 : -23.5, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
-      ctx.stroke();
-      ctx.restore();
+      c.strokeStyle = creamHighlight;
+      c.lineWidth = 2.6;
+      c.beginPath();
+      c.moveTo(isSleeping ? -17 : -19.5, (isSleeping ? -8 : -12.5) + wag * 0.3);
+      c.quadraticCurveTo(isSleeping ? -19.5 : -23.5, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -21 : -26.5, (isSleeping ? -6.5 : -10.5) + wag * 0.6);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.ellipse(-1, isSleeping ? -8 : -9.5, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.8 : 9.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.ellipse(-1, isSleeping ? -8 : -9.5, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.8 : 9.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = creamHighlight;
-      ctx.beginPath();
-      ctx.ellipse(6.5, isSleeping ? -7 : -8.5, 5.5, 6, 0.1, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = creamHighlight;
+      c.beginPath();
+      c.ellipse(6.5, isSleeping ? -7 : -8.5, 5.5, 6, 0.1, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.4, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.4, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = creamHighlight;
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 14.5 : 16.5, isSleeping ? -10.2 : -14, 5, 3.6, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = creamHighlight;
+      c.beginPath();
+      c.ellipse(isSleeping ? 14.5 : 16.5, isSleeping ? -10.2 : -14, 5, 3.6, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = richShade;
-      ctx.beginPath();
-      ctx.ellipse(8.2, isSleeping ? -10.2 : -13.5, 3.3, 6, 0.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = richShade;
+      c.beginPath();
+      c.ellipse(8.2, isSleeping ? -10.2 : -13.5, 3.3, 6, 0.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -14.5, 1.8, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#1e1e1e';
+      c.beginPath();
+      c.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -14.5, 1.8, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#1e1e1e';
-        ctx.beginPath();
-        ctx.arc(13.8, -18, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(14.2, -18.5, 0.55, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#1e1e1e';
+        c.beginPath();
+        c.arc(13.8, -18, 1.6, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(14.2, -18.5, 0.55, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'husky') {
@@ -2313,91 +2287,91 @@ class Dog {
       const darkTrim = this.isShiny ? this.shinyColor : '#2d3436';
       const bellyWhite = '#f8f9fa';
 
-      ctx.fillStyle = col;
-      ctx.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
-      ctx.fillRect(6 + legSwing, -2.5, 4.2, legHeight);
-      ctx.fillStyle = bellyWhite;
-      ctx.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
-      ctx.fillRect(6 + legSwing, pawY, 4.2, pawHeight);
+      c.fillStyle = col;
+      c.fillRect(-11 - legSwing, -2.5, 4.2, legHeight);
+      c.fillRect(6 + legSwing, -2.5, 4.2, legHeight);
+      c.fillStyle = bellyWhite;
+      c.fillRect(-11 - legSwing, pawY, 4.2, pawHeight);
+      c.fillRect(6 + legSwing, pawY, 4.2, pawHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.1) * 3.5;
-      ctx.save();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 6.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-14, isSleeping ? -7.5 : -9);
-      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
-      ctx.stroke();
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = 6.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-14, isSleeping ? -7.5 : -9);
+      c.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
+      c.stroke();
 
-      ctx.strokeStyle = bellyWhite;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(isSleeping ? -16.5 : -18, (isSleeping ? -8 : -12) + wag * 0.3);
-      ctx.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
-      ctx.stroke();
-      ctx.restore();
+      c.strokeStyle = bellyWhite;
+      c.lineWidth = 3.5;
+      c.beginPath();
+      c.moveTo(isSleeping ? -16.5 : -18, (isSleeping ? -8 : -12) + wag * 0.3);
+      c.quadraticCurveTo(isSleeping ? -19 : -23, (isSleeping ? -9.5 : -15) + wag, isSleeping ? -20.5 : -25, (isSleeping ? -6.5 : -10) + wag * 0.6);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.5) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.5) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = bellyWhite;
-      ctx.beginPath();
-      ctx.ellipse(3, isSleeping ? -5.5 : -6.5, 10, 4, -0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = bellyWhite;
+      c.beginPath();
+      c.ellipse(3, isSleeping ? -5.5 : -6.5, 10, 4, -0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -12.5 : -17, 7.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(isSleeping ? 9 : 10.5, isSleeping ? -12.5 : -17, 7.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = darkTrim;
-      ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -16.5 : -21);
-      ctx.lineTo(9.5, isSleeping ? -19 : -28.5);
-      ctx.lineTo(13, isSleeping ? -16 : -20);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = darkTrim;
+      c.beginPath();
+      c.moveTo(6.5, isSleeping ? -16.5 : -21);
+      c.lineTo(9.5, isSleeping ? -19 : -28.5);
+      c.lineTo(13, isSleeping ? -16 : -20);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = bellyWhite;
-      ctx.beginPath();
-      ctx.moveTo(8, isSleeping ? -17 : -21.5);
-      ctx.lineTo(9.8, isSleeping ? -18 : -26);
-      ctx.lineTo(11.5, isSleeping ? -16.5 : -20.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = bellyWhite;
+      c.beginPath();
+      c.moveTo(8, isSleeping ? -17 : -21.5);
+      c.lineTo(9.8, isSleeping ? -18 : -26);
+      c.lineTo(11.5, isSleeping ? -16.5 : -20.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = bellyWhite;
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 13 : 14.5, isSleeping ? -11 : -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(10.5, isSleeping ? -12 : -16, 4.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = bellyWhite;
+      c.beginPath();
+      c.ellipse(isSleeping ? 13 : 14.5, isSleeping ? -11 : -14.5, 6.2, 4.2, 0.05, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(10.5, isSleeping ? -12 : -16, 4.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#1e272e';
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 18.2 : 20.2, isSleeping ? -11.6 : -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#1e272e';
+      c.beginPath();
+      c.ellipse(isSleeping ? 18.2 : 20.2, isSleeping ? -11.6 : -15.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e272e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(13.2, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e272e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(13.2, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#00a8ff';
-        ctx.beginPath();
-        ctx.arc(14.8, -17.5, 1.65, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(15.2, -18, 0.55, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#00a8ff';
+        c.beginPath();
+        c.arc(14.8, -17.5, 1.65, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(15.2, -18, 0.55, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'shiba') {
@@ -2405,86 +2379,86 @@ class Dog {
       const warmShade = this.isShiny ? this.shinyColor : '#a84300';
       const creamFur = '#fffaf0';
 
-      ctx.fillStyle = col;
-      ctx.fillRect(-10.5 - legSwing, -2.5, 4, legHeight);
-      ctx.fillRect(6 + legSwing, -2.5, 4, legHeight);
-      ctx.fillStyle = creamFur;
-      ctx.fillRect(-10.5 - legSwing, pawY, 4, pawHeight);
-      ctx.fillRect(6 + legSwing, pawY, 4, pawHeight);
+      c.fillStyle = col;
+      c.fillRect(-10.5 - legSwing, -2.5, 4, legHeight);
+      c.fillRect(6 + legSwing, -2.5, 4, legHeight);
+      c.fillStyle = creamFur;
+      c.fillRect(-10.5 - legSwing, pawY, 4, pawHeight);
+      c.fillRect(6 + legSwing, pawY, 4, pawHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.4) * 2.2;
-      ctx.save();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 4.6;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-13.5, isSleeping ? -7.5 : -9.5);
-      ctx.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -9 : -14) + wag, isSleeping ? -15 : -16.5, (isSleeping ? -12 : -19.5) + wag);
-      ctx.arc(isSleeping ? -13.5 : -14.5, (isSleeping ? -10.5 : -17.5) + wag, 2.4, 0.5 * Math.PI, 2.2 * Math.PI);
-      ctx.stroke();
-      ctx.restore();
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = 4.6;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-13.5, isSleeping ? -7.5 : -9.5);
+      c.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -9 : -14) + wag, isSleeping ? -15 : -16.5, (isSleeping ? -12 : -19.5) + wag);
+      c.arc(isSleeping ? -13.5 : -14.5, (isSleeping ? -10.5 : -17.5) + wag, 2.4, 0.5 * Math.PI, 2.2 * Math.PI);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.ellipse(-0.5, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.4) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.ellipse(-0.5, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.4 : 8.4) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = warmShade;
-      ctx.beginPath();
-      ctx.ellipse(-4, isSleeping ? -9.2 : -11, 7.5, 4, -0.08, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = warmShade;
+      c.beginPath();
+      c.ellipse(-4, isSleeping ? -9.2 : -11, 7.5, 4, -0.08, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = creamFur;
-      ctx.beginPath();
-      ctx.ellipse(2, isSleeping ? -5 : -5.8, 10.5, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = creamFur;
+      c.beginPath();
+      c.ellipse(2, isSleeping ? -5 : -5.8, 10.5, 4, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(isSleeping ? 9 : 10.5, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = warmShade;
-      ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -16 : -20.5);
-      ctx.lineTo(9.5, isSleeping ? -18.5 : -28.5);
-      ctx.lineTo(13.5, isSleeping ? -15.5 : -19.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = warmShade;
+      c.beginPath();
+      c.moveTo(6.5, isSleeping ? -16 : -20.5);
+      c.lineTo(9.5, isSleeping ? -18.5 : -28.5);
+      c.lineTo(13.5, isSleeping ? -15.5 : -19.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = creamFur;
-      ctx.beginPath();
-      ctx.moveTo(8, isSleeping ? -16.5 : -21);
-      ctx.lineTo(9.8, isSleeping ? -17.5 : -26);
-      ctx.lineTo(11.8, isSleeping ? -16 : -20);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = creamFur;
+      c.beginPath();
+      c.moveTo(8, isSleeping ? -16.5 : -21);
+      c.lineTo(9.8, isSleeping ? -17.5 : -26);
+      c.lineTo(11.8, isSleeping ? -16 : -20);
+      c.closePath();
+      c.fill();
 
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 13 : 15, isSleeping ? -10.2 : -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.beginPath();
+      c.ellipse(isSleeping ? 13 : 15, isSleeping ? -10.2 : -13.8, 5.2, 3.6, 0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#11161d';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10.8 : -14.4, 1.6, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#11161d';
+      c.beginPath();
+      c.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10.8 : -14.4, 1.6, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(12.8, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(12.8, -12.5, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#1e1e1e';
-        ctx.beginPath();
-        ctx.arc(14.2, -17, 1.55, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(14.6, -17.5, 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#1e1e1e';
+        c.beginPath();
+        c.arc(14.2, -17, 1.55, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(14.6, -17.5, 0.5, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'shepherd') {
@@ -2492,85 +2466,85 @@ class Dog {
       const darkCol = this.isShiny ? this.shinyColor : '#2c3e50';
       const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
 
-      ctx.fillStyle = darkCol;
-      ctx.fillRect(-12 - legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
-      ctx.fillRect(7 + legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
-      ctx.fillStyle = tanAccent;
-      ctx.fillRect(-12 - legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
-      ctx.fillRect(7 + legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
+      c.fillStyle = darkCol;
+      c.fillRect(-12 - legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
+      c.fillRect(7 + legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
+      c.fillStyle = tanAccent;
+      c.fillRect(-12 - legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
+      c.fillRect(7 + legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2) * 3.2;
-      ctx.save();
-      ctx.strokeStyle = darkCol;
-      ctx.lineWidth = 5.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
-      ctx.quadraticCurveTo(isSleeping ? -19 : -22, (isSleeping ? -7.5 : -11) + wag, isSleeping ? -21.5 : -25, (isSleeping ? -4.5 : -5) + wag * 0.5);
-      ctx.stroke();
-      ctx.restore();
+      c.save();
+      c.strokeStyle = darkCol;
+      c.lineWidth = 5.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
+      c.quadraticCurveTo(isSleeping ? -19 : -22, (isSleeping ? -7.5 : -11) + wag, isSleeping ? -21.5 : -25, (isSleeping ? -4.5 : -5) + wag * 0.5);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = saddleCol;
-      ctx.beginPath();
-      ctx.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, -0.06, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = saddleCol;
+      c.beginPath();
+      c.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, -0.06, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = darkCol;
-      ctx.beginPath();
-      ctx.ellipse(-2, isSleeping ? -10 : -12.5, 12.5, 4.8, -0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = darkCol;
+      c.beginPath();
+      c.ellipse(-2, isSleeping ? -10 : -12.5, 12.5, 4.8, -0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = saddleCol;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.4, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = saddleCol;
+      c.beginPath();
+      c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.4, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = darkCol;
-      ctx.beginPath();
-      ctx.moveTo(6.5, isSleeping ? -16.5 : -21);
-      ctx.lineTo(8.5, isSleeping ? -19.5 : -30.5);
-      ctx.lineTo(13, isSleeping ? -16 : -20.5);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = darkCol;
+      c.beginPath();
+      c.moveTo(6.5, isSleeping ? -16.5 : -21);
+      c.lineTo(8.5, isSleeping ? -19.5 : -30.5);
+      c.lineTo(13, isSleeping ? -16 : -20.5);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = tanAccent;
-      ctx.beginPath();
-      ctx.moveTo(8, isSleeping ? -17 : -21.5);
-      ctx.lineTo(9.2, isSleeping ? -18.5 : -27.5);
-      ctx.lineTo(11.5, isSleeping ? -16.5 : -21);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = tanAccent;
+      c.beginPath();
+      c.moveTo(8, isSleeping ? -17 : -21.5);
+      c.lineTo(9.2, isSleeping ? -18.5 : -27.5);
+      c.lineTo(11.5, isSleeping ? -16.5 : -21);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = darkCol;
-      ctx.beginPath();
-      ctx.moveTo(11, isSleeping ? -13.5 : -17);
-      ctx.lineTo(isSleeping ? 19.5 : 21.5, isSleeping ? -11.2 : -15.5);
-      ctx.lineTo(isSleeping ? 18.5 : 20.5, isSleeping ? -9.5 : -12.5);
-      ctx.lineTo(11, isSleeping ? -9.5 : -12);
-      ctx.closePath();
-      ctx.fill();
+      c.fillStyle = darkCol;
+      c.beginPath();
+      c.moveTo(11, isSleeping ? -13.5 : -17);
+      c.lineTo(isSleeping ? 19.5 : 21.5, isSleeping ? -11.2 : -15.5);
+      c.lineTo(isSleeping ? 18.5 : 20.5, isSleeping ? -9.5 : -12.5);
+      c.lineTo(11, isSleeping ? -9.5 : -12);
+      c.closePath();
+      c.fill();
 
-      ctx.fillStyle = '#11161d';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 19.3 : 21.3, isSleeping ? -11 : -14.8, 1.7, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#11161d';
+      c.beginPath();
+      c.arc(isSleeping ? 19.3 : 21.3, isSleeping ? -11 : -14.8, 1.7, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e272e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e272e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#f9ca24';
-        ctx.beginPath();
-        ctx.arc(14.5, -18, 1.55, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#1e272e';
-        ctx.beginPath();
-        ctx.arc(14.7, -18, 0.8, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#f9ca24';
+        c.beginPath();
+        c.arc(14.5, -18, 1.55, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#1e272e';
+        c.beginPath();
+        c.arc(14.7, -18, 0.8, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'beagle') {
@@ -2579,173 +2553,172 @@ class Dog {
       const saddleDark = this.isShiny ? this.shinyColor : '#3e2723';
       const whiteFur = '#f8f9fa';
 
-      ctx.fillStyle = col;
-      ctx.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
-      ctx.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
-      ctx.fillStyle = whiteFur;
-      ctx.fillRect(-10.5 - legSwing, pawY, 4.2, pawHeight);
-      ctx.fillRect(5.5 + legSwing, pawY, 4.2, pawHeight);
+      c.fillStyle = col;
+      c.fillRect(-10.5 - legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
+      c.fillRect(5.5 + legSwing, -2.5, 4.2, isSleeping ? 4.5 : 8.5);
+      c.fillStyle = whiteFur;
+      c.fillRect(-10.5 - legSwing, pawY, 4.2, pawHeight);
+      c.fillRect(5.5 + legSwing, pawY, 4.2, pawHeight);
 
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.3) * 3.8;
-      ctx.save();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 4.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-13.5, isSleeping ? -7.5 : -9);
-      ctx.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -10.5 : -16.5) + wag, isSleeping ? -16 : -18.5, (isSleeping ? -12.5 : -21) + wag);
-      ctx.stroke();
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = 4.2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-13.5, isSleeping ? -7.5 : -9);
+      c.quadraticCurveTo(isSleeping ? -17 : -19.5, (isSleeping ? -10.5 : -16.5) + wag, isSleeping ? -16 : -18.5, (isSleeping ? -12.5 : -21) + wag);
+      c.stroke();
 
-      ctx.strokeStyle = whiteFur;
-      ctx.lineWidth = 3.2;
-      ctx.beginPath();
-      ctx.moveTo(isSleeping ? -16.2 : -18.8, (isSleeping ? -11.5 : -18.5) + wag);
-      ctx.lineTo(isSleeping ? -16 : -18.5, (isSleeping ? -13.2 : -22) + wag);
-      ctx.stroke();
-      ctx.restore();
+      c.strokeStyle = whiteFur;
+      c.lineWidth = 3.2;
+      c.beginPath();
+      c.moveTo(isSleeping ? -16.2 : -18.8, (isSleeping ? -11.5 : -18.5) + wag);
+      c.lineTo(isSleeping ? -16 : -18.5, (isSleeping ? -13.2 : -22) + wag);
+      c.stroke();
+      c.restore();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.ellipse(-0.5, isSleeping ? -7.5 : -8.5, isSleeping ? 13 : 14.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.ellipse(-0.5, isSleeping ? -7.5 : -8.5, isSleeping ? 13 : 14.5, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = saddleDark;
-      ctx.beginPath();
-      ctx.ellipse(-3, isSleeping ? -9.2 : -10.5, 7.5, 4, -0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = saddleDark;
+      c.beginPath();
+      c.ellipse(-3, isSleeping ? -9.2 : -10.5, 7.5, 4, -0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.ellipse(4.5, isSleeping ? -5.2 : -6.2, 7.5, 4.2, 0.05, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(4.5, isSleeping ? -5.2 : -6.2, 7.5, 4.2, 0.05, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 9 : 10.5, isSleeping ? -11.5 : -15.5, 7, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(isSleeping ? 9 : 10.5, isSleeping ? -11.5 : -15.5, 7, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = whiteFur;
-      ctx.beginPath();
-      ctx.ellipse(isSleeping ? 13 : 15, isSleeping ? -9.5 : -12.5, 5.2, 3.4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(isSleeping ? 13 : 15, isSleeping ? -9.5 : -12.5, 5.2, 3.4, 0, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = earBrown;
-      ctx.beginPath();
-      ctx.ellipse(7.5, isSleeping ? -9.5 : -11.8, 3.6, 6.5, 0.18, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = earBrown;
+      c.beginPath();
+      c.ellipse(7.5, isSleeping ? -9.5 : -11.8, 3.6, 6.5, 0.18, 0, Math.PI * 2);
+      c.fill();
 
-      ctx.fillStyle = '#11161d';
-      ctx.beginPath();
-      ctx.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10 : -13.2, 1.65, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = '#11161d';
+      c.beginPath();
+      c.arc(isSleeping ? 17.6 : 19.6, isSleeping ? -10 : -13.2, 1.65, 0, Math.PI * 2);
+      c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(12.2, -12, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(12.2, -12, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.fillStyle = '#1e1e1e';
-        ctx.beginPath();
-        ctx.arc(13.5, -16.2, 1.55, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(13.9, -16.7, 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = '#1e1e1e';
+        c.beginPath();
+        c.arc(13.5, -16.2, 1.55, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(13.9, -16.7, 0.5, 0, Math.PI * 2);
+        c.fill();
       }
 
     } else if (this.breed === 'labrador') {
       const col = this.isShiny ? this.shinyColor : '#e5a93c';
       const earCol = this.isShiny ? this.shinyColor : '#c78924';
-      ctx.fillStyle = col;
-      ctx.fillRect(-11 - legSwing, -2.5, 4.5, legHeight);
-      ctx.fillRect(6 + legSwing, -2.5, 4.5, legHeight);
+      c.fillStyle = col;
+      c.fillRect(-11 - legSwing, -2.5, 4.5, legHeight);
+      c.fillRect(6 + legSwing, -2.5, 4.5, legHeight);
       const wag = isSleeping ? tailWag : Math.sin(this.animPhase * 2.2) * 3.5;
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(-14, isSleeping ? -7.5 : -9);
-      ctx.quadraticCurveTo(isSleeping ? -18.5 : -22, (isSleeping ? -9 : -13) + wag, isSleeping ? -21 : -25, (isSleeping ? -6.5 : -9) + wag * 0.5);
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = col;
-      ctx.stroke();
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(-1, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = earCol;
-      ctx.beginPath(); ctx.ellipse(8.5, isSleeping ? -10.5 : -13.5, 3.2, 5.8, 0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(isSleeping ? 15 : 17, isSleeping ? -10.2 : -14, 5.2, 3.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath(); ctx.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -15, 1.8, 0, Math.PI * 2); ctx.fill();
+      c.fillStyle = col;
+      c.beginPath();
+      c.moveTo(-14, isSleeping ? -7.5 : -9);
+      c.quadraticCurveTo(isSleeping ? -18.5 : -22, (isSleeping ? -9 : -13) + wag, isSleeping ? -21 : -25, (isSleeping ? -6.5 : -9) + wag * 0.5);
+      c.lineWidth = 5;
+      c.lineCap = 'round';
+      c.strokeStyle = col;
+      c.stroke();
+      c.fillStyle = col;
+      c.beginPath(); c.ellipse(-1, isSleeping ? -7.5 : -9, isSleeping ? 13 : 14.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = col;
+      c.beginPath(); c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12 : -16.5, 7.2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = earCol;
+      c.beginPath(); c.ellipse(8.5, isSleeping ? -10.5 : -13.5, 3.2, 5.8, 0.2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = col;
+      c.beginPath(); c.ellipse(isSleeping ? 15 : 17, isSleeping ? -10.2 : -14, 5.2, 3.8, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#1e1e1e';
+      c.beginPath(); c.arc(isSleeping ? 19.2 : 21.2, isSleeping ? -10.8 : -15, 1.8, 0, Math.PI * 2); c.fill();
 
       if (isSleeping) {
-        ctx.strokeStyle = '#1e1e1e';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
+        c.strokeStyle = '#1e1e1e';
+        c.lineWidth = 1.5;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(12.5, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+        c.stroke();
       } else {
-        ctx.beginPath();
-        ctx.arc(14, -18.5, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        c.beginPath();
+        c.arc(14, -18.5, 1.5, 0, Math.PI * 2);
+        c.fill();
       }
     }
 
-    ctx.restore();
+    c.restore();
 
     if (state.showNameTags) {
       const entry = state.roster.find(r => r.id === this.rosterId) || null;
       const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
       const tagY = isSleeping ? -22 : -36;
 
-      ctx.font = '700 11px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-      const textWidth = ctx.measureText(label).width;
+      c.font = '700 11px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+      const textWidth = c.measureText(label).width;
       const padX = 7;
       const boxW = textWidth + padX * 2;
       const boxH = 18;
 
-      ctx.fillStyle = 'rgba(13, 11, 26, 0.78)';
-      ctx.beginPath();
-      ctx.roundRect(-boxW / 2, tagY - boxH / 2, boxW, boxH, 7);
-      ctx.fill();
+      c.fillStyle = 'rgba(13, 11, 26, 0.78)';
+      c.beginPath();
+      c.roundRect(-boxW / 2, tagY - boxH / 2, boxW, boxH, 7);
+      c.fill();
 
-      ctx.strokeStyle = this.isShiny ? 'rgba(255, 234, 167, 0.85)' : 'rgba(162, 155, 254, 0.5)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      c.strokeStyle = this.isShiny ? 'rgba(255, 234, 167, 0.85)' : 'rgba(162, 155, 254, 0.5)';
+      c.lineWidth = 1;
+      c.stroke();
 
-      ctx.fillStyle = this.isShiny ? '#ffeaa7' : '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, 0, tagY + 0.5);
+      c.fillStyle = this.isShiny ? '#ffeaa7' : '#ffffff';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(label, 0, tagY + 0.5);
 
       if (isSleeping) {
-        // Place grey zZz right outside the name tag
         const zDrift = (this.animPhase * 2.5) % 6;
-        ctx.save();
-        ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-        ctx.fillStyle = 'rgba(200, 210, 218, 0.85)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('zZz', boxW / 2 + 5 + zDrift * 0.25, tagY - zDrift * 0.45);
-        ctx.restore();
+        c.save();
+        c.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+        c.fillStyle = 'rgba(200, 210, 218, 0.85)';
+        c.textAlign = 'left';
+        c.textBaseline = 'middle';
+        c.fillText('zZz', boxW / 2 + 5 + zDrift * 0.25, tagY - zDrift * 0.45);
+        c.restore();
       }
     } else if (isSleeping) {
       const zDrift = (this.animPhase * 3.5) % 10;
-      ctx.save();
-      ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-      ctx.fillStyle = 'rgba(200, 210, 218, 0.85)';
-      ctx.textAlign = 'center';
-      ctx.fillText('zZz', 10 + zDrift * 0.4, -16 - zDrift);
-      ctx.restore();
+      c.save();
+      c.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+      c.fillStyle = 'rgba(200, 210, 218, 0.85)';
+      c.textAlign = 'center';
+      c.fillText('zZz', 10 + zDrift * 0.4, -16 - zDrift);
+      c.restore();
     }
 
-    ctx.restore();
+    c.restore();
   }
 }
 
@@ -2796,6 +2769,7 @@ function triggerPerkDraft() {
 }
 
 function drawIsometricTile(gx, gy) {
+  if (!ctx) return;
   const top = gridToScreen(gx, gy);
   const right = gridToScreen(gx + 1, gy);
   const bottom = gridToScreen(gx + 1, gy + 1);
@@ -2817,11 +2791,11 @@ function drawIsometricTile(gx, gy) {
 }
 
 function drawDoghouse() {
+  if (!ctx) return;
   const pos = gridToScreen(1.2, 1.2);
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Determine whether camera is viewing the back of the doghouse
   const cosA = Math.cos(cameraAngle);
   const sinA = Math.sin(cameraAngle);
   const viewingBack = (cosA + sinA) < 0;
@@ -2832,7 +2806,6 @@ function drawDoghouse() {
   ctx.fill();
 
   if (viewingBack) {
-    // Solid back wall & plank detail when rotated behind the doghouse
     ctx.fillStyle = '#73431a';
     ctx.fillRect(-20, -24, 40, 26);
 
@@ -2853,7 +2826,6 @@ function drawDoghouse() {
     ctx.closePath();
     ctx.fill();
   } else {
-    // Front wall, doorway & roof when facing the camera
     ctx.fillStyle = '#8d5524';
     ctx.fillRect(-20, -24, 40, 26);
 
@@ -2878,6 +2850,7 @@ function drawDoghouse() {
 }
 
 function drawTree() {
+  if (!ctx) return;
   const pos = gridToScreen(5.8, 1.2);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -2905,6 +2878,7 @@ function drawTree() {
 }
 
 function drawCustomTree(gx, gy) {
+  if (!ctx) return;
   const pos = getCenteredTilePos(gx, gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -2932,6 +2906,7 @@ function drawCustomTree(gx, gy) {
 }
 
 function drawFlowerPatch(gx, gy) {
+  if (!ctx) return;
   const pos = getCenteredTilePos(gx, gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -2978,6 +2953,7 @@ function drawFlowerPatch(gx, gy) {
 let fountainAnimPhase = 0;
 
 function drawWaterFountain(gx, gy) {
+  if (!ctx) return;
   const pos = getCenteredTilePos(gx, gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3048,6 +3024,7 @@ function drawWaterFountain(gx, gy) {
 }
 
 function drawMushroomCluster(m) {
+  if (!ctx) return;
   const pos = gridToScreen(m.gx, m.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3087,6 +3064,7 @@ function drawMushroomCluster(m) {
 }
 
 function drawBoneSprite(x, y, isMagic) {
+  if (!ctx) return;
   ctx.save();
   ctx.translate(x, y);
 
@@ -3114,7 +3092,7 @@ function drawBoneSprite(x, y, isMagic) {
 }
 
 function drawTennisBall() {
-  if (!state.hasTennisBall) return;
+  if (!ctx || !state.hasTennisBall) return;
   const pos = gridToScreen(tennisBall.gx, tennisBall.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3145,7 +3123,7 @@ function drawTennisBall() {
 }
 
 function drawFrisbee() {
-  if (!state.hasFrisbee) return;
+  if (!ctx || !state.hasFrisbee) return;
   const pos = gridToScreen(frisbee.gx, frisbee.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3172,7 +3150,7 @@ function drawFrisbee() {
 }
 
 function drawDuck() {
-  if (!state.hasDuck) return;
+  if (!ctx || !state.hasDuck) return;
   const pos = gridToScreen(duck.gx, duck.gy);
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -3312,7 +3290,6 @@ document.getElementById('btnTreatBacon').addEventListener('click', () => {
   }
 });
 
-// Modest Jumbo Meaty Bone reward: +15% digPower (at least +1) instead of a large bone burst
 document.getElementById('btnTreatFeast').addEventListener('click', () => {
   initAudio();
   if (state.bones >= state.costs.treatFeast) {
@@ -3339,7 +3316,6 @@ document.getElementById('btnTreatCup').addEventListener('click', () => {
   }
 });
 
-// XP-boosting treat handler (optional button #btnTreatXp)
 document.getElementById('btnTreatXp')?.addEventListener('click', () => {
   initAudio();
   const xpCost = state.costs.treatXp || 220;
@@ -3488,11 +3464,7 @@ function updateUI() {
   if (btnBuyDecorTree) {
     const atMaxTree = ownedTree >= 3;
     btnBuyDecorTree.disabled = state.magicBones < 500 || atMaxTree;
-    if (atMaxTree) {
-      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Max Owned';
-    } else {
-      btnBuyDecorTree.querySelector('.btn-name').textContent = 'Buy Tree';
-    }
+    btnBuyDecorTree.querySelector('.btn-name').textContent = atMaxTree ? 'Max Owned' : 'Buy Tree';
   }
 
   const btnPlaceDecorTree = document.getElementById('btnPlaceDecorTree');
@@ -3514,11 +3486,7 @@ function updateUI() {
   if (btnBuyDecorFlowers) {
     const atMaxFlowers = ownedFlowers >= 5;
     btnBuyDecorFlowers.disabled = state.magicBones < 250 || atMaxFlowers;
-    if (atMaxFlowers) {
-      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Max Owned';
-    } else {
-      btnBuyDecorFlowers.querySelector('.btn-name').textContent = 'Buy Flowers';
-    }
+    btnBuyDecorFlowers.querySelector('.btn-name').textContent = atMaxFlowers ? 'Max Owned' : 'Buy Flowers';
   }
 
   const btnPlaceDecorFlowers = document.getElementById('btnPlaceDecorFlowers');
@@ -3540,11 +3508,7 @@ function updateUI() {
   if (btnBuyDecorFountain) {
     const atMaxFountain = ownedFountain >= 2;
     btnBuyDecorFountain.disabled = state.magicBones < 1000 || atMaxFountain;
-    if (atMaxFountain) {
-      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Max Owned';
-    } else {
-      btnBuyDecorFountain.querySelector('.btn-name').textContent = 'Buy Fountain';
-    }
+    btnBuyDecorFountain.querySelector('.btn-name').textContent = atMaxFountain ? 'Max Owned' : 'Buy Fountain';
   }
 
   const btnPlaceDecorFountain = document.getElementById('btnPlaceDecorFountain');
@@ -3615,10 +3579,10 @@ let lastTime = performance.now();
 let lastRosterUiRefresh = 0;
 function loop(now) {
   try {
+    if (!ctx) return;
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
 
-    // Advance fountain water ripple phase once per frame regardless of placed fountain count
     fountainAnimPhase += dt * 5;
 
     const prevKongCeil = Math.ceil(state.kongTimer);
@@ -3642,7 +3606,6 @@ function loop(now) {
 
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // Park-wide intermittent bark scheduler (awake dogs only)
     if (parkBarkCooldown > 0) {
       parkBarkCooldown = Math.max(0, parkBarkCooldown - dt);
     }
@@ -3801,11 +3764,14 @@ function loop(now) {
     renderables.sort((a, b) => a.sortY - b.sortY);
     renderables.forEach(item => {
       if (item && typeof item.draw === 'function') {
-        item.draw();
+        try {
+          item.draw();
+        } catch (renderErr) {
+          console.error('Renderable draw error:', renderErr);
+        }
       }
     });
 
-    // Draw fast-fading floating bark callouts inside a name-tag-like pill above barking dogs
     for (let i = barkPopups.length - 1; i >= 0; i--) {
       const b = barkPopups[i];
       b.age += dt;
@@ -3940,7 +3906,6 @@ function loop(now) {
       ctx.globalAlpha = 1;
     }
 
-    // Refresh roster tab bars/stats periodically while open so typing in inputs isn't interrupted
     const rosterTab = document.getElementById('tab-roster');
     if (
       gameModal.style.display === 'flex' &&
