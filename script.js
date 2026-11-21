@@ -5,7 +5,7 @@ const MAX_DOGS = 6;
 const MAX_DOG_LEVEL = 100;
 const MAX_BONES = 250000;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
-const AWAY_RESUME_GRACE_MS = 2500; // Prevents duplicate away check right after loadGame()
+const AWAY_MIN_SECONDS = 15;
 const RETIRE_REFUND_RATE = 0.25; // 25% of retired dog's dug bones (no waiting period)
 const LEVEL_BONUS_PER_LEVEL = 0.0015; // +0.15% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
@@ -65,11 +65,9 @@ const BREED_LABELS = {
 };
 
 const DEFAULT_PUP_NAMES = [
-  // Original 16
   'Biscuit', 'Scout', 'Max', 'Rover', 'Waffles', 'Buddy',
   'Maple', 'Ziggy', 'Otis', 'Penny', 'Bramble', 'Toby',
   'Sunny', 'Nora', 'Rosie', 'Finn',
-  // 50 Additional Names
   'clover', 'Milo', 'Daisy', 'Charlie', 'Luna', 'Bear',
   'Hazel', 'Moose', 'Olive', 'Pip', 'Pippa', 'Jasper',
   'Willow', 'Archie', 'Ruby', 'Theo', 'Juniper', 'Gus',
@@ -97,16 +95,16 @@ function playSound(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.05) {
   try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    
+
     osc.type = type;
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    
+
     gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-    
+
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-    
+
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {
@@ -195,17 +193,6 @@ const sfx = {
   bark: (breed) => playBarkSound(breed)
 };
 
-/**
- * Ranked by earnings contribution & utility over time (Dalmatian replaced by Labrador):
- * - payoutMult: base Bone Yield multiplier
- * - scalingMult: base Pack Growth multiplier on this dog's sqrt(bonesEarned) contribution
- * - xpMult: base Quick Learner multiplier on XP earned per dig toward leveling up
- * - magicBonus: extra magic bone probability on digs
- * - walkMult: visual walk speed multiplier
- * - digSec: base dig duration in seconds
- * - treasureChance: per-dig chance to trigger a treasure draft
- * - priceCap: flat cost cap so breeds stay affordable under MAX_BONES
- */
 const BREED_CONFIG = {
   aussie:   { rank: 1, cost: 20,    costMult: 1.20, priceCap: 1200,   walkMult: 1.10, digSec: 1.85, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
   beagle:   { rank: 2, cost: 120,   costMult: 1.22, priceCap: 3000,   walkMult: 1.00, digSec: 1.75, payoutMult: 1.35, scalingMult: 1.12, xpMult: 1.05, magicBonus: 0.010, treasureChance: 0.00008 },
@@ -252,9 +239,9 @@ function rollStarterShiny() {
 }
 
 function rollDogBonusStats() {
-  const payoutSteps = Math.floor(Math.random() * 6); // 0..5 -> +0.00 to +0.25
-  const scalingSteps = Math.floor(Math.random() * 9); // 0..8 -> +0.00 to +0.16
-  const xpSteps = Math.floor(Math.random() * 6); // 0..5 -> +0.00 to +0.15
+  const payoutSteps = Math.floor(Math.random() * 6);
+  const scalingSteps = Math.floor(Math.random() * 9);
+  const xpSteps = Math.floor(Math.random() * 6);
 
   const bonusPayout = Math.round(payoutSteps * 0.05 * 100) / 100;
   const bonusScaling = Math.round(scalingSteps * 0.02 * 100) / 100;
@@ -403,7 +390,7 @@ let state = {
   idleMultiplier: BASE_IDLE_MULTIPLIER,
   magicChance: 0.22,
   boneCapReachedNotified: false,
-  
+
   kongTimer: 0,
   baconTimer: 0,
   pupCupTimer: 0,
@@ -415,7 +402,7 @@ let state = {
   xpTreatStacks: 0,
   feastStacks: 0,
   feastAnimTimer: 0,
-  
+
   hasTennisBall: false,
   hasFrisbee: false,
   hasDuck: false,
@@ -449,14 +436,7 @@ const barkPopups = [];
 
 let pendingRetireDogId = null;
 let pendingRerollDogId = null;
-let backgroundedAt = null;
 let queuedAwayProgress = null;
-let awayProgressClaimedForCycle = false;
-let lastLoadCompletedAt = 0;
-
-function markAwayCyclePending() {
-  awayProgressClaimedForCycle = false;
-}
 
 const TREAT_STACK_MAP = {
   xp:    { timerKey: 'xpTreatTimer', stackKey: 'xpTreatStacks', duration: TREAT_CONFIG.treatXp.duration },
@@ -576,21 +556,13 @@ function getPerkMultipliers() {
   return { boneMult, workBonus, magicBonus };
 }
 
-/**
- * Computes the dog's personal dug-bone scaling factor (0 until the dog digs its first bone),
- * using a gentle Math.sqrt curve multiplied by effective Pack Growth and level bonus.
- */
 function getDogDugScaling(entry) {
   const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
-  if (dug <= 0) return 0; // Waits until this dog digs its first bone
+  if (dug <= 0) return 0;
   const stats = getEffectiveBreedStats(entry);
   return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * stats.packGrowth * getDogLevelBonusMult(entry);
 }
 
-/**
- * Overall dig payout multiplier for the pack (or for a specific dog entry),
- * combining dug-bone scaling, Frisbee speedMultiplier, Feast/Bacon treats, and Treasure perks.
- */
 function getDigMultiplier(entry = null) {
   let dugSum = 0;
   if (entry) {
@@ -606,9 +578,6 @@ function getDigMultiplier(entry = null) {
   return (DIG_MULT_BASE + dugSum) * state.speedMultiplier * treatDigMult * workBonus * boneMult;
 }
 
-/**
- * Estimates true average bones awarded per standard dog dig across the current roster.
- */
 function getAverageBonesPerDig() {
   if (!state.roster || state.roster.length === 0) return state.digPower;
   const cupMult = getActiveCupMult();
@@ -626,10 +595,6 @@ function getAverageBonesPerDig() {
   return total / state.roster.length;
 }
 
-/**
- * Estimates total digs performed over `seconds` across the current roster
- * using each dog's walk speed, dig duration, and work bonus.
- */
 function estimateOfflineDigs(seconds) {
   if (!state.roster || state.roster.length === 0 || seconds <= 0) return 0;
   const { workBonus } = getPerkMultipliers();
@@ -647,9 +612,6 @@ function estimateOfflineDigs(seconds) {
   return Math.max(1, Math.floor(totalDigs));
 }
 
-/**
- * Rolls 3 random treasures from PERK_POOL and randomly picks 1 of the 3.
- */
 function rollOfflineTreasure() {
   if (!Array.isArray(PERK_POOL) || PERK_POOL.length === 0) return null;
   const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
@@ -682,28 +644,29 @@ function flushQueuedAwayProgressIfReady() {
 }
 
 /**
- * Credits idle bone gains (and optional away treasure) for elapsed time away,
- * guarded so each away cycle is credited at most once.
+ * Single source of truth for away-time rewards: computes reward from elapsed seconds
+ * between `lastSaveTime` and `now`, immediately advances `state.lastSaveTime = now`,
+ * and persists so subsequent events never re-measure the same interval.
  */
-function applyAwayProgress(rawElapsedSeconds, { fromResume = false } = {}) {
-  if (awayProgressClaimedForCycle) {
-    return false;
-  }
-  if (fromResume && lastLoadCompletedAt > 0 && (Date.now() - lastLoadCompletedAt) < AWAY_RESUME_GRACE_MS) {
-    return false;
-  }
-  if (typeof rawElapsedSeconds !== 'number' || Number.isNaN(rawElapsedSeconds) || rawElapsedSeconds <= 15) {
+function settleAwayProgressSinceLastSave(now = Date.now()) {
+  if (typeof state.lastSaveTime !== 'number' || Number.isNaN(state.lastSaveTime)) {
+    state.lastSaveTime = now;
     return false;
   }
 
-  awayProgressClaimedForCycle = true;
+  const rawElapsedSeconds = (now - state.lastSaveTime) / 1000;
+  // Advance checkpoint immediately so this exact window cannot be settled twice
+  state.lastSaveTime = now;
+
+  if (rawElapsedSeconds <= AWAY_MIN_SECONDS) {
+    return false;
+  }
 
   const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
   const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
   const avgPerDig = getAverageBonesPerDig();
   const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
 
-  // Very low chance to uncover a treasure while away (scales gently with estimatedDigs, capped at 3.5%)
   const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
   const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
@@ -749,7 +712,6 @@ function normalizeBreedKey(breed) {
 }
 
 function loadGame() {
-  markAwayCyclePending();
   const saved = localStorage.getItem('pupperpark_save');
   if (saved) {
     try {
@@ -820,7 +782,6 @@ function loadGame() {
     }
   }
 
-  // Migrate legacy dogs/shinyDogs into roster if roster is empty
   if (!Array.isArray(state.roster) || state.roster.length === 0) {
     state.roster = [];
     Object.keys(state.dogs || {}).forEach(rawBreed => {
@@ -886,17 +847,9 @@ function loadGame() {
 
   syncBreedCountsFromRoster();
 
-  const now = Date.now();
-  const elapsedSeconds = (now - state.lastSaveTime) / 1000;
-
-  if (typeof state.lastSaveTime === 'number' && !Number.isNaN(state.lastSaveTime)) {
-    applyAwayProgress(elapsedSeconds, { fromResume: false });
-  }
-
-  state.lastSaveTime = now;
-  backgroundedAt = null;
-  lastLoadCompletedAt = Date.now();
-  saveGame();
+  const loadNow = Date.now();
+  settleAwayProgressSinceLastSave(loadNow);
+  saveGameAt(loadNow);
   rebuildCanvasDogsFromRoster();
 }
 
@@ -904,10 +857,10 @@ const SAVE_COOLDOWN_MS = 1200;
 let pendingSaveTimeout = null;
 let lastWrittenSaveAt = 0;
 
-function saveGame() {
+function saveGameAt(timestampMs = Date.now()) {
   state.cameraAngle = cameraAngle;
-  state.lastSaveTime = Date.now();
-  lastWrittenSaveAt = state.lastSaveTime;
+  state.lastSaveTime = timestampMs;
+  lastWrittenSaveAt = timestampMs;
   if (pendingSaveTimeout) {
     clearTimeout(pendingSaveTimeout);
     pendingSaveTimeout = null;
@@ -919,11 +872,17 @@ function saveGame() {
   }
 }
 
+function saveGame() {
+  saveGameAt(Date.now());
+}
+
 function requestSave() {
+  const now = Date.now();
   state.cameraAngle = cameraAngle;
-  const elapsed = Date.now() - lastWrittenSaveAt;
+  state.lastSaveTime = now;
+  const elapsed = now - lastWrittenSaveAt;
   if (elapsed >= SAVE_COOLDOWN_MS) {
-    saveGame();
+    saveGameAt(now);
   } else if (!pendingSaveTimeout) {
     pendingSaveTimeout = setTimeout(() => {
       pendingSaveTimeout = null;
@@ -939,51 +898,23 @@ setInterval(() => {
 }, 10000);
 
 document.addEventListener('visibilitychange', () => {
+  const now = Date.now();
   if (document.hidden) {
-    markAwayCyclePending();
-    if (backgroundedAt === null) {
-      backgroundedAt = Date.now();
-    }
-    // Preserve prior lastSaveTime until returning so away duration isn't zeroed out
-    if (pendingSaveTimeout) {
-      clearTimeout(pendingSaveTimeout);
-      pendingSaveTimeout = null;
-    }
-    try {
-      localStorage.setItem('pupperpark_save', JSON.stringify({ ...state, cameraAngle }));
-    } catch (e) {
-      // Ignore storage quota/restriction errors
-    }
+    // Checkpoint departure time once when hiding
+    saveGameAt(now);
   } else {
-    const awaySince = typeof backgroundedAt === 'number' && !Number.isNaN(backgroundedAt)
-      ? backgroundedAt
-      : state.lastSaveTime;
-    backgroundedAt = null;
     lastTime = performance.now();
-
-    if (typeof awaySince === 'number' && !Number.isNaN(awaySince)) {
-      const elapsedSeconds = (Date.now() - awaySince) / 1000;
-      applyAwayProgress(elapsedSeconds, { fromResume: true });
-    }
-
-    saveGame();
+    settleAwayProgressSinceLastSave(now);
+    saveGameAt(Date.now());
   }
 });
 
 window.addEventListener('pagehide', () => {
-  markAwayCyclePending();
-  if (backgroundedAt === null) {
-    backgroundedAt = Date.now();
-  }
-  saveGame();
+  saveGameAt(Date.now());
 });
 
 window.addEventListener('beforeunload', () => {
-  markAwayCyclePending();
-  if (backgroundedAt === null) {
-    backgroundedAt = Date.now();
-  }
-  saveGame();
+  saveGameAt(Date.now());
 });
 
 function showOfflineModal(earned, estimatedDigs = 0, foundTreasure = null) {
@@ -1052,7 +983,7 @@ drawerHandle.addEventListener('pointerup', (e) => {
   if (!isDrawerDragging) return;
   isDrawerDragging = false;
   drawerHandle.releasePointerCapture(e.pointerId);
-  
+
   if (drawerCurrentY > 80) {
     closeMenu();
   }
@@ -1065,7 +996,7 @@ tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     tabBtns.forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
+
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'tab-roster') {
@@ -1159,6 +1090,7 @@ function renderRerollModalContent(dogId, resultInfo = null) {
 
   if (btnConfirmReroll) {
     btnConfirmReroll.disabled = !canAfford;
+    btnConfirmReroll.style.touchAction = 'manipulation';
   }
 }
 
@@ -1180,7 +1112,12 @@ function closeRerollModal() {
   }
 }
 
+let lastRerollActionAt = 0;
 function executeDogReroll(dogId) {
+  const now = performance.now();
+  if (now - lastRerollActionAt < 140) return;
+  lastRerollActionAt = now;
+
   initAudio();
   const entry = state.roster.find(d => d.id === dogId);
   if (!entry) return;
@@ -1250,16 +1187,24 @@ function executeDogReroll(dogId) {
   });
 }
 
-btnConfirmReroll?.addEventListener('click', () => {
-  if (pendingRerollDogId) {
-    executeDogReroll(pendingRerollDogId);
-  }
-});
+if (btnConfirmReroll) {
+  btnConfirmReroll.style.touchAction = 'manipulation';
+  btnConfirmReroll.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pendingRerollDogId) {
+      executeDogReroll(pendingRerollDogId);
+    }
+  });
+}
 
-btnCloseRerollModal?.addEventListener('click', () => {
-  initAudio();
-  closeRerollModal();
-});
+if (btnCloseRerollModal) {
+  btnCloseRerollModal.style.touchAction = 'manipulation';
+  btnCloseRerollModal.addEventListener('click', (e) => {
+    e.stopPropagation();
+    initAudio();
+    closeRerollModal();
+  });
+}
 
 rerollModal?.addEventListener('click', (e) => {
   if (e.target === rerollModal) {
@@ -1267,7 +1212,7 @@ rerollModal?.addEventListener('click', (e) => {
   }
 });
 
-// Retire Dog Confirmation Modal Handlers (up to 50% refund)
+// Retire Dog Confirmation Modal Handlers
 const retireConfirmModal = document.getElementById('retireConfirmModal');
 const retireConfirmText = document.getElementById('retireConfirmText');
 
@@ -1334,6 +1279,11 @@ function retireDog(dogId) {
 function renderRosterTab() {
   const container = document.getElementById('rosterListContainer');
   if (!container) return;
+
+  // Avoid wiping DOM right in the middle of an active touch/pointer press on a roster button
+  if (container.querySelector('button:active')) {
+    return;
+  }
 
   const canRetire = state.roster.length > 1;
   container.innerHTML = '';
@@ -1463,8 +1413,12 @@ function renderRosterTab() {
       cursor: pointer;
       flex-shrink: 0;
       margin-bottom: auto;
+      touch-action: manipulation;
     `;
-    favBtn.addEventListener('click', () => toggleFavoriteDog(entry.id));
+    favBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFavoriteDog(entry.id);
+    });
     rightAction.appendChild(favBtn);
 
     const rerollBtn = document.createElement('button');
@@ -1473,7 +1427,13 @@ function renderRosterTab() {
     rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
     rerollBtn.title = `Reroll Stats & Shiny Chance (${getRerollCost(entry)} ✨)`;
     rerollBtn.textContent = '🎲';
-    rerollBtn.addEventListener('click', () => openRerollModal(entry.id));
+    rerollBtn.style.touchAction = 'manipulation';
+    rerollBtn.style.minWidth = '42px';
+    rerollBtn.style.minHeight = '42px';
+    rerollBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openRerollModal(entry.id);
+    });
     rightAction.appendChild(rerollBtn);
 
     if (canRetire) {
@@ -1481,6 +1441,7 @@ function renderRosterTab() {
       retireBtn.type = 'button';
       retireBtn.className = 'retire-pill-btn retire-pill-two-line';
       retireBtn.disabled = isFav;
+      retireBtn.style.touchAction = 'manipulation';
       if (isFav) {
         retireBtn.setAttribute('aria-disabled', 'true');
         retireBtn.setAttribute('aria-label', `Cannot retire ${entry.name} while favorited`);
@@ -1493,7 +1454,8 @@ function renderRosterTab() {
         <span class="retire-line-top">Retire</span>
         <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
       `;
-      retireBtn.addEventListener('click', () => {
+      retireBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (!isFav) {
           openRetireConfirm(entry.id);
         }
@@ -1506,7 +1468,6 @@ function renderRosterTab() {
   });
 }
 
-// Decor Buy Handlers (capped at max placement limit: Tree 3, Flowers 5, Fountain 2)
 document.getElementById('btnBuyDecorTree').addEventListener('click', () => {
   initAudio();
   const currentTreeOwned = state.decorInventory.tree || 0;
@@ -1543,7 +1504,6 @@ document.getElementById('btnBuyDecorFountain').addEventListener('click', () => {
   }
 });
 
-// Decor Place Handlers
 document.getElementById('btnPlaceDecorTree').addEventListener('click', () => {
   initAudio();
   const placedCount = state.placedDecorations.filter(d => d.type === 'tree').length;
@@ -1586,7 +1546,6 @@ document.getElementById('btnPlaceDecorFountain').addEventListener('click', () =>
   sfx.gather();
 });
 
-// Clear Park Confirmation Modal Handlers
 const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
 document.getElementById('btnClearDecor').addEventListener('click', () => {
   initAudio();
@@ -1607,7 +1566,6 @@ document.getElementById('btnConfirmClearDecor').addEventListener('click', () => 
   saveGame();
 });
 
-// Settings: Name Tags Toggle Handler
 document.getElementById('btnToggleNameTags')?.addEventListener('click', () => {
   initAudio();
   state.showNameTags = !state.showNameTags;
@@ -1616,7 +1574,6 @@ document.getElementById('btnToggleNameTags')?.addEventListener('click', () => {
   saveGame();
 });
 
-// Settings: Reset Progress Modal Handlers
 const resetConfirmModal = document.getElementById('resetConfirmModal');
 document.getElementById('btnResetProgress').addEventListener('click', () => {
   initAudio();
@@ -1633,12 +1590,10 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   localStorage.removeItem('pupperpark_save');
   pendingRetireDogId = null;
   pendingRerollDogId = null;
-  backgroundedAt = null;
   queuedAwayProgress = null;
-  awayProgressClaimedForCycle = true;
-  lastLoadCompletedAt = Date.now();
   cameraAngle = 0;
   const starterShinyRoll = rollStarterShiny();
+  const resetNow = Date.now();
 
   state = {
     bones: 0,
@@ -1682,7 +1637,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
     isDraftingPerk: false,
 
     costs: {},
-    lastSaveTime: Date.now()
+    lastSaveTime: resetNow
   };
 
   initDefaultCosts();
@@ -1703,7 +1658,7 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   closeMenu();
   updateUI();
   renderRosterTab();
-  saveGame();
+  saveGameAt(resetNow);
 });
 
 const GRID_SIZE = 7;
@@ -1741,7 +1696,7 @@ resize();
 function gridToScreen(gx, gy) {
   const cx = GRID_SIZE / 2;
   const cy = GRID_SIZE / 2;
-  
+
   const relX = gx - cx;
   const relY = gy - cy;
 
@@ -1759,7 +1714,7 @@ function gridToScreen(gx, gy) {
 function screenToGrid(sx, sy) {
   const dx = sx - originX;
   const dy = sy - originY;
-  
+
   const isoX = dx / (TILE_W / 2);
   const isoY = dy / (TILE_H / 2);
 
@@ -1807,7 +1762,7 @@ canvas.addEventListener('pointerdown', (e) => {
 
   holdStartTime = performance.now();
   holdPosition = { x: e.clientX, y: e.clientY };
-  
+
   if (holdTimer) clearTimeout(holdTimer);
   holdTimer = setTimeout(() => {
     initAudio();
@@ -1842,7 +1797,7 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointermove', (e) => {
   const moveDist = Math.hypot(e.clientX - lastMouseX, e.clientY - lastMouseY);
   dragTotalDist += moveDist;
-  
+
   if (moveDist > 15) {
     if (holdTimer) {
       clearTimeout(holdTimer);
@@ -1880,7 +1835,7 @@ canvas.addEventListener('pointerup', (e) => {
     state.cameraAngle = cameraAngle;
     saveGame();
   }
-  
+
   if (dragTotalDist < 5) {
     initAudio();
     const rect = canvas.getBoundingClientRect();
@@ -1957,7 +1912,7 @@ class Dog {
     this.gy = gy;
     this.targetGx = gx;
     this.targetGy = gy;
-    this.state = 'IDLE'; // 'IDLE' | 'WALK' | 'DIG' | 'SLEEP'
+    this.state = 'IDLE';
     this.timer = 0.5 + Math.random() * 1.5;
     this.facingRight = Math.random() > 0.5;
     this.sleepFacingRight = this.facingRight;
@@ -2019,7 +1974,6 @@ class Dog {
     const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
     const { workBonus } = getPerkMultipliers();
 
-    // Keep visual movement & animation speeds gentle and capped so dogs stay smooth
     const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25);
     const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
@@ -2070,11 +2024,11 @@ class Dog {
 
         this.state = 'DIG';
         this.timer = (cfg.digSec || 1.0) / visualPace;
-        
+
         const { magicBonus } = getPerkMultipliers();
         const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus + (cfg.magicBonus || 0));
         this.isMagicDig = Math.random() < magicChanceTotal || state.kongTimer > 0;
-        
+
         const treasureChance = cfg.treasureChance || 0.00008;
         if (!state.isDraftingPerk && Math.random() < treasureChance) {
           triggerPerkDraft();
@@ -2114,8 +2068,6 @@ class Dog {
     const stats = getEffectiveBreedStats(entry, this.breed);
     const cupMult = getActiveCupMult();
 
-    // Magic bone digs award strictly 1 Magic Bone and 0 regular bones;
-    // regular bone digs scale with dug-bone scaling + pack dig multiplier.
     const dogDigMult = getDigMultiplier(entry);
     const rawAmount = state.digPower * stats.boneYield * cupMult * dogDigMult;
     const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
@@ -2194,7 +2146,6 @@ class Dog {
       ctx.restore();
     }
 
-    // Contact shadow right on the tile surface
     ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
     ctx.beginPath();
     ctx.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
@@ -2210,7 +2161,6 @@ class Dog {
       feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
     }
 
-    // Lay down upright/curled against the ground (no sideways roll/tilt)
     const sleepBreath = isSleeping ? Math.sin(this.animPhase) * 0.35 : 0;
     const bounce = isSleeping
       ? -6.5
@@ -2318,7 +2268,6 @@ class Dog {
         ctx.arc(14.9, -17.8, 0.55, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'collie') {
       const collieColor = this.isShiny ? this.shinyColor : '#2d3436';
       const featherShade = this.isShiny ? this.shinyColor : '#1e272e';
@@ -2415,7 +2364,6 @@ class Dog {
         ctx.arc(14.9, -18.7, 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'golden') {
       const col = this.isShiny ? this.shinyColor : '#f39c12';
       const richShade = this.isShiny ? this.shinyColor : '#d35400';
@@ -2490,7 +2438,6 @@ class Dog {
         ctx.arc(14.2, -18.5, 0.55, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'husky') {
       const col = this.isShiny ? this.shinyColor : '#636e72';
       const darkTrim = this.isShiny ? this.shinyColor : '#2d3436';
@@ -2582,7 +2529,6 @@ class Dog {
         ctx.arc(15.2, -18, 0.55, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'shiba') {
       const col = this.isShiny ? this.shinyColor : '#d35400';
       const warmShade = this.isShiny ? this.shinyColor : '#a84300';
@@ -2669,7 +2615,6 @@ class Dog {
         ctx.arc(14.6, -17.5, 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'shepherd') {
       const saddleCol = this.isShiny ? this.shinyColor : '#d35400';
       const darkCol = this.isShiny ? this.shinyColor : '#2c3e50';
@@ -2755,7 +2700,6 @@ class Dog {
         ctx.arc(14.7, -18, 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'beagle') {
       const col = this.isShiny ? this.shinyColor : '#e67e22';
       const earBrown = this.isShiny ? this.shinyColor : '#6d4c41';
@@ -2839,7 +2783,6 @@ class Dog {
         ctx.arc(13.9, -16.7, 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
-
     } else if (this.breed === 'labrador') {
       const col = this.isShiny ? this.shinyColor : '#e5a93c';
       const earCol = this.isShiny ? this.shinyColor : '#c78924';
@@ -2908,7 +2851,6 @@ class Dog {
       ctx.fillText(label, 0, tagY + 0.5);
 
       if (isSleeping) {
-        // Place grey zZz right outside the name tag
         const zDrift = (this.animPhase * 2.5) % 6;
         ctx.save();
         ctx.font = '800 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
@@ -2949,7 +2891,7 @@ function triggerPerkDraft() {
   options.forEach(perk => {
     const btn = document.createElement('button');
     btn.className = 'perk-choice-btn';
-    
+
     let rarityColor = '#a29bfe';
     if (perk.rarity === 'Rare') rarityColor = '#0984e3';
     if (perk.rarity === 'Legendary') rarityColor = '#f1c40f';
@@ -2962,7 +2904,7 @@ function triggerPerkDraft() {
       </div>
       <div style="font-size: 0.8rem; color: #b2bec3; margin-top: 2px;">${perk.desc}</div>
     `;
-    
+
     btn.addEventListener('click', () => {
       state.perks.push(perk);
       state.isDraftingPerk = false;
@@ -3005,7 +2947,6 @@ function drawDoghouse() {
   ctx.save();
   ctx.translate(pos.x, pos.y);
 
-  // Determine whether camera is viewing the back of the doghouse
   const cosA = Math.cos(cameraAngle);
   const sinA = Math.sin(cameraAngle);
   const viewingBack = (cosA + sinA) < 0;
@@ -3016,7 +2957,6 @@ function drawDoghouse() {
   ctx.fill();
 
   if (viewingBack) {
-    // Solid back wall & plank detail when rotated behind the doghouse
     ctx.fillStyle = '#73431a';
     ctx.fillRect(-20, -24, 40, 26);
 
@@ -3037,7 +2977,6 @@ function drawDoghouse() {
     ctx.closePath();
     ctx.fill();
   } else {
-    // Front wall, doorway & roof when facing the camera
     ctx.fillStyle = '#8d5524';
     ctx.fillRect(-20, -24, 40, 26);
 
@@ -3403,7 +3342,7 @@ function recruitDog(breed) {
   if (state.bones >= cost) {
     spendRegularBones(cost);
     state.costs[normBreed] = computeNextCappedCost(cost, cfg.costMult, cfg.priceCap);
-  
+
     const isShiny = Math.random() < SPAWN_SHINY_ODDS;
     const chosenColor = isShiny ? SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)] : null;
 
@@ -3455,7 +3394,6 @@ function buyTimedTreat(treatKey, costKey) {
   }
 }
 
-// 1. Tennis Ball: +3% of current digPower (min +1), capped at MAX_DIG_POWER (25), price cap 10,000
 document.getElementById('btnToyBones').addEventListener('click', () => {
   initAudio();
   if (state.digPower >= MAX_DIG_POWER) return;
@@ -3472,7 +3410,6 @@ document.getElementById('btnToyBones').addEventListener('click', () => {
   }
 });
 
-// 2. Rubber Duck: +2% offline dig yield per toy, capped at MAX_IDLE_MULTIPLIER (60%), price cap 15,000
 document.getElementById('btnToyIdle').addEventListener('click', () => {
   initAudio();
   const econ = TOY_CONFIG.toyIdle;
@@ -3487,7 +3424,6 @@ document.getElementById('btnToyIdle').addEventListener('click', () => {
   }
 });
 
-// 3. Frisbee: +3% multiplicative speedMultiplier per toy, capped at MAX_SPEED_MULTIPLIER (1.80x), price cap 20,000
 document.getElementById('btnToySpeed').addEventListener('click', () => {
   initAudio();
   if (state.speedMultiplier >= MAX_SPEED_MULTIPLIER) return;
@@ -3503,7 +3439,6 @@ document.getElementById('btnToySpeed').addEventListener('click', () => {
   }
 });
 
-// Treats (ordered by value & cost, all timed up to 5 stacks)
 document.getElementById('btnTreatXp')?.addEventListener('click', () => {
   initAudio();
   buyTimedTreat('xp', 'treatXp');
@@ -3594,7 +3529,7 @@ function refreshTreatButtonTimers() {
 function updateUI() {
   document.getElementById('boneCount').textContent = Math.floor(state.bones).toLocaleString();
   document.getElementById('magicBoneCount').textContent = Math.floor(state.magicBones).toLocaleString();
-  
+
   const total = getTotalDogs();
   const atDogCap = total >= MAX_DOGS;
   document.getElementById('miniDogs').textContent = `${total}/${MAX_DOGS}`;
@@ -3622,7 +3557,7 @@ function updateUI() {
   });
 
   document.getElementById('perkCountDisplay').textContent = state.perks.length;
-  
+
   const perkListContainer = document.getElementById('perkListContainer');
   if (perkListContainer) {
     perkListContainer.innerHTML = '';
@@ -3875,7 +3810,6 @@ function loop(now) {
 
     if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-    // Park-wide intermittent bark scheduler (awake dogs only)
     if (parkBarkCooldown > 0) {
       parkBarkCooldown = Math.max(0, parkBarkCooldown - dt);
     }
@@ -4035,7 +3969,6 @@ function loop(now) {
       }
     });
 
-    // Draw fast-fading floating bark callouts above barking dogs
     for (let i = barkPopups.length - 1; i >= 0; i--) {
       const b = barkPopups[i];
       b.age += dt;
@@ -4155,14 +4088,15 @@ function loop(now) {
       ctx.globalAlpha = 1;
     }
 
-    // Refresh roster tab bars/stats periodically while open so typing in inputs isn't interrupted
     const rosterTab = document.getElementById('tab-roster');
+    const isPointerDownInRoster = containerHasActivePointer(rosterTab);
     if (
       gameModal.style.display === 'flex' &&
       rosterTab &&
       rosterTab.classList.contains('active') &&
       document.activeElement?.tagName !== 'INPUT' &&
-      now - lastRosterUiRefresh > 600
+      !isPointerDownInRoster &&
+      now - lastRosterUiRefresh > 900
     ) {
       lastRosterUiRefresh = now;
       renderRosterTab();
@@ -4172,6 +4106,11 @@ function loop(now) {
   }
 
   requestAnimationFrame(loop);
+}
+
+function containerHasActivePointer(container) {
+  if (!container) return false;
+  return Boolean(container.querySelector('button:active'));
 }
 
 updateUI();
