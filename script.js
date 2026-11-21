@@ -1253,7 +1253,7 @@ function openRetireConfirm(dogId) {
   initAudio();
   if (state.roster.length <= 1) return;
   const target = state.roster.find(d => d.id === dogId);
-  if (!target) return;
+  if (!target || target.isFavorite) return;
 
   pendingRetireDogId = dogId;
   const refundPct = Math.round(RETIRE_REFUND_RATE * 100);
@@ -1286,7 +1286,7 @@ function retireDog(dogId) {
   if (state.roster.length <= 1) return;
 
   const idx = state.roster.findIndex(d => d.id === dogId);
-  if (idx === -1) return;
+  if (idx === -1 || state.roster[idx].isFavorite) return;
 
   const [retiredDog] = state.roster.splice(idx, 1);
   const refundPct = Math.round(RETIRE_REFUND_RATE * 100);
@@ -1458,11 +1458,24 @@ function renderRosterTab() {
       const retireBtn = document.createElement('button');
       retireBtn.type = 'button';
       retireBtn.className = 'retire-pill-btn retire-pill-two-line';
+      retireBtn.disabled = isFav;
+      if (isFav) {
+        retireBtn.setAttribute('aria-disabled', 'true');
+        retireBtn.setAttribute('aria-label', `Cannot retire ${entry.name} while favorited`);
+        retireBtn.title = 'Unfavorite pup before retiring';
+      } else {
+        retireBtn.setAttribute('aria-label', `Retire ${entry.name}`);
+        retireBtn.title = '';
+      }
       retireBtn.innerHTML = `
         <span class="retire-line-top">Retire</span>
         <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
       `;
-      retireBtn.addEventListener('click', () => openRetireConfirm(entry.id));
+      retireBtn.addEventListener('click', () => {
+        if (!isFav) {
+          openRetireConfirm(entry.id);
+        }
+      });
       rightAction.appendChild(retireBtn);
     }
 
