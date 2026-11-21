@@ -5,6 +5,7 @@ const MAX_DOGS = 6;
 const MAX_DOG_LEVEL = 100;
 const MAX_BONES = 250000;
 const MAX_OFFLINE_SECONDS = 604800; // 7 days
+const AWAY_RESUME_GRACE_MS = 2500; // Prevents duplicate away check right after loadGame()
 const RETIRE_REFUND_RATE = 0.25; // 25% of retired dog's dug bones (no waiting period)
 const LEVEL_BONUS_PER_LEVEL = 0.0015; // +0.15% per level above Lv.1
 const DIG_MULT_BASE = 1.0; // Base dig multiplier before dug-bone scaling
@@ -450,7 +451,12 @@ let pendingRetireDogId = null;
 let pendingRerollDogId = null;
 let backgroundedAt = null;
 let queuedAwayProgress = null;
+let awayProgressClaimedForCycle = false;
+let lastLoadCompletedAt = 0;
 
+function markAwayCyclePending() {
+  awayProgressClaimedForCycle = false;
+}
 
 const TREAT_STACK_MAP = {
   xp:    { timerKey: 'xpTreatTimer', stackKey: 'xpTreatStacks', duration: TREAT_CONFIG.treatXp.duration },
@@ -677,12 +683,20 @@ function flushQueuedAwayProgressIfReady() {
 
 /**
  * Credits idle bone gains (and optional away treasure) for elapsed time away,
- * whether returning from background or reopening after a full close.
+ * guarded so each away cycle is credited at most once.
  */
-function applyAwayProgress(rawElapsedSeconds) {
+function applyAwayProgress(rawElapsedSeconds, { fromResume = false } = {}) {
+  if (awayProgressClaimedForCycle) {
+    return false;
+  }
+  if (fromResume && lastLoadCompletedAt > 0 && (Date.now() - lastLoadCompletedAt) < AWAY_RESUME_GRACE_MS) {
+    return false;
+  }
   if (typeof rawElapsedSeconds !== 'number' || Number.isNaN(rawElapsedSeconds) || rawElapsedSeconds <= 15) {
     return false;
   }
+
+  awayProgressClaimedForCycle = true;
 
   const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
   const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
@@ -735,6 +749,7 @@ function normalizeBreedKey(breed) {
 }
 
 function loadGame() {
+  markAwayCyclePending();
   const saved = localStorage.getItem('pupperpark_save');
   if (saved) {
     try {
@@ -875,10 +890,12 @@ function loadGame() {
   const elapsedSeconds = (now - state.lastSaveTime) / 1000;
 
   if (typeof state.lastSaveTime === 'number' && !Number.isNaN(state.lastSaveTime)) {
-    applyAwayProgress(elapsedSeconds);
+    applyAwayProgress(elapsedSeconds, { fromResume: false });
   }
 
   state.lastSaveTime = now;
+  backgroundedAt = null;
+  lastLoadCompletedAt = Date.now();
   saveGame();
   rebuildCanvasDogsFromRoster();
 }
@@ -923,7 +940,10 @@ setInterval(() => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    backgroundedAt = Date.now();
+    markAwayCyclePending();
+    if (backgroundedAt === null) {
+      backgroundedAt = Date.now();
+    }
     // Preserve prior lastSaveTime until returning so away duration isn't zeroed out
     if (pendingSaveTimeout) {
       clearTimeout(pendingSaveTimeout);
@@ -943,7 +963,7 @@ document.addEventListener('visibilitychange', () => {
 
     if (typeof awaySince === 'number' && !Number.isNaN(awaySince)) {
       const elapsedSeconds = (Date.now() - awaySince) / 1000;
-      applyAwayProgress(elapsedSeconds);
+      applyAwayProgress(elapsedSeconds, { fromResume: true });
     }
 
     saveGame();
@@ -951,6 +971,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.addEventListener('pagehide', () => {
+  markAwayCyclePending();
   if (backgroundedAt === null) {
     backgroundedAt = Date.now();
   }
@@ -958,6 +979,7 @@ window.addEventListener('pagehide', () => {
 });
 
 window.addEventListener('beforeunload', () => {
+  markAwayCyclePending();
   if (backgroundedAt === null) {
     backgroundedAt = Date.now();
   }
@@ -1613,6 +1635,8 @@ document.getElementById('btnConfirmReset').addEventListener('click', () => {
   pendingRerollDogId = null;
   backgroundedAt = null;
   queuedAwayProgress = null;
+  awayProgressClaimedForCycle = true;
+  lastLoadCompletedAt = Date.now();
   cameraAngle = 0;
   const starterShinyRoll = rollStarterShiny();
 
