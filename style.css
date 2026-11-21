@@ -273,10 +273,6 @@ html, body {
   gap: 12px;
 }
 
-.roster-card.is-favorite {
-  border-color: rgba(255, 234, 167, 0.55);
-}
-
 .roster-main {
   flex: 1;
   min-width: 0;
@@ -351,12 +347,6 @@ html, body {
   color: #55efc4;
   font-weight: 800;
   margin-left: 2px;
-}
-
-.roster-chip.roster-fav-chip {
-  background: rgba(255, 234, 167, 0.16);
-  border-color: rgba(255, 234, 167, 0.45);
-  color: #ffeaa7;
 }
 
 .roster-lvl-chip.shiny {
@@ -543,10 +533,6 @@ html, body {
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
   transition: transform 0.1s, filter 0.2s;
-}
-
-#tab-treats .action-btn {
-  min-width: 116px;
 }
 
 .action-btn:hover:not(:disabled) {
