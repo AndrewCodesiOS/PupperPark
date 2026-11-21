@@ -451,11 +451,11 @@ html, body {
   padding: 6px 11px;
   border-radius: 9px;
   cursor: pointer;
-  transition: transform 0.1s, filter 0.2s;
+  transition: transform 0.1s, filter 0.2s, opacity 0.2s;
   white-space: nowrap;
 }
 
-.retire-pill-btn:hover {
+.retire-pill-btn:hover:not(:disabled):not([aria-disabled="true"]) {
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
@@ -476,11 +476,23 @@ html, body {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
 }
 
-.retire-pill-btn.retire-pill-two-line:hover {
+.retire-pill-btn.retire-pill-two-line:hover:not(:disabled):not([aria-disabled="true"]) {
   background: linear-gradient(135deg, rgba(246, 185, 59, 0.34) 0%, rgba(229, 142, 38, 0.38) 100%);
   border-color: #ffeaa7;
   filter: none;
   transform: translateY(-1px);
+}
+
+/* Disabled Retire state (e.g., while pup is Favorited) */
+.retire-pill-btn:disabled,
+.retire-pill-btn[aria-disabled="true"],
+.retire-pill-btn.retire-pill-two-line:disabled,
+.retire-pill-btn.retire-pill-two-line[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: grayscale(0.65);
+  transform: none;
+  box-shadow: none;
 }
 
 .retire-line-top {
