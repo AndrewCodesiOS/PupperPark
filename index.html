@@ -15,7 +15,7 @@
 <body>
 
   <!-- Top Left Currency HUD -->
-  <div id="topHud" style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+  <div id="topHud">
     <div class="currency-pill">
       <span class="bone-icon">🦴</span>
       <span id="boneCount">0</span>
@@ -30,8 +30,8 @@
   <canvas id="gameCanvas"></canvas>
 
   <!-- Placement Helper Banner -->
-  <div id="placementBanner" style="position: absolute; top: 90px; left: 50%; transform: translateX(-50%); background: rgba(108, 92, 231, 0.9); border: 2px solid #ffeaa7; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; z-index: 50; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-    Tap any park tile to place your decoration!
+  <div id="placementBanner">
+    Tap any open park tile to place your decoration!
   </div>
 
   <!-- Bottom Right Mini Bar -->
@@ -70,190 +70,190 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Australian Shepherd</h3>
-              <p>Rank #8 Starter • 0.95x Bone Yield • 1.0x Pack Growth • 1.1x walk • Steady baseline digger.</p>
+              <p>Rank #8 Starter • 1.0x Bone Yield • 1.0x Pack Growth • 1.2x walk • Steady baseline digger.</p>
               <div class="shop-owned">Owned: <span id="countAussie">1</span></div>
             </div>
             <button class="action-btn" id="btnSummonAussie">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costAussie">20 🦴</span>
+              <span class="btn-cost" id="costAussie">15 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Beagle</h3>
-              <p>Rank #7 Tracker • 1.35x Bone Yield • 1.12x Pack Growth • 1.0x walk • +1.0% ✨ magic &amp; strong nose.</p>
+              <p>Rank #7 Tracker • 1.6x Bone Yield • 1.15x Pack Growth • 1.05x walk • Strong nose for bones.</p>
               <div class="shop-owned">Owned: <span id="countBeagle">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonBeagle">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costBeagle">120 🦴</span>
+              <span class="btn-cost" id="costBeagle">180 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Border Collie</h3>
-              <p>Rank #6 Swift Digger • 1.05x Bone Yield • 1.1x Pack Growth • 1.2x walk • +1.5% ✨ magic &amp; quick digs.</p>
+              <p>Rank #6 Swift Digger • 1.1x Bone Yield • 1.1x Pack Growth • 1.3x walk • Quick 0.7s dig cycle.</p>
               <div class="shop-owned">Owned: <span id="countCollie">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonCollie">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costCollie">340 🦴</span>
+              <span class="btn-cost" id="costCollie">550 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Siberian Husky</h3>
-              <p>Rank #5 Sprinter • 1.15x Bone Yield • 1.15x Pack Growth • 1.25x walk • +15% XP &amp; +2.0% ✨ magic.</p>
+              <p>Rank #5 Sprinter • 1.2x Bone Yield • 1.15x Pack Growth • 1.35x walk • +15% XP gain.</p>
               <div class="shop-owned">Owned: <span id="countHusky">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonHusky">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costHusky">850 🦴</span>
+              <span class="btn-cost" id="costHusky">1,600 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Golden Retriever</h3>
-              <p>Rank #4 Bone Magnet • 1.65x Bone Yield • 1.2x Pack Growth • 1.05x walk • +3.0% ✨ magic &amp; big payouts.</p>
+              <p>Rank #4 Bone Magnet • 2.0x Bone Yield • 1.2x Pack Growth • 1.1x walk • Big bone payouts & scaling.</p>
               <div class="shop-owned">Owned: <span id="countGolden">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonGolden">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costGolden">2,100 🦴</span>
+              <span class="btn-cost" id="costGolden">4,800 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>German Shepherd</h3>
-              <p>Rank #3 Pack Captain • 1.25x Bone Yield • 1.25x Pack Growth • 1.15x walk • +12% XP &amp; +3.5% ✨ magic.</p>
+              <p>Rank #3 Pack Captain • 1.35x Bone Yield • 1.25x Pack Growth • 1.2x walk • +10% XP gain.</p>
               <div class="shop-owned">Owned: <span id="countShepherd">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShepherd">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costShepherd">4,800 🦴</span>
+              <span class="btn-cost" id="costShepherd">14,000 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Shiba Inu</h3>
-              <p>Rank #2 Treasure Seeker • 1.2x Bone Yield • 1.2x Pack Growth • High treasure odds &amp; +5.5% ✨ magic.</p>
+              <p>Rank #2 Treasure Seeker • 1.25x Bone Yield • 1.2x Pack Growth • High treasure odds & +1.5% ✨ magic.</p>
               <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonShiba">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costShiba">10,500 🦴</span>
+              <span class="btn-cost" id="costShiba">42,000 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Labrador Retriever</h3>
-              <p>Rank #1 Master Retriever • 1.8x Bone Yield • 1.32x Pack Growth • 1.2x walk • +20% XP &amp; +5.0% ✨ magic.</p>
+              <p>Rank #1 Master Retriever • 2.2x Bone Yield • 1.35x Pack Growth • 1.25x walk • +20% XP & boosted treasure.</p>
               <div class="shop-owned">Owned: <span id="countLabrador">0</span></div>
             </div>
             <button class="action-btn" id="btnSummonLabrador">
               <span class="btn-name">Recruit</span>
-              <span class="btn-cost" id="costLabrador">22,000 🦴</span>
+              <span class="btn-cost" id="costLabrador">110,000 🦴</span>
             </button>
           </div>
         </div>
 
-        <!-- Toys Tab (Ordered by Value & Price) -->
+        <!-- Toys Tab -->
         <div class="tab-content" id="tab-toys">
           <div class="shop-card">
             <div class="shop-info">
               <h3>Tennis Ball</h3>
-              <p>Adds +3% Dig Power (min +1) per buy, up to max 25 (price caps at 10,000 🦴).</p>
+              <p>Adds +1 Dig Power for larger bone payouts on every dig.</p>
             </div>
             <button class="action-btn" id="btnToyBones">
               <span class="btn-name">Get Toy</span>
-              <span class="btn-cost" id="costToyBones">35 🦴</span>
-            </button>
-          </div>
-
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Rubber Duck</h3>
-              <p>Boosts offline dig bone yield (+2% per toy, up to 60%; price caps at 15,000 🦴).</p>
-            </div>
-            <button class="action-btn" id="btnToyIdle">
-              <span class="btn-name">Get Toy</span>
-              <span class="btn-cost" id="costToyIdle">250 🦴</span>
+              <span class="btn-cost" id="costToyBones">25 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Frisbee</h3>
-              <p>Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴).</p>
+              <p>Boosts the pack's dig bone multiplier 1.2x.</p>
             </div>
             <button class="action-btn" id="btnToySpeed">
               <span class="btn-name">Get Toy</span>
-              <span class="btn-cost" id="costToySpeed">500 🦴</span>
+              <span class="btn-cost" id="costToySpeed">40 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Rubber Duck</h3>
+              <p>Boosts offline dig bone yield (+2.5% per toy, up to 75%) while away.</p>
+            </div>
+            <button class="action-btn" id="btnToyIdle">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyIdle">200 🦴</span>
             </button>
           </div>
         </div>
 
-        <!-- Treats Tab (Ordered by Value & Price, All Timed up to 5x) -->
+        <!-- Treats Tab -->
         <div class="tab-content" id="tab-treats">
           <div class="shop-card">
             <div class="shop-info">
               <h3>XP Biscuits</h3>
-              <p>20s per stack (+8% XP per stack, up to 1.40x at 5x; price caps at 6,000 🦴).</p>
+              <p>20s of 1.75x XP earned on every dog dig to level up your pack faster!</p>
             </div>
             <button class="action-btn" id="btnTreatXp">
               <span class="btn-name">Give Biscuits</span>
-              <span class="btn-cost" id="costTreatXp">120 🦴</span>
+              <span class="btn-cost" id="costTreatXp">220 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Peanut Butter Kongs</h3>
-              <p>15s per stack of 100% ✨ Magic Bones on digs &amp; taps (up to 5x; price caps at 9,000 🦴).</p>
+              <p>15s of 100% ✨ Magic Bones on digs & taps!</p>
             </div>
             <button class="action-btn" id="btnTreatKong">
               <span class="btn-name">Toss Treats</span>
-              <span class="btn-cost" id="costTreatKong">180 🦴</span>
-            </button>
-          </div>
-
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Pup Cups</h3>
-              <p>20s per stack (+8% bone value per stack on digs &amp; taps, up to 1.40x at 5x; price caps at 12,000 🦴).</p>
-            </div>
-            <button class="action-btn" id="btnTreatCup">
-              <span class="btn-name">Feed Pup Cups</span>
-              <span class="btn-cost" id="costTreatCup">260 🦴</span>
-            </button>
-          </div>
-
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Jumbo Meaty Bones</h3>
-              <p>20s per stack (+10% dig payout per stack, up to 1.50x at 5x) + jump celebration (price caps at 15,000 🦴).</p>
-            </div>
-            <button class="action-btn" id="btnTreatFeast">
-              <span class="btn-name">Serve Feast</span>
-              <span class="btn-cost" id="costTreatFeast">380 🦴</span>
+              <span class="btn-cost" id="costTreatKong">150 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Bacon Chew Stick</h3>
-              <p>20s per stack (+12% dig payout per stack, up to 1.60x at 5x; price caps at 18,000 🦴).</p>
+              <p>20s of 3x bone payouts on digs!</p>
             </div>
             <button class="action-btn" id="btnTreatBacon">
               <span class="btn-name">Give Treats</span>
-              <span class="btn-cost" id="costTreatBacon">520 🦴</span>
+              <span class="btn-cost" id="costTreatBacon">300 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Jumbo Meaty Bones</h3>
+              <p>Your dogs jump for joy and gain a permanent +15% Dig Power boost!</p>
+            </div>
+            <button class="action-btn" id="btnTreatFeast">
+              <span class="btn-name">Serve Feast</span>
+              <span class="btn-cost" id="costTreatFeast">500 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Pup Cups</h3>
+              <p>25s of 2x bones & ✨ magic bones on digs and taps!</p>
+            </div>
+            <button class="action-btn" id="btnTreatCup">
+              <span class="btn-name">Feed Pup Cups</span>
+              <span class="btn-cost" id="costTreatCup">750 🦴</span>
             </button>
           </div>
         </div>
@@ -275,7 +275,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Park Tree</h3>
-              <p>A lovely decorative tree to beautify your park. (Max 3)</p>
+              <p>+1% ✨ Magic Bone chance when placed • Dogs love to sniff around it. (Max 3)</p>
               <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
             </div>
             <div class="decor-btn-group">
@@ -292,7 +292,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Flower Patch</h3>
-              <p>Vibrant ground cover bursting with color. (Max 5)</p>
+              <p>+1% ✨ Magic Bone chance when placed • Vibrant ground cover pups stop to sniff. (Max 5)</p>
               <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
             </div>
             <div class="decor-btn-group">
@@ -309,7 +309,7 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Water Fountain</h3>
-              <p>A peaceful, shimmering water feature. (Max 2)</p>
+              <p>+2% ✨ Magic Bone chance when placed • Shimmering basin dogs love to sniff. (Max 2)</p>
               <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
             </div>
             <div class="decor-btn-group">
@@ -339,7 +339,7 @@
           <div class="stats-grid">
             <div class="stat-box"><span>Dig Power:</span> <strong id="statDigPower">1</strong></div>
             <div class="stat-box"><span>Dig Multiplier:</span> <strong id="statSpeed">1.0x</strong></div>
-            <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">22%</strong></div>
+            <div class="stat-box"><span>Magic Chance:</span> <strong id="statChance">12%</strong></div>
             <div class="stat-box"><span>Lifetime Bones:</span> <strong id="statLifetimeBones">0</strong></div>
           </div>
         </div>
@@ -388,7 +388,7 @@
       <div class="reroll-actions">
         <button type="button" id="btnConfirmReroll" class="action-btn reroll-purchase-btn">
           <span class="btn-name">Reroll Stats &amp; Shiny</span>
-          <span class="btn-cost" id="rerollCostLabel">25 ✨</span>
+          <span class="btn-cost" id="rerollCostLabel">5,000 ✨</span>
         </button>
       </div>
     </div>
@@ -436,15 +436,6 @@
         <button id="btnCancelReset" class="action-btn" style="background: rgba(255,255,255,0.1); flex: 1;">Cancel</button>
         <button id="btnConfirmReset" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); flex: 1;">Yes, Reset</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Bone Cap Congratulations Modal -->
-  <div id="boneCapModal" class="modal" style="display: none;">
-    <div class="modal-window offline-box" style="max-width: 380px;">
-      <h2 style="color: #ffeaa7;">🦴 Max Bone Cap Reached!</h2>
-      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 250,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
-      <button id="btnCloseBoneCap" class="action-btn" style="width:100%;">Got It!</button>
     </div>
   </div>
 
