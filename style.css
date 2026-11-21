@@ -273,10 +273,6 @@ html, body {
   gap: 12px;
 }
 
-.roster-card.is-favorite {
-  border-color: rgba(255, 234, 167, 0.55);
-}
-
 .roster-main {
   flex: 1;
   min-width: 0;
@@ -351,12 +347,6 @@ html, body {
   color: #55efc4;
   font-weight: 800;
   margin-left: 2px;
-}
-
-.roster-chip.roster-fav-chip {
-  background: rgba(255, 234, 167, 0.16);
-  border-color: rgba(255, 234, 167, 0.45);
-  color: #ffeaa7;
 }
 
 .roster-lvl-chip.shiny {
@@ -455,7 +445,7 @@ html, body {
   white-space: nowrap;
 }
 
-.retire-pill-btn:hover {
+.retire-pill-btn:hover:not(:disabled) {
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
@@ -476,11 +466,20 @@ html, body {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
 }
 
-.retire-pill-btn.retire-pill-two-line:hover {
+.retire-pill-btn.retire-pill-two-line:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(246, 185, 59, 0.34) 0%, rgba(229, 142, 38, 0.38) 100%);
   border-color: #ffeaa7;
   filter: none;
   transform: translateY(-1px);
+}
+
+.retire-pill-btn:disabled,
+.retire-pill-btn.retire-pill-two-line:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  transform: none;
+  box-shadow: none;
 }
 
 .retire-line-top {
@@ -543,10 +542,6 @@ html, body {
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
   transition: transform 0.1s, filter 0.2s;
-}
-
-#tab-treats .action-btn {
-  min-width: 116px;
 }
 
 .action-btn:hover:not(:disabled) {
