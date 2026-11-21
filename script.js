@@ -948,15 +948,26 @@ const gameModal = document.getElementById('gameModal');
 const drawerWindow = document.getElementById('drawerWindow');
 const drawerHandle = document.getElementById('drawerHandle');
 
+if (gameModal) {
+  gameModal.style.display = 'none';
+}
+
 document.getElementById('btnOpenMenu').addEventListener('click', () => {
   initAudio();
-  gameModal.style.display = 'flex';
-  drawerWindow.style.transform = 'translateY(0)';
+  if (gameModal) {
+    gameModal.style.display = 'flex';
+  }
+  if (drawerWindow) {
+    drawerWindow.classList.remove('is-dragging');
+    drawerWindow.style.transform = 'translateY(0)';
+  }
   renderRosterTab();
 });
 
 function closeMenu() {
-  gameModal.style.display = 'none';
+  if (gameModal) {
+    gameModal.style.display = 'none';
+  }
 }
 
 document.getElementById('btnCloseMenu').addEventListener('click', closeMenu);
@@ -968,28 +979,43 @@ let isDrawerDragging = false;
 drawerHandle.addEventListener('pointerdown', (e) => {
   isDrawerDragging = true;
   drawerStartY = e.clientY;
-  drawerHandle.setPointerCapture(e.pointerId);
+  drawerWindow?.classList.add('is-dragging');
+  try {
+    drawerHandle.setPointerCapture(e.pointerId);
+  } catch (err) {
+    // Ignore if pointer capture isn't supported
+  }
 });
 
 drawerHandle.addEventListener('pointermove', (e) => {
   if (!isDrawerDragging) return;
   drawerCurrentY = e.clientY - drawerStartY;
-  if (drawerCurrentY > 0) {
+  if (drawerCurrentY > 0 && drawerWindow) {
     drawerWindow.style.transform = `translateY(${drawerCurrentY}px)`;
   }
 });
 
-drawerHandle.addEventListener('pointerup', (e) => {
+function finishDrawerDrag(e) {
   if (!isDrawerDragging) return;
   isDrawerDragging = false;
-  drawerHandle.releasePointerCapture(e.pointerId);
+  drawerWindow?.classList.remove('is-dragging');
+  try {
+    drawerHandle.releasePointerCapture(e.pointerId);
+  } catch (err) {
+    // Ignore if pointer capture isn't supported
+  }
 
   if (drawerCurrentY > 80) {
     closeMenu();
   }
-  drawerWindow.style.transform = 'translateY(0)';
+  if (drawerWindow) {
+    drawerWindow.style.transform = 'translateY(0)';
+  }
   drawerCurrentY = 0;
-});
+}
+
+drawerHandle.addEventListener('pointerup', finishDrawerDrag);
+drawerHandle.addEventListener('pointercancel', finishDrawerDrag);
 
 const tabBtns = document.querySelectorAll('.tab-btn');
 tabBtns.forEach(btn => {
